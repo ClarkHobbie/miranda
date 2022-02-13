@@ -35,7 +35,7 @@
     <orderEntry type="module-library">
       <library name="Maven: com.ltsllc:commons:1.0">
         <CLASSES>
-          <root url="jar://C:/Users/Clark/IdeaProjects/commons/out/artifacts/commons_1_0_jar/commons.jar!/" />
+          <root url="jar://$MODULE_DIR$/../commons/out/artifacts/commons_1_0_jar/commons.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
