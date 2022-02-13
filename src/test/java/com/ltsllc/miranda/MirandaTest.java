@@ -1,25 +1,19 @@
 package com.ltsllc.miranda;
 
 import com.ltsllc.commons.LtsllcException;
-import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.mina.core.session.IoSession;
-import org.junit.Before;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
-
-import java.io.InputStream;
+import java.io.*;
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -128,7 +122,43 @@ class MirandaTest {
     }
 
     @Test
-    void loadSendFile () {
+    void loadSendFile () throws LtsllcException, IOException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+        miranda.loadSendFile();
+
+        miranda = new Miranda();
+        miranda.loadProperties();
+        File sendFile = new File(Miranda.PROPERTY_DEFAULT_SEND_FILE);
+        FileOutputStream fileOutputStream = new FileOutputStream(sendFile);
+        Writer writer = new OutputStreamWriter(fileOutputStream);
+
+
+        Date d1 = new Date();
+        Date d2 = new Date();
+        UUID uuid = new UUID(d1.getTime(), d2.getTime());
+
+        Message message = new Message();
+        message.setMessageID(uuid);
+        message.setStatusURL("http://google.com");
+        message.setContents("Hi there!".getBytes());
+        message.setDeliveryURL("http://google.com");
+
+        List<Message> list = new ArrayList<>();
+        list.add(message);
+
+        miranda.writeJson(list,writer);
+        fileOutputStream.close();
+
+        Miranda.setSendQueue(new ArrayList<>());
+
+        miranda.loadSendFile();
+
+        list = Miranda.getSendQueue();
+        assert (list.get(0).equals(message));
+
+
+
 
     }
 }

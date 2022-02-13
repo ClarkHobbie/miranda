@@ -2,6 +2,7 @@ package com.ltsllc.miranda;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.stream.JsonWriter;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
@@ -15,18 +16,18 @@ import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.eclipse.jetty.util.thread.ScheduledExecutorScheduler;
 import org.eclipse.jetty.util.thread.Scheduler;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
 public class Miranda {
     public static final int STATUS_SUCCESS = 200;
-    public static final String DEFAULT_PROPERTIES_FILE = "miranda.properties";
+    public static final String PROPERTY_PROPERTIES_FILE = "properties";
+    public static final String PROPERTY_DEFAULT_PROPERTIES_FILE = "mirada.properties";
     public static final String PROPERTY_SEND_FILE = "sendFile";
+    public static final String PROPERTY_DEFAULT_SEND_FILE = "sendFile.jsn";
     public static final String PROPERTY_LONG_LOGGING_LEVEL = "loggingLevel";
     public static final String PROPERTY_SHORT_LOGGING_LEVEL = "l";
     public static final String PROPERTY_LOGGING_LEVEL = "loggingLevel";
@@ -308,6 +309,7 @@ public class Miranda {
      * This simply tells the system to reload the send file
      */
     protected void loadSendFile () throws LtsllcException {
+        logger.debug("entering loadSendFile");
         String tempFileName = properties.getProperty(PROPERTY_SEND_FILE);
         sendQueueFile = new ImprovedFile(tempFileName);
         ImprovedFile temp = new ImprovedFile(tempFileName);
@@ -316,13 +318,20 @@ public class Miranda {
         try {
             fileInputStream = new FileInputStream(temp);
             reader = new InputStreamReader(fileInputStream);
+            logger.debug("Found send file");
+
             GsonBuilder gsonBuilder = new GsonBuilder();
             gsonBuilder.setPrettyPrinting();
             Gson gson = gsonBuilder.create();
-            sendQueue = gson.fromJson(reader,List.class);
+            sendQueue = gson.fromJson(reader, List.class);
+            logger.debug("loaded send file");
+        } catch (FileNotFoundException e) {
+            ;
         } catch (IOException ioException) {
             throw new LtsllcException("exception loading send queue", ioException);
         }
+
+        logger.debug("leaving loadSendFile");
     }
 
     /*
@@ -333,7 +342,7 @@ public class Miranda {
     protected void loadProperties () throws LtsllcException {
         FileInputStream in = null;
         try {
-            in = new FileInputStream(DEFAULT_PROPERTIES_FILE);
+            in = new FileInputStream(PROPERTY_DEFAULT_PROPERTIES_FILE);
             Properties temp = new Properties();
             temp.load(in);
             properties.setIfNull(temp);
@@ -351,6 +360,9 @@ public class Miranda {
             }
         }
         properties.setIfNull(Miranda.PROPERTY_CLUSTER_PORT, Miranda.PROPERTY_DEFAULT_MESSAGE_PORT);
+        properties.setIfNull(Miranda.PROPERTY_SEND_FILE,PROPERTY_DEFAULT_SEND_FILE);
+        properties.setIfNull(PROPERTY_CLUSTER_PORT, PROPERTY_DEFAULT_CLUSTER_PORT);
+
     }
     //
     // ********************************************************************************************
@@ -365,7 +377,19 @@ public class Miranda {
         return sendQueueFile.exists();
     }
 
-    private Message createNewMessage() {
-        return null;
+    /*
+     * write an object to a Writer
+     *
+     * This method simply writes an object, converted to JSON, to a writer.  Note that this method
+     * does a flush to the writer after it writes the JSON.
+     */
+    protected void writeJson (Object object,Writer writer) throws IOException {
+        GsonBuilder gsonBuilder = new GsonBuilder();
+        gsonBuilder.setPrettyPrinting();
+        Gson gson = gsonBuilder.create();
+
+        String json = gson.toJson(object);
+        writer.write(json);
+        writer.flush();
     }
 }

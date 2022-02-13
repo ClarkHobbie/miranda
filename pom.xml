@@ -8,15 +8,12 @@
     <artifactId>ltsllc</artifactId>
     <packaging>pom</packaging>
     <version>1.0-SNAPSHOT</version>
-    <modules>
-        <module>untitled</module>
-    </modules>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
     </properties>
-<build>
+    <build>
     <plugins>
         <plugin>
             <groupId>org.apache.maven.plugins</groupId>
@@ -106,7 +103,7 @@
             <artifactId>commons</artifactId>
             <version>1.0</version>
             <scope>system</scope>
-            <systemPath>C:/Users/Clark/IdeaProjects/commons/out/artifacts/commons_1_0_jar/commons.jar</systemPath>
+            <systemPath>/Users/clarkhobbie/IdeaProjects/miranda/lib/commons.jar</systemPath>
         </dependency>
 
         <!-- slf -->
