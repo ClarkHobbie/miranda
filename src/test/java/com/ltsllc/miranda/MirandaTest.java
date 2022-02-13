@@ -153,6 +153,7 @@ class MirandaTest {
         Miranda.setSendQueue(new ArrayList<>());
 
         miranda.loadSendFile();
+        String whatever = "what";
 
         list = Miranda.getSendQueue();
         assert (list.get(0).equals(message));
