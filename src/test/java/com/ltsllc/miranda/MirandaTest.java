@@ -6,10 +6,10 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
+import org.easymock.EasyMockExtension;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.runner.RunWith;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.io.*;
 import java.util.*;
@@ -17,7 +17,7 @@ import java.util.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(EasyMockExtension.class)
 class MirandaTest {
 
     public static final Logger logger = LogManager.getLogger();
@@ -153,7 +153,6 @@ class MirandaTest {
         Miranda.setSendQueue(new ArrayList<>());
 
         miranda.loadSendFile();
-        String whatever = "what";
 
         list = Miranda.getSendQueue();
         assert (list.get(0).equals(message));

@@ -61,6 +61,13 @@
             <version>4.3.1</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.easymock</groupId>
+            <artifactId>easymock</artifactId>
+            <version>4.3</version>
+            <scope>test</scope>
+        </dependency>
+
         <!--  Gson -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
@@ -103,7 +110,7 @@
             <artifactId>commons</artifactId>
             <version>1.0</version>
             <scope>system</scope>
-            <systemPath>/Users/clarkhobbie/IdeaProjects/miranda/lib/commons.jar</systemPath>
+            <systemPath>C:/Users/Clark/IdeaProjects/commons/out/artifacts/commons_1_0_jar/commons.jar</systemPath>
         </dependency>
 
         <!-- slf -->
