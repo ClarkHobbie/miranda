@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import java.io.*;
 import java.util.*;
 
 import static org.mockito.Mockito.mock;
@@ -121,7 +122,43 @@ class MirandaTest {
     }
 
     @Test
-    void loadSendFile () {
+    void loadSendFile () throws LtsllcException, IOException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+        miranda.loadSendFile();
+
+        miranda = new Miranda();
+        miranda.loadProperties();
+        File sendFile = new File(Miranda.PROPERTY_DEFAULT_SEND_FILE);
+        FileOutputStream fileOutputStream = new FileOutputStream(sendFile);
+        Writer writer = new OutputStreamWriter(fileOutputStream);
+
+
+        Date d1 = new Date();
+        Date d2 = new Date();
+        UUID uuid = new UUID(d1.getTime(), d2.getTime());
+
+        Message message = new Message();
+        message.setMessageID(uuid);
+        message.setStatusURL("http://google.com");
+        message.setContents("Hi there!".getBytes());
+        message.setDeliveryURL("http://google.com");
+
+        List<Message> list = new ArrayList<>();
+        list.add(message);
+
+        miranda.writeJson(list,writer);
+        fileOutputStream.close();
+
+        Miranda.setSendQueue(new ArrayList<>());
+
+        miranda.loadSendFile();
+
+        list = Miranda.getSendQueue();
+        assert (list.get(0).equals(message));
+
+
+
 
     }
 }
