@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.UUID;
 
 @ExtendWith(EasyMockExtension.class)
-class ClusterTest {
+class Whatever {
 
     @BeforeAll
     public static void setup () {

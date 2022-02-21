@@ -1,0 +1,18 @@
+[
+  {
+    "deliveryURL": "http://google.com",
+    "statusURL": "http://google.com",
+    "contents": [
+      72,
+      105,
+      32,
+      116,
+      104,
+      101,
+      114,
+      101,
+      33
+    ],
+    "messageID": "0000017f-1dba-2cd9-0000-017f1dba2cd9"
+  }
+]

@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -52,14 +53,28 @@ public class Cluster {
         return randomNumberGenerator;
     }
 
+    /*
+     * Set the random number generator that this node uses
+     *
+     * The random number generator is used mostly in bidding
+     */
     public static void setRandomNumberGenerator(ImprovedRandom randomNumberGenerator) {
         Cluster.randomNumberGenerator = randomNumberGenerator;
     }
 
+    /*
+     * remove a node from the cluster
+     *
+     * This method does so synchronously, so it is thread safe.
+     */
     public static synchronized void removeNode(IoSession ioSession) {
         logger.debug("removing node, " + ioSession + " from nodes");
+        nodes.remove(ioSession);
     }
 
+    /*
+     * inform the cluster of this node receiving a new message
+     */
     public void informOfNewMessage(Message message) throws LtsllcException {
         logger.debug("entering informOfNewMessage with message = " + message);
         String contents = "MESSAGE CREATED " + message;
@@ -93,6 +108,9 @@ public class Cluster {
     }
 
 
+    /*
+     * Tell the cluster that we delivered a message
+     */
     public void informOfDelivery(Message message) {
         logger.debug("entering informOfDelivery with message = " + message);
 
@@ -133,6 +151,9 @@ public class Cluster {
      */
     public void connect () throws LtsllcException {
         logger.debug("entering connect with nodes = " + nodes);
+        if (nodes == null) {
+            nodes = new ArrayList<>();
+        }
         logger.debug("building IoAcceptor");
         IoAcceptor ioAcceptor = new NioSocketAcceptor();
         ioAcceptor.getFilterChain().addLast( "codec", new ProtocolCodecFilter( new TextLineCodecFactory( Charset.forName( "UTF-8" ))));
@@ -140,6 +161,7 @@ public class Cluster {
 
         int socketNumber = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
         SocketAddress socketAddress = new InetSocketAddress(socketNumber);
+
         try {
             logger.debug("listening at port " + socketNumber);
             ioAcceptor.bind(socketAddress);
@@ -198,6 +220,12 @@ public class Cluster {
         return message;
     }
 
+    /*
+     * Get a remote bid from the cluster
+     *
+     * @param ioSession The node that we should get the bid from
+     * @param message   The message that we should get the bid for
+     */
     protected int getBid (IoSession ioSession, Message message) throws LtsllcException {
         try {
             ReadFuture readFuture = ioSession.read();
@@ -222,6 +250,13 @@ public class Cluster {
 
     }
 
+    /*
+     * Send a bid for a message to a node
+     *
+     * @param ioSession the node to which we should send the bid
+     * @param bid       our bid
+     * @param message   the message that we are sending the bid for
+     */
     protected void sendBid (IoSession ioSession, int bid, Message message) throws LtsllcException {
         String ourMessage = "BID " + Integer.toString(bid, 10) + message.getDeliveryURL() + ":" + message.getStatusURL();
         WriteFuture writeFuture = ioSession.write(ourMessage);

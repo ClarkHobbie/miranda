@@ -145,4 +145,43 @@ public class Message {
 
         logger.debug("leaving informOfDelivery");
     }
+
+    /*
+     * is this Message equal to another Message?
+     */
+    public boolean equals (Object obj) {
+        if (!(obj instanceof  Message)) {
+            logger.debug("is " + obj + " an instance of " + Message.class + ", return false");
+            return false;
+        }
+
+        Message other = (Message) obj;
+
+        if (!(other.messageID.equals(messageID))) {
+            return false;
+        } else if (!(other.statusURL.equals(statusURL))) {
+            return false;
+        } else if (status != null && !status.equals(other.status)) {
+            return false;
+        } else if (!other.deliveryURL.equals(deliveryURL)) {
+            return false;
+        } else if (contents != null) {
+            if (other.contents == null) {
+                return false;
+            }
+            if (contents.length != other.contents.length) {
+                return false;
+            } else {
+                for (int i = 0; i < contents.length; i++) {
+                    if (contents[i] != other.contents[i]) {
+                        return false;
+                    }
+                }
+            }
+
+        }
+
+        return true;
+
+    }
 }

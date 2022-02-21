@@ -2,6 +2,7 @@ package com.ltsllc.miranda;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonWriter;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
@@ -52,6 +53,7 @@ public class Miranda {
 
     public void setCluster(Cluster cluster) {
         this.cluster = cluster;
+
     }
 
     public static List<Message> getSendQueue() {
@@ -66,8 +68,19 @@ public class Miranda {
         newMessageQueue.add(message);
     }
 
+    public static synchronized void setNewMessageQueue(List<Message> newMessageQueue) {
+        Miranda.newMessageQueue = newMessageQueue;
+    }
+
+    public static synchronized List<Message> getNewMessageQueue () {
+        return newMessageQueue;
+    }
+
     public static synchronized Message getNewMessage () {
-        return newMessageQueue.get(0);
+        if (newMessageQueue.size() < 1)
+            return null;
+        else
+            return newMessageQueue.get(0);
     }
 
     public static synchronized void addMessage(Message message) {
@@ -75,7 +88,11 @@ public class Miranda {
     }
 
     public static synchronized Message getNextMessage () {
-        return sendQueue.get(0);
+        if (sendQueue.size() < 1) {
+            return null;
+        } else {
+            return sendQueue.remove(0);
+        }
     }
 
     public static ImprovedProperties getProperties() {
@@ -101,7 +118,7 @@ public class Miranda {
      *     if the delivery was successful
      *         tell the cluster that we delivered it
      */
-    protected void mainLoop () {
+    public void mainLoop () {
         logger.debug("starting mainLoop");
         Message newMessage = getNewMessage();
         if (newMessage != null) {
@@ -132,6 +149,7 @@ public class Miranda {
             }
 
         }
+        logger.debug("leaving mainLoop");
     }
 
     /*
@@ -156,8 +174,9 @@ public class Miranda {
         cluster.connect();
 
         logger.debug("starting the message port");
-        startMessagePort(properties.getIntProperty(PROPERTY_MESSAGE_PORT, PROPERTY_DEFAULT_MESSAGE_PORT));
+        startMessagePort(properties.getIntProperty(PROPERTY_MESSAGE_PORT));
 
+        sendQueueFile = new ImprovedFile(properties.getProperty(PROPERTY_SEND_FILE));
         logger.debug("Checking for recovery");
         if (sendQueueFile.exists()) {
             logger.debug("send queue file exists, recovering");
@@ -167,10 +186,7 @@ public class Miranda {
         }
 
 
-        logger.debug("Startup complete going into main loop");
-        for (;;) {
-            mainLoop();
-        }
+        logger.debug("Leaving startup");
     }
 
     /*
@@ -274,6 +290,7 @@ public class Miranda {
         } else {
             // an argument that doesn't start with "-" is a parameter to the previous
             // argument
+            logger.debug("found a parameter");
             map.put(prev, argument);
             return;
         }
@@ -323,10 +340,13 @@ public class Miranda {
             GsonBuilder gsonBuilder = new GsonBuilder();
             gsonBuilder.setPrettyPrinting();
             Gson gson = gsonBuilder.create();
-            sendQueue = gson.fromJson(reader, List.class);
-            logger.debug("loaded send file");
+
+            List<Message> temp2 = new ArrayList<>();
+            Type type = TypeToken.getParameterized(ArrayList.class, Message.class).getType();
+            sendQueue = gson.fromJson(reader, type);
+            logger.debug("loaded send file with " + sendQueue);
         } catch (FileNotFoundException e) {
-            ;
+            sendQueue = new ArrayList<>();
         } catch (IOException ioException) {
             throw new LtsllcException("exception loading send queue", ioException);
         }
@@ -359,7 +379,7 @@ public class Miranda {
                 }
             }
         }
-        properties.setIfNull(Miranda.PROPERTY_CLUSTER_PORT, Miranda.PROPERTY_DEFAULT_MESSAGE_PORT);
+        properties.setIfNull(Miranda.PROPERTY_MESSAGE_PORT, Miranda.PROPERTY_DEFAULT_MESSAGE_PORT);
         properties.setIfNull(Miranda.PROPERTY_SEND_FILE,PROPERTY_DEFAULT_SEND_FILE);
         properties.setIfNull(PROPERTY_CLUSTER_PORT, PROPERTY_DEFAULT_CLUSTER_PORT);
 

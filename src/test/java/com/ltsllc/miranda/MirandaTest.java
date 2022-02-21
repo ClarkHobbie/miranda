@@ -11,13 +11,16 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.util.*;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(EasyMockExtension.class)
+
 class MirandaTest {
 
     public static final Logger logger = LogManager.getLogger();
@@ -69,7 +72,7 @@ class MirandaTest {
         assert (improvedProperties.getProperty("prev").equals("abc"));
     }
 
-    @Test
+    @org.junit.Test
     void biddingMode () throws LtsllcException {
         Miranda miranda = new Miranda();
         Message m1 = new Message();
@@ -121,44 +124,5 @@ class MirandaTest {
         assert (list.size() == 2);
     }
 
-    @Test
-    void loadSendFile () throws LtsllcException, IOException {
-        Miranda miranda = new Miranda();
-        miranda.loadProperties();
-        miranda.loadSendFile();
 
-        miranda = new Miranda();
-        miranda.loadProperties();
-        File sendFile = new File(Miranda.PROPERTY_DEFAULT_SEND_FILE);
-        FileOutputStream fileOutputStream = new FileOutputStream(sendFile);
-        Writer writer = new OutputStreamWriter(fileOutputStream);
-
-
-        Date d1 = new Date();
-        Date d2 = new Date();
-        UUID uuid = new UUID(d1.getTime(), d2.getTime());
-
-        Message message = new Message();
-        message.setMessageID(uuid);
-        message.setStatusURL("http://google.com");
-        message.setContents("Hi there!".getBytes());
-        message.setDeliveryURL("http://google.com");
-
-        List<Message> list = new ArrayList<>();
-        list.add(message);
-
-        miranda.writeJson(list,writer);
-        fileOutputStream.close();
-
-        Miranda.setSendQueue(new ArrayList<>());
-
-        miranda.loadSendFile();
-
-        list = Miranda.getSendQueue();
-        assert (list.get(0).equals(message));
-
-
-
-
-    }
 }
