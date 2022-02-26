@@ -1,6 +1,5 @@
 package com.ltsllc.miranda;
 
-import com.ltsllc.commons.util.ImprovedRandom;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.mina.core.session.IoSession;

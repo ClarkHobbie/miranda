@@ -12,9 +12,16 @@
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
+
+
     </properties>
     <build>
     <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>3.3.2</version>
+        </plugin>
         <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-dependency-plugin</artifactId>
@@ -34,7 +41,9 @@
                     </configuration>
                 </execution>
             </executions>
+
         </plugin>
+
 
 
     </plugins>
@@ -78,9 +87,6 @@
             <artifactId>async-http-client</artifactId>
             <version>2.12.3</version>
         </dependency>
-
-
-
         <!--
                 <dependency>
                     <groupId>org.junit.jupiter</groupId>
@@ -172,7 +178,14 @@
             <version>1.7.25</version>
         </dependency>
 
-
+        <!-- commons -->
+        <dependency>
+            <groupId>com.ltsllc</groupId>
+            <artifactId>commons</artifactId>
+            <scope>system</scope>
+            <version>1.0</version>
+            <systemPath>c:/Users/Clark/IdeaProjects/commons/out/artifacts/commons_1_0_jar/commons.jar</systemPath>
+        </dependency>
     </dependencies>
 
 </project>

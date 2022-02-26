@@ -22,6 +22,56 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * A Miranda cluster
+ *
+ * A group of nodes exchanging heart beet messages. A heart beet message consists of:
+ * <PRE>
+ * HEARTBEET &lt;node UUID&gt;
+ * </PRE>
+ * A node that doesn't respond back with a heart beet in a configurable period of time is considered
+ * dead. A dead node is announced via:
+ * <PRE>
+ * DEAD &lt;UUID of dead node&gt;
+ * </PRE>
+ * All other nodes must respond in a configurable period of time with:
+ * <PRE>
+ * DEAD &lt;UUID of dead node&gt;
+ * </PRE>
+ * The survivors then auction off the dead node's messages.  An auction consists of the survivors
+ * creating bids for each message. A bid consists of:
+ * <PRE>
+ * BID &lt;UUID of message&gt; &lt;the writer's randomly generated integer&gt;
+ * </PRE>
+ * In the case of a tie the surviving nodes bid again until there is no tie. In the case where
+ * there is no tie the winning node doesn't respond with a message: it merely takes possession
+ * of the message and goes onto the next bid.  When the survivors have auctioned off all the
+ * messages, they go back to heart beets.
+ * <P>
+ * When a new node joins the cluster it announces itself to all the cluster members via:
+ * <PRE>
+ * NEW NODE &lt;UUID of new node&gt;
+ * </PRE>
+ * The other nodes have a configurable amount of time to respond with:
+ * <PRE>
+ * CONFIRM NEW NODE &lt;UUID of new node&gt;
+ * </PRE>
+ * <P>
+ * When a node creates a new message it informs the other node via:
+ * <PRE>
+ * NEW MESSAGE &lt;UUID of new message&gt; STATUS: &lt;URL of status URL&gt; DELIVERY: &lt;URL of delivery URL&gt;
+ * CONTENTS:
+ * &lt;Contents of the message&gt;
+ * </PRE>
+ * The other nodes make no reply.
+ * <P>
+ * When a node delivers a message, it tells the rest of the cluster via:
+ * <PRE>
+ * MESSAGE DELIVERED &lt;UUID of message&gt;
+ * </PRE>
+ * The other nodes make no reply.
+ *
+ */
 public class Cluster {
     public static final long BID_WRITE_TIMEOUT = 1000;
     public static final TimeUnit BID_WRITE_TIMEOUT_UNITS = TimeUnit.MILLISECONDS;
@@ -77,10 +127,12 @@ public class Cluster {
      */
     public void informOfNewMessage(Message message) throws LtsllcException {
         logger.debug("entering informOfNewMessage with message = " + message);
-        String contents = "MESSAGE CREATED " + message;
+        String contents = "MESSAGE CREATED " + message.getMessageID() + " CONTENTS: ";
+        contents += message.getContents();
+
         logger.debug("POST contents = " + contents);
         for (IoSession ioSession : nodes) {
-            WriteFuture  future= ioSession.write(contents);
+            WriteFuture future = ioSession.write(contents);
             try {
                 if (!future.await(IONM_TIMEOUT, IONM_TIMEOUT_UNITS)) {
                     logger.error("write timed out informing another node of message delivery");

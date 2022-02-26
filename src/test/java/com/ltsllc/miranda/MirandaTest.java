@@ -20,10 +20,16 @@ import java.util.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-
+/**
+ * Test the main functions of Miranda
+ */
 class MirandaTest {
 
     public static final Logger logger = LogManager.getLogger();
+
+    /**
+     * Set the default logging level to DEBUG
+     */
     @BeforeAll
     public static void setup () {
         Configurator.setRootLevel(Level.DEBUG);
