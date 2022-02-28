@@ -1,4 +1,4 @@
-package com.ltsllc.miranda;
+package com.ltsllc.miranda.cluster;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
@@ -47,5 +47,6 @@ class ClusterHandlerTest {
 
         assert (nodeList.size() < 1);
     }
+
 
 }

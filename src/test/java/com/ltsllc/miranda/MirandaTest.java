@@ -2,19 +2,14 @@ package com.ltsllc.miranda;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.util.ImprovedProperties;
+import com.ltsllc.miranda.cluster.Cluster;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
-import org.easymock.EasyMockExtension;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.util.*;
 
 import static org.mockito.Mockito.mock;

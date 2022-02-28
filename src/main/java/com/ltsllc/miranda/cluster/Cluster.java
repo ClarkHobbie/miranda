@@ -1,7 +1,9 @@
-package com.ltsllc.miranda;
+package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.util.ImprovedRandom;
+import com.ltsllc.miranda.Message;
+import com.ltsllc.miranda.Miranda;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.mina.core.future.ReadFuture;
@@ -85,7 +87,6 @@ public class Cluster {
     protected static ImprovedRandom randomNumberGenerator = new ImprovedRandom();
     protected static final Logger logger = LogManager.getLogger();
     protected static List<IoSession> nodes;
-
     public static List<IoSession> getNodes() {
         return nodes;
     }
@@ -98,6 +99,8 @@ public class Cluster {
         logger.debug("Adding new node, " + session + " to nodes");
         nodes.add (session);
     }
+
+    protected MessageCache messageCache = MessageCache.empty();
 
     public static ImprovedRandom getRandomNumberGenerator() {
         return randomNumberGenerator;
@@ -278,7 +281,7 @@ public class Cluster {
      * @param ioSession The node that we should get the bid from
      * @param message   The message that we should get the bid for
      */
-    protected int getBid (IoSession ioSession, Message message) throws LtsllcException {
+    public int getBid(IoSession ioSession, Message message) throws LtsllcException {
         try {
             ReadFuture readFuture = ioSession.read();
 

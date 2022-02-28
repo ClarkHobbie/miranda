@@ -3,8 +3,8 @@
  * <PRE>
  * &lt;message&gt; ::= &lt;auction&gt; | &lt;auction over&gt; | &lt;bid&gt; | &lt;dead node&gt; | &lt;error&gt;
  *         | &lt;get message&gt; | &lt;heart beat&gt; | &lt;message&gt; | &lt;messages&gt; | &lt;message delivered&gt;
- *         | &lt;new message&gt; | &lt;new node&gt; | &lt;new node confirmed&gt; | &lt;new node over&gt; | &lt;start&gt;
- *         | &lt;timeout&gt;
+ *         | &lt;message not found&gt; | &lt;new message&gt; | &lt;new node&gt; | &lt;new node confirmed&gt;
+ *         | &lt;new node over&gt; | &lt;start&gt; | &lt;timeout&gt;
  * 
  *         &lt;auction&gt; ::= AUCTION &lt;UUID of the node getting auctioned&gt;
  *         &lt;auction over&gt; ::= AUCTION OVER
@@ -13,7 +13,8 @@
  *         &lt;error&gt; ::= ERROR
  *         &lt;get message&gt; ::= GET MESSAGE &lt;UUID of message&gt;
  *         &lt;heart beat&gt; := Heart beat &lt;UUID of node&gt;
- *         &lt;message&gt; ::= MESSAGE STATUS: &lt;URL&gt; DELIVERY: &lt;URL&gt; CONTENTS: &lt;contents of message&gt;
+ *         &lt;message&gt; ::= MESSAGE ID: &lt;UUID of message&gt; STATUS: &lt;URL&gt; DELIVERY: &lt;URL&gt; CONTENTS: &lt;contents of message&gt;
+ *         &lt;message not found&gt; ::= MESSAGE NOT FOUND &lt;UUID of message the message the node could not find&gt;
  *         &lt;message delivered&gt; := MESSAGE DELIVERED &lt;UUID of message&gt;
  *         &lt;new message&gt; ::= NEW MESSAGE &lt;UUID of message&gt; STATUS: &lt;status URL&gt; DELIVERY: &lt;delivery URL&gt; CONTENT:&lt;newline&gt;
  *         &lt;contents of message&gt;
@@ -47,6 +48,10 @@
  *     messages
  *     at which time it issues a new node over message and returns to the start state.
  *
+ * <P>
+ *     If the node sends a get message request, then it enters the Message state.  In that state, the node waits for a
+ *     reply from the other node. If it gets a reply, either a message message or a message not found message, it
+ *     transitions back to the General state.
  * <P>
  *     <PRE>
  *     &lt;dead node&gt; ::= DEAD &lt;UUID of dead node&gt;
@@ -118,10 +123,17 @@
  * <P>
  *     <PRE>
  *     &lt;get message&gt; ::= GET MESSAGE &lt;UUID of message&gt;
+ *     &lt;message&gt; ::= MESSAGE ID: &lt;UUID of message&gt; STATUS: &lt;URL&gt; DELIVERY: &lt;URL&gt; CONTENTS: &lt;contents of message&gt;
+ *     &lt;message not found&gt; ::= MESSAGE NOT FOUND &lt;UUID of message the node could not find&gt;
  *     </PRE>
- *     When a node receives this message it must respond with a message message if it has the message.  The time-out for
- *     this is configurable.
- *
+ *     When a node receives the get message message it must respond with a message message if it has the message.  The
+ *     time-out for this is configurable.
+ * <P>
+ *     If a node receives a message message while in the MESSAGE state, it updates its cache with the new message,
+ *     otherwise it sends an error and goes to the START state.
+ * <P>
+ *     If a node receives a get message message for a message it does not have, it issues a message not found message
+ *     for the message it could not find.
  * <P>
  *     <PRE>
  *     &lt;start message&gt; ::= START
@@ -138,4 +150,4 @@
  *     state it was in, to go to the start state.
  *
  */
- package com.ltsllc.miranda;
+ package com.ltsllc.miranda.cluster;

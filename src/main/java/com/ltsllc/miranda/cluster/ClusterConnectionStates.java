@@ -1,4 +1,4 @@
-package com.ltsllc.miranda;
+package com.ltsllc.miranda.cluster;
 
 /**
  * A cluster connection state
@@ -7,9 +7,9 @@ package com.ltsllc.miranda;
  * receive a subset of messages.  This enum represents those states.
  */
 public enum ClusterConnectionStates {
-    STATE_AUCTION,
-    STATE_GENERAL,
-    STATE_NEW_NODE,
-    STATE_START
-
+    AUCTION,
+    GENERAL,
+    MESSAGE,
+    NEW_NODE,
+    START
 }

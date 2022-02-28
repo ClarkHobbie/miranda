@@ -178,7 +178,8 @@
             <version>1.7.25</version>
         </dependency>
 
-        <!-- commons -->
+        <!-- LTS commons -->
+        <!--
         <dependency>
             <groupId>com.ltsllc</groupId>
             <artifactId>commons</artifactId>
@@ -186,6 +187,7 @@
             <version>1.0</version>
             <systemPath>c:/Users/Clark/IdeaProjects/commons/out/artifacts/commons_1_0_jar/commons.jar</systemPath>
         </dependency>
+        -->
     </dependencies>
 
 </project>

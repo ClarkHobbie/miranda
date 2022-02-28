@@ -1,1 +1,1 @@
-packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"com.ltsllc.miranda"}];updateSearchResults();
+packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"com.ltsllc.miranda"},{"l":"com.ltsllc.miranda.cluster"}];updateSearchResults();

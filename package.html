@@ -37,6 +37,8 @@
     with certain exchanges result in the connection remaining in the general state.
 </P>
 <P>
+    When a node receives an auction message, it must respond with an auction message of it own.  The time it has to do
+    this is configurable.
     An auction message causes the connection to enter the auction state.  The connection remains in that state through
     any number of bid messages before it receives an auction over message and returns to the general state.
 </P>

@@ -3,6 +3,7 @@ package com.ltsllc.miranda;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.miranda.cluster.Cluster;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

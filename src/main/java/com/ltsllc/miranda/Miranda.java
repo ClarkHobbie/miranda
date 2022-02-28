@@ -3,11 +3,11 @@ package com.ltsllc.miranda;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import com.google.gson.stream.JsonWriter;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.commons.util.ImprovedRandom;
+import com.ltsllc.miranda.cluster.Cluster;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.mina.core.session.IoSession;
@@ -36,6 +36,8 @@ public class Miranda {
     public static final String PROPERTY_DEFAULT_MESSAGE_PORT = "80";
     public static final String PROPERTY_CLUSTER_PORT = "clusterPort";
     public static final String PROPERTY_DEFAULT_CLUSTER_PORT = "2020";
+    public static final String PROPERTY_CACHE_LOAD_LIMIT = "cache.loadLimit";
+    public static final String PROPERTY_DEFAULT_CACHE_LOAD_LIMIT = "1048567"; // 2^20
     protected static final Logger logger = LogManager.getLogger();
 
     protected static List<Message> sendQueue;
@@ -359,7 +361,7 @@ public class Miranda {
      *
      * This simply tells the system to reload the system properties
      */
-    protected void loadProperties () throws LtsllcException {
+    public void loadProperties() throws LtsllcException {
         FileInputStream in = null;
         try {
             in = new FileInputStream(PROPERTY_DEFAULT_PROPERTIES_FILE);
@@ -379,11 +381,12 @@ public class Miranda {
                 }
             }
         }
-        properties.setIfNull(Miranda.PROPERTY_MESSAGE_PORT, Miranda.PROPERTY_DEFAULT_MESSAGE_PORT);
-        properties.setIfNull(Miranda.PROPERTY_SEND_FILE,PROPERTY_DEFAULT_SEND_FILE);
+        properties.setIfNull(PROPERTY_MESSAGE_PORT, PROPERTY_DEFAULT_MESSAGE_PORT);
+        properties.setIfNull(PROPERTY_SEND_FILE, PROPERTY_DEFAULT_SEND_FILE);
         properties.setIfNull(PROPERTY_CLUSTER_PORT, PROPERTY_DEFAULT_CLUSTER_PORT);
-
+        properties.setIfNull(PROPERTY_CACHE_LOAD_LIMIT, PROPERTY_DEFAULT_CACHE_LOAD_LIMIT);
     }
+
     //
     // ********************************************************************************************
     //
