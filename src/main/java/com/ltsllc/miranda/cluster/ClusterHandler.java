@@ -52,7 +52,8 @@ public class ClusterHandler implements IoHandler {
     protected ClusterConnectionStates state = ClusterConnectionStates.START;
     protected MessageCache cache = new MessageCache();
     protected Stack<ClusterConnectionStates> stateStack = new Stack<>();
-    protected UUID uuid;
+    protected UUID uuid; // our UUID
+    protected Map<UUID, IoSession> uuidToNode = new HashMap<>();
 
 
     public Stack<ClusterConnectionStates> getStatesStack() {
@@ -103,19 +104,18 @@ public class ClusterHandler implements IoHandler {
 
     @Override
     public void sessionClosed(IoSession ioSession) throws Exception {
-        logger.debug("removing instance, " + ioSession + " from cluster");
+        logger.debug("IoSessiob closed, removing instance, " + ioSession + " from cluster");
         Cluster.removeNode(ioSession);
     }
 
     @Override
-    public void sessionIdle(IoSession session, IdleStatus status) throws Exception {
-
-    }
+    public void sessionIdle(IoSession session, IdleStatus status) {}
 
     @Override
     public void exceptionCaught(IoSession ioSession, Throwable throwable) throws Exception {
         logger.error ("in ClusterHandler when encountered exception", throwable);
-        logger.error ("going back to start state");
+        logger.error ("sebdin error and going back to start state");
+        ioSession.write(ERROR);
         state = ClusterConnectionStates.START;
     }
 
@@ -148,33 +148,7 @@ public class ClusterHandler implements IoHandler {
                         break;
 
                     case NEW_NODE: {
-                        String strMessage = NEW_NODE_CONFIRMED;
-                        strMessage += " ";
-                        strMessage += this.uuid;
-                        ioSession.write(strMessage);
-
-                        synchronized (cache) {
-                            Set<UUID> set = cache.getUuidToOnline().keySet();
-                            Iterator<UUID> iterator = set.iterator();
-                            while (iterator.hasNext()) {
-                                UUID uuid = iterator.next();
-
-                                Message message = cache.get(uuid);
-
-                                strMessage = MESSAGE;
-                                strMessage += " ";
-                                strMessage += "ID: ";
-                                strMessage += uuid;
-                                strMessage += " STATUS: ";
-                                strMessage += message.getStatusURL();
-                                strMessage += " DELIVERY: ";
-                                strMessage += message.getDeliveryURL();
-                                strMessage += " CONTENTS: ";
-                                strMessage += Utils.hexEncode(message.getContents());
-
-                                ioSession.write(strMessage);
-                            }
-                        }
+                        handleNewNode(s, ioSession);
                         break;
                     }
 
@@ -191,59 +165,32 @@ public class ClusterHandler implements IoHandler {
             case AUCTION: {
                 switch (messageType) {
                     case BID: {
+                        handleBid(s, ioSession);
+                        break;
+                    }
+
+                    case GET_MESSAGE: {
                         Scanner scanner = new Scanner(s);
                         scanner.skip(BID);
-                        String strMessageID = scanner.next();
-                        String strBid = scanner.next();
-                        int theirBid = Integer.parseInt(strBid);
-                        int myBid = ourRandom.nextInt();
-                        while (myBid == theirBid) {
-                            myBid = ourRandom.nextInt();
-                        }
-                        String strMessage = BID;
-                        strMessage += strMessageID;
-                        strMessage += " ";
-                        strMessage += myBid;
-                        ioSession.write(strMessage);
+                        UUID uuid = UUID.fromString(scanner.next());
 
-                        //
-                        // if we "won" the bid
-                        //
-                        if (myBid > theirBid) {
-                            if (!cache.contains(UUID.fromString(strMessageID))) {
-                                strMessage = GET_MESSAGE;
-                                strMessage += strMessageID;
-                                strMessage += " ";
-                                strMessage += myBid;
-                                ioSession.write(strMessage);
-
-                                pushState (state);
-                                state = ClusterConnectionStates.MESSAGE;
-                            }
+                        if (cache.contains(uuid)) {
+                            sendMessage(uuid, ioSession);
+                        } else {
+                            logger.error("in an auction where we were asked for a message we don't have: " + uuid);
+                            ioSession.write(MESSAGE_NOT_FOUND);
                         }
                         break;
                     }
 
                 }
             }
+
             case MESSAGE: {
                 switch (messageType) {
                     case MESSAGE: {
-                        Message message = new Message();
-
-                        Scanner scanner = new Scanner(s);
-                        scanner.skip(MESSAGE);
-                        scanner.skip("ID:");
-                        message.setMessageID(UUID.fromString(scanner.next()));
-                        scanner.skip("STATUS:");
-                        message.setStatusURL(scanner.next());
-                        scanner.skip("DELIVERY:");
-                        message.setDeliveryURL(scanner.next());
-                        scanner.skip("CONTENTS:");
-                        message.setContents(Utils.hexStringToBytes(scanner.next()));
-
+                        Message message = readMessage(s);
                         cache.add(message);
-                        state = ClusterConnectionStates.GENERAL;
 
                         ClusterConnectionStates pushedState = popState();
                         String strMessage = "got message with message ID: " + message.getMessageID();
@@ -253,7 +200,7 @@ public class ClusterHandler implements IoHandler {
                         strMessage += ", and pushed state: " + pushedState;
                         logger.debug (strMessage);
 
-                        state = pushedState;
+                        state = popState();
 
                         break;
                     }
@@ -276,19 +223,7 @@ public class ClusterHandler implements IoHandler {
             case NEW_NODE: {
                 switch (messageType) {
                     case MESSAGE: {
-                        Scanner scanner = new Scanner(s);
-                        scanner.skip(MESSAGE);
-                        scanner.skip("ID:");
-                        Message message = new Message();
-                        String strUuid = scanner.next();
-                        message.setMessageID(UUID.fromString(strUuid));
-                        scanner.skip("STATUS:");
-                        message.setStatusURL(scanner.next());
-                        scanner.skip("DELIVERY:");
-                        message.setDeliveryURL(scanner.next());
-                        scanner.skip("CONTENTS:");
-                        message.setContents(Utils.hexStringToBytes(scanner.next()));
-
+                        Message message = readMessage(s);
                         cache.add(message);
                         break;
                     }
@@ -319,15 +254,7 @@ public class ClusterHandler implements IoHandler {
                     }
 
                     case GET_MESSAGE: {
-                        Scanner scanner = new Scanner(s);
-                        scanner.skip(GET_MESSAGE);
-                        String strUuid = scanner.next();
-                        UUID uuid = UUID.fromString(strUuid);
-                        if (!cache.contains(uuid)) {
-                            ioSession.write(MESSAGE_NOT_FOUND + strUuid);
-                        } else {
-                            sendMessage(uuid, ioSession);
-                        }
+                        handleGetMessage(s, ioSession);
                         break;
                     }
 
@@ -346,17 +273,7 @@ public class ClusterHandler implements IoHandler {
                     }
 
                     case NEW_MESSAGE: {
-                        Scanner scanner = new Scanner(s);
-
-                        Message newMessage = new Message();
-                        scanner.skip(NEW_MESSAGE);
-                        newMessage.setStatusURL(scanner.next());
-                        scanner.skip("DELIVERY:");
-                        newMessage.setDeliveryURL(scanner.next());
-                        scanner.skip("CONTENT:");
-                        String strContents = scanner.next();
-                        newMessage.setContents(Utils.hexDecode(strContents));
-                        cache.add(newMessage);
+                        handleNewMessage(s);
                         break;
                     }
 
@@ -470,8 +387,7 @@ public class ClusterHandler implements IoHandler {
             throw new LtsllcException("popState when the state is empty");
         }
 
-        state = stateStack.pop();
-        return state;
+        return stateStack.pop();
     }
 
     /**
@@ -489,5 +405,160 @@ public class ClusterHandler implements IoHandler {
         ioSession.write (strMessage);
     }
 
+    /**
+     * Convert a message message into a Message
+     *
+     * @param inputMessage The string to convert
+     * @return The message
+     */
+    protected Message readMessage (String inputMessage) {
+        Message message = new Message();
 
+        Scanner scanner = new Scanner(inputMessage);
+        scanner.skip(MESSAGE);
+        scanner.skip("ID:");
+        message.setMessageID(UUID.fromString(scanner.next()));
+        scanner.skip("STATUS:");
+        message.setStatusURL(scanner.next());
+        scanner.skip("DELIVERY:");
+        message.setDeliveryURL(scanner.next());
+        scanner.skip("CONTENTS:");
+        message.setContents(Utils.hexDecode(scanner.next()));
+
+        return message;
+    }
+
+    /**
+     * Send a message message over an IoSession
+     *
+     * @param message The message to send.
+     * @param ioSession The IoSession to send it on.
+     */
+    protected void sendMessage (Message message, IoSession ioSession) {
+        String strMessage = MESSAGE;
+        strMessage += " ";
+        strMessage += "ID: ";
+        strMessage += uuid;
+        strMessage += " STATUS: ";
+        strMessage += message.getStatusURL();
+        strMessage += " DELIVERY: ";
+        strMessage += message.getDeliveryURL();
+        strMessage += " CONTENTS: ";
+        strMessage += Utils.hexEncode(message.getContents());
+
+        ioSession.write(strMessage);
+    }
+
+    /**
+     * Handle a bid
+     *
+     * This method takes care of a bid.  It reads in the message UUID and bid and sends out a bid of it's own.
+     *
+     * @param input A string containing a bid message.
+     * @param ioSession The IoSession to respond to.
+     */
+    protected void handleBid (String input, IoSession ioSession) {
+        Scanner scanner = new Scanner(input);
+        scanner.skip(BID);
+        String strMessageID = scanner.next();
+        int theirBid = Integer.parseInt(scanner.next());
+        int myBid = ourRandom.nextInt();
+        while (myBid == theirBid) {
+            myBid = ourRandom.nextInt();
+        }
+        String strMessage = BID;
+        strMessage += " ";
+        strMessage += strMessageID;
+        strMessage += " ";
+        strMessage += myBid;
+        ioSession.write(strMessage);
+
+        //
+        // if we "won" the bid watch out for the situation where we don't have the message
+        //
+        if (myBid > theirBid) {
+            if (!cache.contains(UUID.fromString(strMessageID))) {
+                strMessage = GET_MESSAGE;
+                strMessage += strMessageID;
+                strMessage += " ";
+                strMessage += myBid;
+                ioSession.write(strMessage);
+
+                pushState(state);
+                state = ClusterConnectionStates.MESSAGE;
+            }
+        }
+    }
+
+    /**
+     * Read and handle a new node message
+     *
+     * This method takes care of the new node's UUID and "filling it in" on the messages that this node knows about.
+     *
+     * @param input A string containing the message.
+     * @param ioSession The session for the new node.
+     */
+    protected void handleNewNode (String input, IoSession ioSession) throws IOException {
+        Scanner scanner = new Scanner(input);
+        scanner.skip(NEW_NODE);
+        UUID uuid = UUID.fromString(scanner.next());
+        uuidToNode.put (uuid, ioSession);
+        synchronized (cache) {
+            Set<UUID> set = cache.getUuidToOnline().keySet();
+            Iterator<UUID> iterator = set.iterator();
+            while (iterator.hasNext()) {
+                uuid = iterator.next();
+
+                Message message = cache.get(uuid);
+                sendMessage(uuid, ioSession);
+            }
+        }
+    }
+
+    /**
+     * Process the new message message
+     *
+     * This method reads in the new message message and updates the cache
+     *
+     * @param input A string containing the message.
+     * @throws LtsllcException If there is a problem adding the message.
+     */
+    protected void handleNewMessage (String input) throws LtsllcException {
+        Scanner scanner = new Scanner(input);
+
+        Message newMessage = new Message();
+        scanner.skip(NEW_MESSAGE);
+        newMessage.setStatusURL(scanner.next());
+        scanner.skip("DELIVERY:");
+        newMessage.setDeliveryURL(scanner.next());
+        scanner.skip("CONTENT:");
+        String strContents = scanner.next();
+        newMessage.setContents(Utils.hexDecode(strContents));
+        cache.add(newMessage);
+    }
+
+    /**
+     * Handle a get message message
+     *
+     * This method takes care of reading in the message ID and sending back the requested message.
+     *
+     * @param input A string containing the new message message.  Note that this method assumes that this string has
+     *              been capitalized.
+     * @param ioSession The session over which to respond.
+     * @throws IOException If there is a problem looking up the message in the cache.
+     */
+    protected void handleGetMessage (String input, IoSession ioSession) throws IOException {
+        Scanner scanner = new Scanner(input);
+        scanner.skip(GET_MESSAGE);
+        String strUuid = scanner.next();
+        UUID uuid = UUID.fromString(scanner.next());
+        if (!cache.contains(uuid)) {
+            ioSession.write(MESSAGE_NOT_FOUND + strUuid);
+        } else {
+            Message message = cache.get(uuid);
+            sendMessage(message, ioSession);
+        }
+
+    }
 }
+
