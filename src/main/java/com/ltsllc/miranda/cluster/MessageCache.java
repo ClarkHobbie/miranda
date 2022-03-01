@@ -31,7 +31,7 @@ public class MessageCache {
     protected Map<UUID, Long> uuidToLocation = new HashMap<>();
     protected ImprovedFile offLineMessages;
     protected Map<UUID, Integer> uuidToNumberOfTimesReferenced = new HashMap<>();
-    protected final int loadLimit;
+    protected int loadLimit;
 
     protected int currentLoad = 0;
 
@@ -41,7 +41,7 @@ public class MessageCache {
         ourGson = gsonBuilder.create();
     }
 
-    {
+    public void initialize () {
         ImprovedProperties instance = Miranda.getProperties();
         try {
             loadLimit = instance.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);

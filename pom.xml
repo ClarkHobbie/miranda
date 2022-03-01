@@ -46,6 +46,7 @@
 
 
 
+
     </plugins>
 </build>
     <dependencies>
@@ -87,40 +88,6 @@
             <artifactId>async-http-client</artifactId>
             <version>2.12.3</version>
         </dependency>
-        <!--
-                <dependency>
-                    <groupId>org.junit.jupiter</groupId>
-                    <artifactId>junit-jupiter-engine</artifactId>
-                    <version>5.8.1</version>
-                    <scope>test</scope>
-                </dependency>
-
-                <dependency>
-                    <groupId>org.junit.platform</groupId>
-                    <artifactId>junit-platform-launcher</artifactId>
-                    <version>1.6.2</version>
-                    <scope>test</scope>
-                </dependency>
-
-                <dependency>
-                    <groupId>org.junit.jupiter</groupId>
-                    <artifactId>junit-jupiter-api</artifactId>
-                    <version>5.8.2</version>
-                    <scope>test</scope>
-                </dependency>
-                <dependency>
-                    <groupId>org.junit.jupiter</groupId>
-                    <artifactId>junit-jupiter-engine</artifactId>
-                    <version>5.8.2</version>
-                    <scope>test</scope>
-                </dependency>
-                <dependency>
-                    <groupId>org.junit.platform</groupId>
-                    <artifactId>junit-platform-launcher</artifactId>
-                    <version>1.0.0-M3</version>
-                    <scope>test</scope>
-                </dependency>
-                -->
 
         <!-- Mockito -->
         <dependency>
@@ -128,14 +95,14 @@
             <artifactId>mockito-core</artifactId>
             <version>4.3.1</version>
         </dependency>
-
+<!--
         <dependency>
             <groupId>org.easymock</groupId>
             <artifactId>easymock</artifactId>
             <version>4.3</version>
             <scope>test</scope>
         </dependency>
-
+-->
         <!--  Gson -->
         <dependency>
             <groupId>com.google.code.gson</groupId>

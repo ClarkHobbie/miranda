@@ -149,6 +149,7 @@ public class ClusterHandler implements IoHandler {
 
                     case NEW_NODE: {
                         handleNewNode(s, ioSession);
+                        state =  ClusterConnectionStates.NEW_NODE;
                         break;
                     }
 
@@ -502,6 +503,10 @@ public class ClusterHandler implements IoHandler {
         Scanner scanner = new Scanner(input);
         scanner.skip(NEW_NODE);
         UUID uuid = UUID.fromString(scanner.next());
+        String strMessage = NEW_NODE_CONFIRMED;
+        strMessage += " ";
+        strMessage += this.uuid;
+        ioSession.write(strMessage);
         uuidToNode.put (uuid, ioSession);
         synchronized (cache) {
             Set<UUID> set = cache.getUuidToOnline().keySet();
