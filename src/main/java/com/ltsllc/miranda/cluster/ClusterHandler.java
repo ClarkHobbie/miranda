@@ -44,7 +44,7 @@ public class ClusterHandler implements IoHandler {
     public static final String START = "START";
     public static final String TIMEOUT = "TIMEOUT";
 
-    protected static final ImprovedRandom ourRandom = new ImprovedRandom();
+    protected static ImprovedRandom ourRandom = new ImprovedRandom();
 
     /**
      * The connection state.  The connection starts in the start state.
@@ -56,6 +56,13 @@ public class ClusterHandler implements IoHandler {
     protected Map<UUID, IoSession> uuidToNode = new HashMap<>();
 
 
+    public static ImprovedRandom getOurRandom () {
+        return ourRandom;
+    }
+
+    public static void setOurRandom (ImprovedRandom r) {
+        ourRandom = r;
+    }
     public Stack<ClusterConnectionStates> getStatesStack() {
         return stateStack;
     }
@@ -99,7 +106,10 @@ public class ClusterHandler implements IoHandler {
 
     @Override
     public void sessionOpened(IoSession ioSession) throws Exception {
-
+        //
+        // the START state handles this
+        //
+        Cluster.addNode(ioSession);
     }
 
     @Override
@@ -114,7 +124,7 @@ public class ClusterHandler implements IoHandler {
     @Override
     public void exceptionCaught(IoSession ioSession, Throwable throwable) throws Exception {
         logger.error ("in ClusterHandler when encountered exception", throwable);
-        logger.error ("sebdin error and going back to start state");
+        logger.error ("sending error and going back to start state");
         ioSession.write(ERROR);
         state = ClusterConnectionStates.START;
     }
@@ -172,7 +182,7 @@ public class ClusterHandler implements IoHandler {
 
                     case GET_MESSAGE: {
                         Scanner scanner = new Scanner(s);
-                        scanner.skip(BID);
+                        scanner.skip(GET_MESSAGE);
                         UUID uuid = UUID.fromString(scanner.next());
 
                         if (cache.contains(uuid)) {
@@ -184,7 +194,21 @@ public class ClusterHandler implements IoHandler {
                         break;
                     }
 
+                    case AUCTION_OVER: {
+                        Scanner scanner = new Scanner(s);
+                        scanner.skip(AUCTION_OVER);
+                        state = ClusterConnectionStates.GENERAL;
+                        break;
+                    }
+
+                    default: {
+                        ioSession.write(ERROR);
+                        logger.error("protocol error, returning to START state");
+                        state = ClusterConnectionStates.START;
+                        break;
+                    }
                 }
+                break;
             }
 
             case MESSAGE: {
@@ -201,7 +225,7 @@ public class ClusterHandler implements IoHandler {
                         strMessage += ", and pushed state: " + pushedState;
                         logger.debug (strMessage);
 
-                        state = popState();
+                        state = pushedState;
 
                         break;
                     }
@@ -281,7 +305,6 @@ public class ClusterHandler implements IoHandler {
                     default: {
                         ioSession.write(ERROR);
                         logger.error ("protocol error, returning to START");
-                        state = popState();
                         state = ClusterConnectionStates.START;
                         break;
                     }
@@ -401,8 +424,15 @@ public class ClusterHandler implements IoHandler {
      */
     protected void sendMessage (UUID uuid, IoSession ioSession) throws IOException {
         Message message = cache.get(uuid);
-        String strMessage = MESSAGE + " STATUS: " + message.getStatusURL() + " DELIVERY: " + message.getDeliveryURL();
-        strMessage += " CONTENTS: " + Utils.hexEncode(message.getContents());
+        String strMessage = MESSAGE;
+        strMessage += " ID: ";
+        strMessage += uuid;
+        strMessage += " STATUS: ";
+        strMessage += message.getStatusURL();
+        strMessage += " DELIVERY: ";
+        strMessage += message.getDeliveryURL();
+        strMessage += " CONTENTS: ";
+        strMessage += Utils.hexEncode(message.getContents());
         ioSession.write (strMessage);
     }
 
@@ -417,13 +447,13 @@ public class ClusterHandler implements IoHandler {
 
         Scanner scanner = new Scanner(inputMessage);
         scanner.skip(MESSAGE);
-        scanner.skip("ID:");
+        scanner.skip(" ID: ");
         message.setMessageID(UUID.fromString(scanner.next()));
-        scanner.skip("STATUS:");
+        scanner.skip(" STATUS: ");
         message.setStatusURL(scanner.next());
-        scanner.skip("DELIVERY:");
+        scanner.skip(" DELIVERY: ");
         message.setDeliveryURL(scanner.next());
-        scanner.skip("CONTENTS:");
+        scanner.skip(" CONTENTS: ");
         message.setContents(Utils.hexDecode(scanner.next()));
 
         return message;
@@ -439,7 +469,7 @@ public class ClusterHandler implements IoHandler {
         String strMessage = MESSAGE;
         strMessage += " ";
         strMessage += "ID: ";
-        strMessage += uuid;
+        strMessage += message.getMessageID();
         strMessage += " STATUS: ";
         strMessage += message.getStatusURL();
         strMessage += " DELIVERY: ";
@@ -480,9 +510,8 @@ public class ClusterHandler implements IoHandler {
         if (myBid > theirBid) {
             if (!cache.contains(UUID.fromString(strMessageID))) {
                 strMessage = GET_MESSAGE;
-                strMessage += strMessageID;
                 strMessage += " ";
-                strMessage += myBid;
+                strMessage += strMessageID;
                 ioSession.write(strMessage);
 
                 pushState(state);
@@ -525,6 +554,10 @@ public class ClusterHandler implements IoHandler {
      *
      * This method reads in the new message message and updates the cache
      *
+     * NOTE: java.util.Scanner has a bug where skip(&lt;pattern&gt;) will not find pattern after first calling
+     * skip(&lt;pattern&gt;) but next(&lt;Pattern&gt;) will.  For that reason, the method uses next(&lt;pattern&gt;)
+     * instead of skip(&lt;pattern&gt;).
+     *
      * @param input A string containing the message.
      * @throws LtsllcException If there is a problem adding the message.
      */
@@ -533,10 +566,14 @@ public class ClusterHandler implements IoHandler {
 
         Message newMessage = new Message();
         scanner.skip(NEW_MESSAGE);
+        scanner.next("ID:"); // avoid a bug in Scanner
+        String strUuid = scanner.next();
+        newMessage.setMessageID(UUID.fromString(strUuid));
+        scanner.next("STATUS:");
         newMessage.setStatusURL(scanner.next());
-        scanner.skip("DELIVERY:");
+        scanner.next("DELIVERY:");
         newMessage.setDeliveryURL(scanner.next());
-        scanner.skip("CONTENT:");
+        scanner.next("CONTENTS:");
         String strContents = scanner.next();
         newMessage.setContents(Utils.hexDecode(strContents));
         cache.add(newMessage);
@@ -556,9 +593,9 @@ public class ClusterHandler implements IoHandler {
         Scanner scanner = new Scanner(input);
         scanner.skip(GET_MESSAGE);
         String strUuid = scanner.next();
-        UUID uuid = UUID.fromString(scanner.next());
+        UUID uuid = UUID.fromString(strUuid);
         if (!cache.contains(uuid)) {
-            ioSession.write(MESSAGE_NOT_FOUND + strUuid);
+            ioSession.write(MESSAGE_NOT_FOUND);
         } else {
             Message message = cache.get(uuid);
             sendMessage(message, ioSession);

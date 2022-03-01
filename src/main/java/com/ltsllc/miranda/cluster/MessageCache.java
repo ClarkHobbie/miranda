@@ -165,8 +165,7 @@ public class MessageCache {
      */
     public synchronized void remove (UUID uuid) throws LtsllcException {
         if (!contains(uuid)) {
-            logger.error ("the cache dos not contain the uuid: " + uuid);
-            throw new LtsllcException("the cache does not contain the uuid: " + uuid);
+            return;
         }
 
         Message message = uuidToMessage.get(uuid);

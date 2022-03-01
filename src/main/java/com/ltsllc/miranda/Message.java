@@ -20,6 +20,10 @@ public class Message {
     protected byte[] contents;
     protected UUID messageID;
 
+    public Message () {
+        super();
+    }
+
     public String getDeliveryURL() {
         return deliveryURL;
     }
@@ -57,7 +61,11 @@ public class Message {
     }
 
     public String toString () {
-        return messageID.toString();
+        if (messageID == null) {
+            return "not initialized";
+        } else {
+            return messageID.toString();
+        }
     }
 
     /*
