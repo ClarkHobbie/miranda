@@ -202,18 +202,19 @@ public class Message {
     }
 
     /**
-     * Return a message in "long" format
+     * Return the internals string
      *
-     * Long format includes all the information we have on the message; and has the format MESSAGE ID: &lt;UUID of
-     * message&gt; STATUS: &lt;status URL&gt; DELIVERY: &lt;delivery URL&gt;
-     *  CONTENTS: lt;hex encoded contents&GT;
+     * The string returned has the form: ID: &lt;UUID of message&gt; STATUS: &lt;status URL&gt; DELIVERY: &lt;delivery
+     * URL&gt; CONTENTS: &lt;hex encoded contents&gt;
      *
-     * @return The message in the long format.
+     * @return The string as discussed.
      */
-    public String longToString() {
+    public String internalsToString () {
+        String returnValue = null;
+
         StringBuffer stringBuffer = new StringBuffer();
 
-        stringBuffer.append ("MESSAGE ID: ");
+        stringBuffer.append ("ID: ");
         stringBuffer.append(messageID);
         stringBuffer.append(" STATUS: ");
         stringBuffer.append(statusURL);
@@ -221,6 +222,26 @@ public class Message {
         stringBuffer.append(deliveryURL);
         stringBuffer.append(" CONTENTS: ");
         stringBuffer.append(Utils.hexEncode(contents));
+
+        returnValue = stringBuffer.toString();
+
+        return returnValue;
+    }
+
+    /**
+     * Return a message in "long" format
+     *
+     * Long format includes all the information we have on the message; and has the format MESSAGE ID: &lt;UUID of
+     * message&gt; STATUS: &lt;status URL&gt; DELIVERY: &lt;delivery URL&gt;
+     *  CONTENTS: &lt;hex encoded contents&GT;
+     *
+     * @return The message in the long format.
+     */
+    public String longToString() {
+        StringBuffer stringBuffer = new StringBuffer();
+
+        stringBuffer.append ("MESSAGE ");
+        stringBuffer.append(internalsToString());
 
         return stringBuffer.toString();
     }

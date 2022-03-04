@@ -20,6 +20,16 @@ import java.util.concurrent.TimeUnit;
 public class Node {
     public static final Logger logger = LogManager.getLogger();
 
+    protected static MessageCache ourMessageCache = new MessageCache();
+
+    public static MessageCache getOurMessageCache() {
+        return ourMessageCache;
+    }
+
+    public static void setOurMessageCache(MessageCache ourMessageCache) {
+        Node.ourMessageCache = ourMessageCache;
+    }
+
     /**
      * for bids
      */
@@ -85,14 +95,24 @@ public class Node {
         this.partnerID = partnerID;
     }
 
-    protected Map<UUID, UUID> uuidToOwner = new HashMap ();
+    protected static Map<UUID, UUID> uuidToOwner = new HashMap ();
 
-    public Map<UUID, UUID> getUuidToOwner() {
+    public static Map<UUID, UUID> getUuidToOwner() {
         return uuidToOwner;
     }
 
-    public void setUuidToOwner(Map<UUID, UUID> uuidToOwner) {
-        this.uuidToOwner = uuidToOwner;
+    public static void setUuidToOwner(Map<UUID, UUID> uuidToOwner) {
+        Node.uuidToOwner = uuidToOwner;
+    }
+
+    public static UUID getOwnerFor (UUID messageID) {
+        UUID returnValue = null;
+        returnValue = uuidToOwner.get(messageID);
+        return returnValue;
+    }
+
+    public static void setOwnerFor (UUID messageID, UUID owner) {
+        uuidToOwner.put(messageID, owner);
     }
 
     /**
@@ -103,7 +123,7 @@ public class Node {
      * @param uuid The node whose messages we are going to auction.
      */
     public void informOfStartOfAuction (UUID uuid) {
-        logger.debug("extering informOfStartOfAuction with uuid = " + uuid);
+        logger.debug("entering informOfStartOfAuction with uuid = " + uuid);
         StringBuffer stringBuffer = new StringBuffer();
 
         stringBuffer.append(ClusterHandler.AUCTION);
@@ -113,6 +133,10 @@ public class Node {
         ioSession.write(stringBuffer.toString());
         logger.debug("wrote " + stringBuffer.toString());
         logger.debug("leaving informOfStartOfAuction");
+    }
+
+    public void informOfAuctionEnd () {
+        ioSession.write(ClusterHandler.AUCTION_OVER);
     }
 
     /**
@@ -173,7 +197,7 @@ public class Node {
             UUID uuidOfMessage = UUID.fromString(scanner.next());
             int theirBid = Integer.parseInt(scanner.next());
 
-            logger.debug("myBid = " + myBid + "theirBid = " + theirBid);
+            logger.debug("myBid = " + myBid + " theirBid = " + theirBid);
             if (myBid > theirBid) {
                 logger.debug("won the bid, assigning the message to us");
                 uuidToOwner.put (uuidOfMessage, uuid);
@@ -200,14 +224,34 @@ public class Node {
      *
      * @param message The message that we created.
      */
-    public void informOfMessageCreation (Message message) {}
+    public void informOfMessageCreation (Message message) {
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(ClusterHandler.NEW_MESSAGE);
+        stringBuffer.append(" ");
+        stringBuffer.append(message.internalsToString());
+
+        ioSession.write(stringBuffer.toString());
+
+        setOwnerFor(message.getMessageID(), uuid);
+    }
 
     /**
-     * Inform the node that we delivered this message
+     * Inform the partner node that we delivered this message
      *
-     * This is so that if we crash, this node knows that the message does not need to be delivered.
+     * This is so that if we crash, the partner node knows that the message does not need to be delivered.
      *
      * @param message The message that we delivered.
      */
-    public void informOfMessageDelivery (Message message) {}
+    public void informOfMessageDelivery (Message message) {
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(ClusterHandler.MESSAGE_DELIVERED);
+        stringBuffer.append (" ");
+        stringBuffer.append(message.getMessageID());
+
+        ioSession.write(stringBuffer.toString());
+
+        setOwnerFor(message.getMessageID(), null);
+
+    }
+
 }
