@@ -54,15 +54,33 @@ public class ClusterHandler implements IoHandler {
     protected Stack<ClusterConnectionStates> stateStack = new Stack<>();
     protected UUID uuid; // our UUID
     protected Map<UUID, IoSession> uuidToNode = new HashMap<>();
-
+    protected Map<UUID, UUID> uuidToOwner = new HashMap<>();
+    protected UUID partnerID;
 
     public static ImprovedRandom getOurRandom () {
         return ourRandom;
     }
 
+    public Map<UUID, UUID> getUuidToOwner() {
+        return uuidToOwner;
+    }
+
+    public void setUuidToOwner(Map<UUID, UUID> uuidToOwner) {
+        this.uuidToOwner = uuidToOwner;
+    }
+
+    public UUID getPartnerID() {
+        return partnerID;
+    }
+
+    public void setPartnerID(UUID partnerID) {
+        this.partnerID = partnerID;
+    }
+
     public static void setOurRandom (ImprovedRandom r) {
         ourRandom = r;
     }
+
     public Stack<ClusterConnectionStates> getStatesStack() {
         return stateStack;
     }
@@ -118,11 +136,25 @@ public class ClusterHandler implements IoHandler {
         Cluster.removeNode(ioSession);
     }
 
+    /**
+     * Do nothing for a sessionIdle message
+     *
+     * @param session The idle session.
+     * @param status Weather both nodes are idle.
+     */
     @Override
     public void sessionIdle(IoSession session, IdleStatus status) {}
 
+    /**
+     * An exception occurred in this ClusterHandler
+     *
+     * The response to this happening is to send an error to the other node and to return to the start state.
+     *
+     * @param ioSession The session where this occurred
+     * @param throwable The exception
+     */
     @Override
-    public void exceptionCaught(IoSession ioSession, Throwable throwable) throws Exception {
+    public void exceptionCaught(IoSession ioSession, Throwable throwable){
         logger.error ("in ClusterHandler when encountered exception", throwable);
         logger.error ("sending error and going back to start state");
         ioSession.write(ERROR);
@@ -152,10 +184,10 @@ public class ClusterHandler implements IoHandler {
         switch (state) {
             case START : {
                 switch (messageType) {
-                    case START:
-                        ioSession.write(START);
-                        state = ClusterConnectionStates.GENERAL;
+                    case START: {
+                        handleStart(s, ioSession);
                         break;
+                    }
 
                     case NEW_NODE: {
                         handleNewNode(s, ioSession);
@@ -176,28 +208,18 @@ public class ClusterHandler implements IoHandler {
             case AUCTION: {
                 switch (messageType) {
                     case BID: {
-                        handleBid(s, ioSession);
+                        handleBid(s, ioSession, partnerID);
                         break;
                     }
 
                     case GET_MESSAGE: {
-                        Scanner scanner = new Scanner(s);
-                        scanner.skip(GET_MESSAGE);
-                        UUID uuid = UUID.fromString(scanner.next());
-
-                        if (cache.contains(uuid)) {
-                            sendMessage(uuid, ioSession);
-                        } else {
-                            logger.error("in an auction where we were asked for a message we don't have: " + uuid);
-                            ioSession.write(MESSAGE_NOT_FOUND);
-                        }
+                        handleGetMessageAuction(s, ioSession);
                         break;
                     }
 
                     case AUCTION_OVER: {
-                        Scanner scanner = new Scanner(s);
-                        scanner.skip(AUCTION_OVER);
                         state = ClusterConnectionStates.GENERAL;
+                        ioSession.write(ClusterHandler.AUCTION_OVER);
                         break;
                     }
 
@@ -214,19 +236,7 @@ public class ClusterHandler implements IoHandler {
             case MESSAGE: {
                 switch (messageType) {
                     case MESSAGE: {
-                        Message message = readMessage(s);
-                        cache.add(message);
-
-                        ClusterConnectionStates pushedState = popState();
-                        String strMessage = "got message with message ID: " + message.getMessageID();
-                        strMessage += ", and status URL: " + message.getStatusURL();
-                        strMessage += ", and delivery URL: " + message.getDeliveryURL();
-                        strMessage += ", and content: " + Utils.hexEncode(message.getContents());
-                        strMessage += ", and pushed state: " + pushedState;
-                        logger.debug (strMessage);
-
-                        state = pushedState;
-
+                        handleMessage(s, ioSession);
                         break;
                     }
 
@@ -248,8 +258,13 @@ public class ClusterHandler implements IoHandler {
             case NEW_NODE: {
                 switch (messageType) {
                     case MESSAGE: {
-                        Message message = readMessage(s);
-                        cache.add(message);
+                        Message message = Message.readLongFormat(s);
+                        if (message == null) {
+                            logger.debug("lost bid for message, staying in auction state");
+                        } else {
+                            logger.debug("won bid for message, adding message to send queue and staying in auction state");
+                            cache.add(message);
+                        }
                         break;
                     }
 
@@ -259,6 +274,7 @@ public class ClusterHandler implements IoHandler {
 
                     default:
                         ioSession.write(ERROR);
+                        logger.error("Protocol error while in the new node state, sending error and returning to start state");
                         state = ClusterConnectionStates.START;
                         break;
                 }
@@ -289,22 +305,18 @@ public class ClusterHandler implements IoHandler {
                     }
 
                     case MESSAGE_DELIVERED: {
-                        Scanner scanner = new Scanner(s);
-                        scanner.skip(MESSAGE_DELIVERED);
-                        String strUuid = scanner.next();
-                        UUID uuid = UUID.fromString(strUuid);
-                        cache.remove(uuid);
+                        handleMessageDelivered(s);
                         break;
                     }
 
                     case NEW_MESSAGE: {
-                        handleNewMessage(s);
+                        handleNewMessage(s,partnerID);
                         break;
                     }
 
                     default: {
                         ioSession.write(ERROR);
-                        logger.error ("protocol error, returning to START");
+                        logger.error ("protocol error while in general state, sending error and returning to START");
                         state = ClusterConnectionStates.START;
                         break;
                     }
@@ -443,18 +455,7 @@ public class ClusterHandler implements IoHandler {
      * @return The message
      */
     protected Message readMessage (String inputMessage) {
-        Message message = new Message();
-
-        Scanner scanner = new Scanner(inputMessage);
-        scanner.skip(MESSAGE);
-        scanner.skip(" ID: ");
-        message.setMessageID(UUID.fromString(scanner.next()));
-        scanner.skip(" STATUS: ");
-        message.setStatusURL(scanner.next());
-        scanner.skip(" DELIVERY: ");
-        message.setDeliveryURL(scanner.next());
-        scanner.skip(" CONTENTS: ");
-        message.setContents(Utils.hexDecode(scanner.next()));
+        Message message = Message.readLongFormat(inputMessage);
 
         return message;
     }
@@ -466,16 +467,7 @@ public class ClusterHandler implements IoHandler {
      * @param ioSession The IoSession to send it on.
      */
     protected void sendMessage (Message message, IoSession ioSession) {
-        String strMessage = MESSAGE;
-        strMessage += " ";
-        strMessage += "ID: ";
-        strMessage += message.getMessageID();
-        strMessage += " STATUS: ";
-        strMessage += message.getStatusURL();
-        strMessage += " DELIVERY: ";
-        strMessage += message.getDeliveryURL();
-        strMessage += " CONTENTS: ";
-        strMessage += Utils.hexEncode(message.getContents());
+        String strMessage = message.longToString();
 
         ioSession.write(strMessage);
     }
@@ -487,37 +479,59 @@ public class ClusterHandler implements IoHandler {
      *
      * @param input A string containing a bid message.
      * @param ioSession The IoSession to respond to.
+     * @param partnerID The uuid of the other node for this ioSession
      */
-    protected void handleBid (String input, IoSession ioSession) {
+    protected void handleBid (String input, IoSession ioSession, UUID partnerID) {
+        logger.debug("entering handleBid with input = " + input + " and ioSession = " + ioSession + " and partnerID = " + partnerID);
         Scanner scanner = new Scanner(input);
         scanner.skip(BID);
-        String strMessageID = scanner.next();
+        UUID messageID = UUID.fromString(scanner.next());
         int theirBid = Integer.parseInt(scanner.next());
         int myBid = ourRandom.nextInt();
         while (myBid == theirBid) {
+            logger.debug ("a tie");
             myBid = ourRandom.nextInt();
         }
+        logger.debug("myBid = " + myBid + " theirBid = " + theirBid);
+
         String strMessage = BID;
         strMessage += " ";
-        strMessage += strMessageID;
+        strMessage += messageID;
         strMessage += " ";
         strMessage += myBid;
         ioSession.write(strMessage);
+        logger.debug("wrote " + strMessage);
 
+        UUID owner = null;
         //
-        // if we "won" the bid watch out for the situation where we don't have the message
+        // if we lost the bid, then set the owner to
         //
-        if (myBid > theirBid) {
-            if (!cache.contains(UUID.fromString(strMessageID))) {
+        if (myBid < theirBid) {
+            owner = partnerID;
+        } else {
+            //
+            // otherwise, we won the bid, set the owner to us
+            //
+            owner = uuid;
+
+            //
+            // watch out for the situation where we don't have the message
+            //
+            if (!cache.contains(messageID)) {
+                logger.debug("cache miss");
                 strMessage = GET_MESSAGE;
                 strMessage += " ";
-                strMessage += strMessageID;
+                strMessage += messageID;
                 ioSession.write(strMessage);
 
                 pushState(state);
                 state = ClusterConnectionStates.MESSAGE;
             }
         }
+
+        logger.debug("setting owner to " + owner + ", our uuid = " + uuid);
+        uuidToOwner.put (messageID, owner);
+        logger.debug("leaving handleBid");
     }
 
     /**
@@ -554,29 +568,35 @@ public class ClusterHandler implements IoHandler {
      *
      * This method reads in the new message message and updates the cache
      *
-     * NOTE: java.util.Scanner has a bug where skip(&lt;pattern&gt;) will not find pattern after first calling
-     * skip(&lt;pattern&gt;) but next(&lt;Pattern&gt;) will.  For that reason, the method uses next(&lt;pattern&gt;)
+     * NOTE: java.util.Scanner has a bug where skip(&lt;pattern&gt;) will not find a pattern after first calling
+     * skip(&lt;pattern&gt;) but next() will.  For that reason, the method uses next()
      * instead of skip(&lt;pattern&gt;).
      *
      * @param input A string containing the message.
+     * @param partnerUuid The UUID of our partner
      * @throws LtsllcException If there is a problem adding the message.
+     *
      */
-    protected void handleNewMessage (String input) throws LtsllcException {
-        Scanner scanner = new Scanner(input);
+    protected void handleNewMessage (String input, UUID partnerUuid) throws LtsllcException {
+        logger.debug("entering handleNewMessage with " + input);
 
-        Message newMessage = new Message();
-        scanner.skip(NEW_MESSAGE);
-        scanner.next("ID:"); // avoid a bug in Scanner
-        String strUuid = scanner.next();
-        newMessage.setMessageID(UUID.fromString(strUuid));
-        scanner.next("STATUS:");
-        newMessage.setStatusURL(scanner.next());
-        scanner.next("DELIVERY:");
-        newMessage.setDeliveryURL(scanner.next());
-        scanner.next("CONTENTS:");
-        String strContents = scanner.next();
-        newMessage.setContents(Utils.hexDecode(strContents));
-        cache.add(newMessage);
+        Scanner scanner = new Scanner(input);
+        scanner.skip("NEW MESSAGE ID:");
+        Message message = new Message();
+        UUID uuid = UUID.fromString(scanner.next());
+        message.setMessageID(uuid);
+        scanner.next(); // weird bug STATUS:
+        message.setStatusURL(scanner.next());
+        scanner.next(); // weird bug DELIVERY:
+        message.setDeliveryURL(scanner.next());
+        scanner.next(); // weird bug CONTENTS:
+        message.setContents(Utils.hexDecode(scanner.next()));
+
+        cache.add(message);
+
+        uuidToOwner.put(message.getMessageID(), partnerUuid);
+
+        logger.debug("leaving handleNewMessage");
     }
 
     /**
@@ -590,17 +610,119 @@ public class ClusterHandler implements IoHandler {
      * @throws IOException If there is a problem looking up the message in the cache.
      */
     protected void handleGetMessage (String input, IoSession ioSession) throws IOException {
+        logger.debug("entering handleGetMessage with input = " + input + " and ioSession = " + ioSession);
         Scanner scanner = new Scanner(input);
         scanner.skip(GET_MESSAGE);
-        String strUuid = scanner.next();
-        UUID uuid = UUID.fromString(strUuid);
+        UUID uuid = UUID.fromString(scanner.next());
         if (!cache.contains(uuid)) {
+            logger.debug("cache miss, sending MESSAGE NOT FOUND");
             ioSession.write(MESSAGE_NOT_FOUND);
         } else {
             Message message = cache.get(uuid);
+            logger.debug("cache hit, message = " + message.longToString() + "; sending message");
             sendMessage(message, ioSession);
         }
+        logger.debug("leaving handleGetMessage");
+    }
 
+    /**
+     * Tell the cache to discard the message, and set the owner of a message to the specified owner
+     *
+     * @param message The message.
+     * @param owner The owner.
+     */
+    public synchronized void undefineMessage(Message message, UUID owner) {
+        cache.undefineMessage(message);
+        uuidToOwner.put(message.getMessageID(), owner);
+    }
+
+    /**
+     * Handle a start message.
+     *
+     * This method sets the partnerID and the state by side effect.  The response to this is to send a start of our own,
+     * with our UUID and to go into the general state.
+     *
+     * @param input The string that came to us.
+     * @param ioSession The IoSession associated with this connection.
+     */
+    protected synchronized void handleStart (String input, IoSession ioSession) {
+        Scanner scanner = new Scanner(input);
+        scanner.skip(START);
+        partnerID = UUID.fromString(scanner.next());
+
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(START);
+        stringBuffer.append(" ");
+        stringBuffer.append(uuid);
+        ioSession.write(stringBuffer.toString());
+
+        state = ClusterConnectionStates.GENERAL;
+    }
+
+    /**
+     * Handle a message delivered message
+     *
+     * @param input The string we received.
+     * @throws LtsllcException If the cache has problems removing the message
+     */
+    public synchronized void handleMessageDelivered (String input) throws LtsllcException {
+        Scanner scanner = new Scanner(input);
+        scanner.skip(MESSAGE_DELIVERED);
+        String strUuid = scanner.next();
+        UUID uuid = UUID.fromString(strUuid);
+        cache.remove(uuid);
+    }
+
+    /**
+     * Handle a get message message while in the auction state
+     *
+     * @param input The message we received.
+     * @param ioSession The IoSession over which we received it
+     * @throws IOException If there is a problem sending the message
+     */
+    public synchronized void handleGetMessageAuction (String input, IoSession ioSession) throws IOException {
+        logger.debug("entering the handleGetMessageAuction method with input = " + input + " and ioSession = " + ioSession);
+        Scanner scanner = new Scanner(input);
+        scanner.skip(GET_MESSAGE);
+        UUID uuid = UUID.fromString(scanner.next());
+
+        if (cache.contains(uuid)) {
+            logger.debug("cache hit");
+            sendMessage(uuid, ioSession);
+        } else {
+            logger.error("in an auction where we were asked for a message we don't have: " + uuid);
+            ioSession.write(MESSAGE_NOT_FOUND);
+        }
+
+        logger.debug("leaving handleGetMessageAuction");
+    }
+
+    /**
+     * Handle a message message
+     *
+     * @param input The message we received;
+     * @param ioSession The ioSession over which we received the message.
+     * @throws LtsllcException If there is a problem looking up the message.
+     */
+    public synchronized void handleMessage (String input, IoSession ioSession) throws LtsllcException {
+        logger.debug("entering handleMessage with input = " + input +" and ioSession = " + ioSession);
+        Message message = Message.readLongFormat(input);
+        cache.add(message);
+
+        state = popState();
+
+        String strMessage = "got message with message ID: " + message.getMessageID();
+        strMessage += ", and status URL: " + message.getStatusURL();
+        strMessage += ", and delivery URL: " + message.getDeliveryURL();
+        strMessage += ", and content: " + Utils.hexEncode(message.getContents());
+        strMessage += ", and pushed state: " + state;
+        logger.debug (strMessage);
+
+        logger.debug("leaving handleMessage");
+    }
+
+    public synchronized UUID getOwnerOf (UUID uuid) {
+        return uuidToOwner.get(uuid);
     }
 }
 

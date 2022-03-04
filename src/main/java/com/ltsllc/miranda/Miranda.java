@@ -19,9 +19,7 @@ import org.eclipse.jetty.util.thread.Scheduler;
 
 import java.io.*;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 
 public class Miranda {
     public static final int STATUS_SUCCESS = 200;
@@ -32,6 +30,8 @@ public class Miranda {
     public static final String PROPERTY_LONG_LOGGING_LEVEL = "loggingLevel";
     public static final String PROPERTY_SHORT_LOGGING_LEVEL = "l";
     public static final String PROPERTY_LOGGING_LEVEL = "loggingLevel";
+    public static final String PROPERTY_BID_TIMEOUT = "timeouts.bid";
+    public static final String PROPERTY_DEFAULT_BID_TIMEOUT = "500";
     public static final String PROPERTY_MESSAGE_PORT = "messagePort";
     public static final String PROPERTY_DEFAULT_MESSAGE_PORT = "80";
     public static final String PROPERTY_CLUSTER_PORT = "clusterPort";
@@ -42,12 +42,27 @@ public class Miranda {
 
     protected static List<Message> sendQueue;
     protected static volatile List<Message> newMessageQueue;
+    protected static Map<UUID, UUID> uuidToOwner = new HashMap<>();
 
     protected Cluster cluster;
     protected ImprovedFile sendQueueFile;
-    protected ImprovedRandom randomNumberGenerator = new ImprovedRandom();
     protected static ImprovedProperties properties;
-    protected IoSession mainPort;
+
+    public static synchronized UUID getOwnerOf (UUID uuid) {
+        return uuidToOwner.get(uuid);
+    }
+
+    public static synchronized void setOwnerOf (UUID messageUuid, UUID owner) {
+        uuidToOwner.put(messageUuid, owner);
+    }
+
+    public Map<UUID, UUID> getUuidToOwner() {
+        return uuidToOwner;
+    }
+
+    public void setUuidToOwner(Map<UUID, UUID> uuidToOwner) {
+        this.uuidToOwner = uuidToOwner;
+    }
 
     public Cluster getCluster() {
         return cluster;
@@ -55,7 +70,6 @@ public class Miranda {
 
     public void setCluster(Cluster cluster) {
         this.cluster = cluster;
-
     }
 
     public static List<Message> getSendQueue() {
@@ -312,13 +326,15 @@ public class Miranda {
             Message message = sendQueue.get(i);
             logger.debug("bidding on " + message);
 
-            Message ourMessage = cluster.bid(message);
+            // Message ourMessage = cluster.bid(message);
+/*
             if (ourMessage == null) {
                 logger.debug("we lost bid so removing the message");
                 sendQueue.remove(i);
             } else {
                 logger.debug("we won the bid, keep the message");
             }
+*/
         }
     }
 
@@ -349,8 +365,6 @@ public class Miranda {
             logger.debug("loaded send file with " + sendQueue);
         } catch (FileNotFoundException e) {
             sendQueue = new ArrayList<>();
-        } catch (IOException ioException) {
-            throw new LtsllcException("exception loading send queue", ioException);
         }
 
         logger.debug("leaving loadSendFile");
@@ -385,6 +399,7 @@ public class Miranda {
         properties.setIfNull(PROPERTY_SEND_FILE, PROPERTY_DEFAULT_SEND_FILE);
         properties.setIfNull(PROPERTY_CLUSTER_PORT, PROPERTY_DEFAULT_CLUSTER_PORT);
         properties.setIfNull(PROPERTY_CACHE_LOAD_LIMIT, PROPERTY_DEFAULT_CACHE_LOAD_LIMIT);
+        properties.setIfNull(PROPERTY_BID_TIMEOUT, PROPERTY_DEFAULT_BID_TIMEOUT);
     }
 
     //

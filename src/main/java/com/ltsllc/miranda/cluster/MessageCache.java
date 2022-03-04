@@ -317,4 +317,10 @@ public class MessageCache {
     public synchronized boolean contains (UUID uuid) {
         return uuidToOnline.containsKey(uuid);
     }
+
+    public synchronized void undefineMessage(Message message) {
+        uuidToMessage.put(message.getMessageID(), null);
+        uuidToLocation.put(message.getMessageID(), null);
+        uuidToNumberOfTimesReferenced.put(message.getMessageID(), null);
+    }
 }

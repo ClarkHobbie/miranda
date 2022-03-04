@@ -21,8 +21,6 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * A Miranda cluster
@@ -86,7 +84,7 @@ public class Cluster {
 
     protected static ImprovedRandom randomNumberGenerator = new ImprovedRandom();
     protected static final Logger logger = LogManager.getLogger();
-    protected static List<IoSession> nodes;
+    protected static List<IoSession> nodes = new ArrayList<>();
     public static List<IoSession> getNodes() {
         return nodes;
     }
@@ -101,6 +99,7 @@ public class Cluster {
     }
 
     protected MessageCache messageCache = MessageCache.empty();
+
 
     public static ImprovedRandom getRandomNumberGenerator() {
         return randomNumberGenerator;
@@ -231,97 +230,16 @@ public class Cluster {
         logger.debug("leaving connect with nodes = " + nodes);
     }
 
-     /*
-     * bid on a message and return it if our bid is higher than the other nodes in the cluster
-     *
-     * This method returns a message if we "won" it in a bid with all the nodes in a cluster.
-     * Basically, just chose a number.  This is our bid.  If our bid is larger than everyone
-     * else's then we won the bid so return the message.  If another node has a higher bid then
-     * return null.  In the case of a tie we just go through the process again.
-     *
-     * @param  message The message we are bidding on.
-     * @return         The message if we "won" it, otherwise null
-     */
-    public Message bid (Message message) throws LtsllcException {
-        logger.debug("entering bid with message = " + message);
-        for (IoSession ioSession : nodes) {
-            int ourBid = randomNumberGenerator.nextInt(0, Integer.MAX_VALUE);
-            logger.debug("our bid is " + ourBid);
-            logger.debug("sending our bid");
-            sendBid(ioSession, ourBid, message);
+    public void auctionMessages (List<Message> list) {
+        //
+        // auction all messages for each node in the cluster
+        //
+        for (IoSession ioSession : getNodes()) {
+            //
+            // auction everything in the list
+            //
 
-            int remoteBid = getBid(ioSession, message);
-            logger.debug("remote bid is " + remoteBid);
-
-            while (ourBid == remoteBid) {
-                ourBid = randomNumberGenerator.nextInt(0, Integer.MAX_VALUE);
-                logger.debug("our bid is " + ourBid);
-                logger.debug("sending our bid");
-                sendBid(ioSession, ourBid, message);
-
-                remoteBid = getBid(ioSession, message);
-                logger.debug("remote bid is " + remoteBid);
-            }
-
-            if (ourBid < remoteBid) {
-                logger.debug("we were outbid, returning null");
-                return null;
-            }
         }
-
-        logger.debug("we won the message");
-        logger.debug("leaving bid, message = " + message);
-
-        return message;
     }
 
-    /*
-     * Get a remote bid from the cluster
-     *
-     * @param ioSession The node that we should get the bid from
-     * @param message   The message that we should get the bid for
-     */
-    public int getBid(IoSession ioSession, Message message) throws LtsllcException {
-        try {
-            ReadFuture readFuture = ioSession.read();
-
-            if (!readFuture.await((long) BID_READ_TIMEOUT, BID_READ_TIMEOUT_UNITS)) {
-                throw new LtsllcException("exception during await");
-            }
-
-            String temp = (String) readFuture.getMessage();
-            logger.debug("got " + temp);
-            Pattern pattern = Pattern.compile("BID (\\d+) " + message.getDeliveryURL() + ":" + message.getStatusURL());
-            Matcher matcher = pattern.matcher(temp);
-            String remoteBidString = matcher.group(1);
-            if (null == remoteBidString) {
-                throw new LtsllcException("malformed bid");
-            }
-
-            return Integer.parseInt(remoteBidString);
-        } catch (Exception e) {
-            throw new LtsllcException("exception during getBid", e);
-        }
-
-    }
-
-    /*
-     * Send a bid for a message to a node
-     *
-     * @param ioSession the node to which we should send the bid
-     * @param bid       our bid
-     * @param message   the message that we are sending the bid for
-     */
-    protected void sendBid (IoSession ioSession, int bid, Message message) throws LtsllcException {
-        String ourMessage = "BID " + Integer.toString(bid, 10) + message.getDeliveryURL() + ":" + message.getStatusURL();
-        WriteFuture writeFuture = ioSession.write(ourMessage);
-        if (!writeFuture.awaitUninterruptibly(BID_WRITE_TIMEOUT, BID_WRITE_TIMEOUT_UNITS)) {
-            throw new LtsllcException("write bid timed out");
-        }
-
-    }
-
-
-
-
-}
+ }

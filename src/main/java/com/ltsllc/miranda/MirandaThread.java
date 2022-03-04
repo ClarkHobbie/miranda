@@ -50,7 +50,7 @@ public class MirandaThread extends Thread {
                         logger.debug("sleeping for " + sleepTime + " milliseconds");
                         wait(sleepTime);
                     } catch (InterruptedException e) {
-
+                        logger.debug("MirandaThread interrupted");
                     }
 
                 }

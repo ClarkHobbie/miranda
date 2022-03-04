@@ -1,16 +1,33 @@
 package com.ltsllc.miranda;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.util.ImprovedProperties;
+import com.ltsllc.commons.util.Utils;
 import com.ltsllc.miranda.cluster.Cluster;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
+import org.apache.mina.core.session.IoSession;
+import org.asynchttpclient.*;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.io.*;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.http.HttpClient;
+import java.net.http.HttpHeaders;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -73,57 +90,134 @@ class MirandaTest {
         assert (improvedProperties.getProperty("prev").equals("abc"));
     }
 
-    @org.junit.Test
-    void biddingMode () throws LtsllcException {
+    @Test
+    public void loadSendFile () throws LtsllcException, IOException {
+        Configurator.setRootLevel(Level.DEBUG);
         Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
+
+        miranda = new Miranda();
+        miranda.loadProperties();
+        File sendFile = new File(Miranda.PROPERTY_DEFAULT_SEND_FILE);
+        FileOutputStream fileOutputStream = new FileOutputStream(sendFile);
+        Writer writer = new OutputStreamWriter(fileOutputStream);
+
+        Date d1 = new Date();
+        Date d2 = new Date();
+        UUID uuid = new UUID(d1.getTime(), d2.getTime());
+
+        Message message = new Message();
+        message.setMessageID(uuid);
+        message.setStatusURL("http://google.com");
+        message.setContents("Hi there!".getBytes());
+        message.setDeliveryURL("http://google.com");
+
+        List<Message> list = new ArrayList<>();
+        list.add(message);
+
+        miranda.writeJson(list,writer);
+        fileOutputStream.close();
+
+        Miranda.setSendQueue(new ArrayList<>());
+
+        miranda.loadSendFile();
+
+        list = Miranda.getSendQueue();
+        Message m2 = list.get(0);
+
+        assert (Utils.bothEqualCheckForNull(message,m2));
+    }
+
+    @Test
+    public void startUpNoFile () throws LtsllcException {
+        Configurator.setRootLevel(Level.DEBUG);
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+        String[] args = new String[0];
+        miranda.startUp(args);
+    }
+
+    /*
+     * startUp with an existing sendFile
+     */
+    @Test
+    public void starupExistigFile () throws LtsllcException, IOException {
         Message m1 = new Message();
         Date d1 = new Date();
         Date d2 = new Date();
         UUID uuid1 = new UUID(d1.getTime(), d2.getTime());
         m1.setMessageID(uuid1);
-        Date d3 = new Date();
-        Date d4 = new Date();
-        UUID uuid2 = new UUID(d3.getTime(), d4.getTime());
-        Message m2 = new Message();
-        m2.setMessageID(uuid2);
+        m1.setContents("hi there".getBytes());
+        m1.setStatusURL("http://google.com");
+        m1.setDeliveryURL("http://google.com");
+
         List<Message> list = new ArrayList<>();
         list.add(m1);
-        list.add(m2);
-        Cluster cluster = new Cluster();
-        cluster.setNodes(new ArrayList<>());
-        miranda.setCluster(cluster);
-        miranda.setSendQueue(list);
-        miranda.biddingMode();
-        list = Miranda.getSendQueue();
-        assert (list.get(0) == m1);
-        assert (list.get(1) == m2);
 
-        Message m3 = new Message();
-        Date d6 = new Date();
-        Date d7 = new Date();
-        UUID uuid3 = new UUID(d6.getTime(), d7.getTime());
-        m3.setMessageID(uuid3);
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
 
-        Cluster mockCluster = mock(Cluster.class);
-        when(mockCluster.bid(m1)).thenReturn(m1);
-        when(mockCluster.bid(m2)).thenReturn(null);
-        when(mockCluster.bid(m3)).thenReturn(m3);
+        String sendFileName = miranda.getProperties().getProperty(Miranda.PROPERTY_SEND_FILE);
+        FileOutputStream fileOutputStream = new FileOutputStream(sendFileName);
+        OutputStreamWriter outputStreamWriter = new OutputStreamWriter(fileOutputStream);
 
-        miranda.setCluster(mockCluster);
+        GsonBuilder builder = new GsonBuilder();
+        builder.setPrettyPrinting();
 
-        list = new ArrayList<>();
-        list.add(m1);
-        list.add(m2);
-        list.add(m3);
-        Miranda.setSendQueue(list);
+        Gson gson = builder.create();
+        gson.toJson(list, outputStreamWriter);
 
-        miranda.biddingMode();
+        outputStreamWriter.close();
+        fileOutputStream.close();
 
-        list = Miranda.getSendQueue();
-        assert (list.get(0) == m1);
-        assert (list.get(1) == m3);
-        assert (list.size() == 2);
+        String[] args = new String[0];
+        miranda.startUp(args);
+
+        list = miranda.getSendQueue();
+        assert (list != null && list.size() > 0);
+        Message m2 = list.get(0);
+        assert (m1.equals(m2));
     }
 
+    @Test
+    public void newNode () throws LtsllcException, InterruptedException, URISyntaxException, IOException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+        String[] args = new String[0];
+        miranda.startUp(args);
+
+        MirandaThread mirandaThread  = new MirandaThread();
+        mirandaThread.setMiranda(miranda);
+        mirandaThread.setSleepTime(500);
+
+        mirandaThread.start();
+
+        Socket socket = null;
+        InputStream inputStream = null;
+
+        try {
+            socket = new Socket("localhost", miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
+            inputStream = socket.getInputStream();
+
+            logger.debug("MirandaThread running");
+            synchronized (this) {
+                wait(250);
+            }
+            List<IoSession> nodes = Cluster.getNodes();
+            System.out.println(nodes.size());
+            assert (nodes.size() > 0);
+        } finally {
+            if (inputStream != null) {
+                inputStream.close();
+            }
+            if (socket != null) {
+                socket.close();
+            }
+            if (mirandaThread != null) {
+                mirandaThread.setKeepRunning(false);
+            }
+        }
+    }
 
 }

@@ -29,7 +29,6 @@
  *     state" by receiving a start message; or it can transition to the new node state by receiving a new node message.
  *     heart beats, new messages, delivered messages, dead messages as well as being done
  *     with certain exchanges result in the connection remaining in the general state.
- *
  * <P>
  *     An auction message causes the connection to enter the auction state.  The connection remains in that state
  *     through any number of bid messages before it receives an auction over message and returns to the general state.
@@ -77,7 +76,10 @@
  *     auction take place directly after declaring a node dead, but this is not a requirement.
  *     When a node receives an auction it should respond with its own auction message.  The connection then enters
  *     the auction state; and continues to be in that state until an auction over message is received.
- * 
+ * <P>
+ *     A node that receives an auction over message is expected to respond with its own auction over message within a
+ *     configurable period of time.
+ *
  * <P>
  *     The integer values in the bid messages are expected to be random values that the nodes create for each bid.  If
  *     the node's value is
@@ -136,7 +138,7 @@
  *     for the message it could not find.
  * <P>
  *     <PRE>
- *     &lt;start message&gt; ::= START
+ *     &lt;start message&gt; ::= START &lt;UUID of sender&gt;
  *     </PRE>
  *     When a node receives a start message it has a configurable amount of time to respond with a start message of its
  *     own.  It then enters the general state.

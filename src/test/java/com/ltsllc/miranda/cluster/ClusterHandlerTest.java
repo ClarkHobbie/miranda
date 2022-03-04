@@ -58,11 +58,15 @@ class ClusterHandlerTest {
         ClusterHandler clusterHandler = new ClusterHandler();
         clusterHandler.setState(ClusterConnectionStates.START);
 
+        String strMessage = ClusterHandler.START;
+        strMessage += " ";
+        strMessage += UUID.randomUUID();
+
         IoSession mockIoSession = Mockito.mock(IoSession.class);
         Mockito.when(mockIoSession.write(new Any())).thenReturn(null);
-        clusterHandler.messageReceived(mockIoSession, ClusterHandler.START);
+        clusterHandler.messageReceived(mockIoSession, strMessage);
+
         assert (clusterHandler.getState() == ClusterConnectionStates.GENERAL);
-        Mockito.verify(mockIoSession).write(ClusterHandler.START);
     }
 
     @Test
@@ -233,9 +237,8 @@ class ClusterHandlerTest {
         String strMessage = ClusterHandler.GET_MESSAGE;
         strMessage +=  " ";
         strMessage += uuid;
-        clusterHandler.messageReceived(mockIoSession, strMessage);
 
-        System.out.println(clusterHandler.getState());
+        clusterHandler.messageReceived(mockIoSession, strMessage);
 
         assert(clusterHandler.getState() == ClusterConnectionStates.AUCTION);
         Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(ClusterHandler.MESSAGE_NOT_FOUND);
@@ -315,7 +318,7 @@ class ClusterHandlerTest {
         clusterHandler.setCache(mockCache);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Mockito.when(mockIoSession.write(ClusterHandler.AUCTION)).thenReturn(null);
+        Mockito.when(mockIoSession.write(ClusterHandler.MESSAGE_NOT_FOUND)).thenReturn(null);
 
         String strMessage = ClusterHandler.GET_MESSAGE;
         strMessage += " ";
@@ -323,8 +326,19 @@ class ClusterHandlerTest {
 
         clusterHandler.messageReceived(mockIoSession, strMessage);
 
-        assert(clusterHandler.getState() == ClusterConnectionStates.MESSAGE);
+        assert(clusterHandler.getState() == ClusterConnectionStates.GENERAL);
         Mockito.verify(mockIoSession).write(ClusterHandler.MESSAGE_NOT_FOUND);
+    }
+
+    public Message createTestMessage (UUID uuid) {
+        Message message = new Message();
+        message.setMessageID(uuid);
+        message.setStatusURL("HTTP://GOOGLE.COM");
+        message.setDeliveryURL("HTTP://GOOGLE.COM");
+        byte[] contents = {1, 2, 3};
+        message.setContents(contents);
+
+        return message;
     }
 
     @Test
@@ -335,15 +349,10 @@ class ClusterHandlerTest {
         MessageCache mockCache = Mockito.mock(MessageCache.class);
 
         UUID uuid = UUID.fromString("123e4567-e89b-42d3-a456-556642440000");
+        Message message = createTestMessage(uuid);
 
         Mockito.when(mockCache.contains(uuid)).thenReturn(true);
         Mockito.when(mockCache.isOnline(uuid)).thenReturn(true);
-        Message message = new Message();
-        message.setMessageID(uuid);
-        message.setStatusURL("HTTP://GOOGLE.COM");
-        message.setDeliveryURL("HTTP://GOOGLE.COM");
-        byte[] contents = {1, 2, 3};
-        message.setContents(contents);
         Mockito.when(mockCache.get(uuid)).thenReturn(message);
 
         clusterHandler.setCache(mockCache);
@@ -357,18 +366,8 @@ class ClusterHandlerTest {
 
         clusterHandler.messageReceived(mockIoSession, strMessage);
 
-        strMessage = ClusterHandler.MESSAGE;
-        strMessage += " ID: ";
-        strMessage += message.getMessageID();
-        strMessage += " STATUS: ";
-        strMessage += message.getStatusURL();
-        strMessage += " DELIVERY: ";
-        strMessage += message.getDeliveryURL();
-        strMessage += " CONTENTS: ";
-        strMessage += Utils.hexEncode(message.getContents());
-
         assert(clusterHandler.getState() == ClusterConnectionStates.GENERAL);
-        Mockito.verify(mockIoSession).write(strMessage);
+        Mockito.verify(mockIoSession).write(message.longToString());
     }
 
     @Test
@@ -515,8 +514,270 @@ class ClusterHandlerTest {
     }
 
     @Test
-    public void inputClosed () throws Exception {
-        sessionClosed();
+    public void exceptionCaught () {
+        ClusterHandler clusterHandler = new ClusterHandler();
+
+        IoSession mockIoSession = Mockito.mock(IoSession.class);
+
+        clusterHandler.exceptionCaught(mockIoSession, new Exception("Exception"));
+
+        assert (clusterHandler.getState() == ClusterConnectionStates.START);
+        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(ClusterHandler.ERROR);
+    }
+
+    @Test
+    public void handleBid () {
+        UUID messageUuid = UUID.randomUUID();
+        UUID ourUuid = UUID.randomUUID();
+
+        String strMessage = ClusterHandler.BID;
+        strMessage += " ";
+        strMessage += messageUuid;
+        strMessage += " ";
+        strMessage += "123";
+
+        ImprovedRandom mockImprovedRandom = Mockito.mock(ImprovedRandom.class);
+        Mockito.when(mockImprovedRandom.nextInt()).thenReturn(456);
+
+        IoSession mockIoSession = Mockito.mock(IoSession.class);
+        Mockito.when(mockIoSession.write(new Any())).thenReturn(null);
+
+        MessageCache mockMessageCache = Mockito.mock(MessageCache.class);
+        Mockito.when(mockMessageCache.contains(messageUuid)).thenReturn(true);
+        ClusterHandler clusterHandler = new ClusterHandler();
+
+        clusterHandler.setCache(mockMessageCache);
+        clusterHandler.setOurRandom(mockImprovedRandom);
+        clusterHandler.setState(ClusterConnectionStates.AUCTION);
+        clusterHandler.setUuid(ourUuid);
+
+        clusterHandler.handleBid(strMessage, mockIoSession, UUID.randomUUID());
+
+        assert (clusterHandler.getUuidToOwner().get(messageUuid) == ourUuid);
+        assert (clusterHandler.getState() == ClusterConnectionStates.AUCTION);
+        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write("BID " + messageUuid + " 456");
+    }
+
+    @Test
+    public void handleGetMessage () throws IOException {
+        UUID messageUuid = UUID.randomUUID();
+        String strMessage = ClusterHandler.GET_MESSAGE;
+        strMessage += " ";
+        strMessage += messageUuid;
+
+        Message testMessage = createTestMessage(messageUuid);
+
+        IoSession mockIoSession = Mockito.mock(IoSession.class);
+
+        MessageCache mockMessageCache = Mockito.mock(MessageCache.class);
+        Mockito.when(mockMessageCache.contains(messageUuid)).thenReturn(true);
+        Mockito.when(mockMessageCache.get(messageUuid)).thenReturn(testMessage);
+
+        ClusterHandler clusterHandler = new ClusterHandler();
+
+        clusterHandler.setCache(mockMessageCache);
+
+        clusterHandler.handleGetMessage(strMessage, mockIoSession);
+
+        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(testMessage.longToString());
+
+        Mockito.when(mockMessageCache.contains(messageUuid)).thenReturn(false);
+
+        clusterHandler.setCache(mockMessageCache);
+
+        strMessage = ClusterHandler.GET_MESSAGE;
+        strMessage += " ";
+        strMessage += messageUuid;
+
+        String replyMessage = ClusterHandler.MESSAGE_NOT_FOUND;
+
+        clusterHandler.handleGetMessage(strMessage, mockIoSession);
+
+        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(replyMessage);
+    }
+
+    @Test
+    public void handleGetMessageAuction () throws IOException {
+        ClusterHandler clusterHandler = new ClusterHandler();
+        UUID messageId = UUID.randomUUID();
+        Message testMessage = createTestMessage(messageId);
+
+        String strMessage = ClusterHandler.GET_MESSAGE;
+        strMessage += " ";
+        strMessage += messageId;
+
+        MessageCache mockMessageCache = Mockito.mock(MessageCache.class);
+        Mockito.when(mockMessageCache.contains(messageId)).thenReturn(true);
+        Mockito.when(mockMessageCache.get(messageId)).thenReturn(testMessage);
+
+        clusterHandler.setCache(mockMessageCache);
+
+        IoSession mockIoSession = Mockito.mock(IoSession.class);
+
+        clusterHandler.handleGetMessageAuction(strMessage, mockIoSession);
+
+        String replyMessage = testMessage.longToString();
+        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(testMessage.longToString());
+
+        mockMessageCache = Mockito.mock(MessageCache.class);
+        Mockito.when(mockMessageCache.contains(messageId)).thenReturn(false);
+        clusterHandler.setCache(mockMessageCache);
+
+        replyMessage = ClusterHandler.MESSAGE_NOT_FOUND;
+
+        clusterHandler.handleGetMessageAuction(strMessage, mockIoSession);
+
+        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(replyMessage);
+    }
+
+    @Test
+    public void handleMessage () throws LtsllcException, IOException {
+        ClusterHandler clusterHandler = new ClusterHandler();
+        clusterHandler.pushState(ClusterConnectionStates.GENERAL);
+
+        Message message = createTestMessage(UUID.randomUUID());
+        String strMessage = message.longToString();
+
+        IoSession mockIoSession = Mockito.mock(IoSession.class);
+
+        MessageCache mockMessageCache = Mockito.mock(MessageCache.class);
+
+        clusterHandler.setCache(mockMessageCache);
+
+        clusterHandler.handleMessage(strMessage, mockIoSession);
+
+        assert (clusterHandler.getState() == ClusterConnectionStates.GENERAL);
+        Mockito.verify(mockMessageCache, Mockito.atLeastOnce()).add(message);
+    }
+
+    @Test
+    public void handleMessageDelivered () throws LtsllcException {
+        ClusterHandler clusterHandler = new ClusterHandler();
+
+        MessageCache mockMessageCache = Mockito.mock(MessageCache.class);
+        clusterHandler.setCache(mockMessageCache);
+
+        Message message = createTestMessage(UUID.randomUUID());
+
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(ClusterHandler.MESSAGE_DELIVERED);
+        stringBuffer.append(" ");
+        stringBuffer.append(message.getMessageID());
+
+        clusterHandler.handleMessageDelivered(stringBuffer.toString());
+
+        Mockito.verify(mockMessageCache, Mockito.atLeastOnce()).remove(message.getMessageID());
+    }
+
+    @Test
+    public void handleNewMessage () throws LtsllcException {
+        StringBuffer stringBuffer = new StringBuffer();
+
+        ClusterHandler clusterHandler = new ClusterHandler();
+
+        UUID partnerId = UUID.randomUUID();
+
+        Message message = createTestMessage(UUID.randomUUID());
+
+        MessageCache mockMessageCache = Mockito.mock(MessageCache.class);
+        clusterHandler.setCache(mockMessageCache);
+
+        stringBuffer.append("NEW ");
+        stringBuffer.append(message.longToString());
+
+        clusterHandler.handleNewMessage(stringBuffer.toString(),partnerId);
+
+        Mockito.verify(mockMessageCache, Mockito.atLeastOnce()).add(message);
+        assert (clusterHandler.getOwnerOf(message.getMessageID()) == partnerId);
+    }
+
+    @Test
+    public void handleNewNode () throws IOException {
+        ClusterHandler clusterHandler = new ClusterHandler();
+
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append("NEW NODE ");
+        UUID uuid = UUID.randomUUID();
+        stringBuffer.append(uuid);
+
+        IoSession mockIoSession = Mockito.mock(IoSession.class);
+
+        clusterHandler.setUuid(UUID.randomUUID());
+
+        clusterHandler.handleNewNode(stringBuffer.toString(), mockIoSession);
+
+        StringBuffer reply = new StringBuffer();
+        reply.append(ClusterHandler.NEW_NODE_CONFIRMED);
+        reply.append(" ");
+        reply.append(clusterHandler.getUuid());
+
+        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(reply.toString());
+    }
+
+    @Test
+    public void handleStart () {
+        ClusterHandler clusterHandler = new ClusterHandler();
+        clusterHandler.setUuid(UUID.randomUUID());
+
+        UUID partnerID = UUID.randomUUID();
+
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(ClusterHandler.START);
+        stringBuffer.append(" ");
+        stringBuffer.append(partnerID);
+
+        IoSession mockIoSession = Mockito.mock(IoSession.class);
+
+        StringBuffer reply = new StringBuffer();
+        reply.append(ClusterHandler.START);
+        reply.append(" ");
+        reply.append(clusterHandler.getUuid());
+
+        clusterHandler.handleStart(stringBuffer.toString(), mockIoSession);
+
+        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(reply.toString());
+    }
+
+    @Test
+    public void inputClosed () {
+        ClusterHandler clusterHandler = new ClusterHandler();
+
+        IoSession mockIoSession = Mockito.mock(IoSession.class);
+
+        Cluster cluster = new Cluster();
+
+        clusterHandler.inputClosed(mockIoSession);
+
+        assert(!Cluster.getNodes().contains(mockIoSession));
+    }
+
+    @Test
+    public void popState () throws LtsllcException {
+        ClusterHandler clusterHandler = new ClusterHandler();
+        LtsllcException ltsllcException = null;
+
+        try {
+            clusterHandler.popState();
+        } catch (LtsllcException e) {
+            ltsllcException = e;
+        }
+
+        assert (ltsllcException != null);
+    }
+
+    @Test
+    public void sendMessage () {
+        ClusterHandler clusterHandler = new ClusterHandler();
+
+        IoSession mockIoSession = Mockito.mock(IoSession.class);
+
+        Message message = createTestMessage(UUID.randomUUID());
+
+        clusterHandler.sendMessage(message, mockIoSession);
+
+        String strMessage = message.longToString();
+
+        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(strMessage);
     }
 
 }
