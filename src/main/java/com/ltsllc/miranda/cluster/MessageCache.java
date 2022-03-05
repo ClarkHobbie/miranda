@@ -32,8 +32,13 @@ public class MessageCache {
     protected ImprovedFile offLineMessages;
     protected Map<UUID, Integer> uuidToNumberOfTimesReferenced = new HashMap<>();
     protected int loadLimit;
+    protected long location = 0;
 
     protected int currentLoad = 0;
+
+    public MessageCache() throws LtsllcException {
+        initialize();
+    }
 
     static {
         GsonBuilder gsonBuilder = new GsonBuilder();
@@ -41,7 +46,47 @@ public class MessageCache {
         ourGson = gsonBuilder.create();
     }
 
-    public void initialize () {
+    public int getCurrentLoad() {
+        return currentLoad;
+    }
+
+    public void setCurrentLoad(int currentLoad) {
+        this.currentLoad = currentLoad;
+    }
+
+    public Map<UUID, Integer> getUuidToNumberOfTimesReferenced() {
+        return uuidToNumberOfTimesReferenced;
+    }
+
+    public void setUuidToNumberOfTimesReferenced(Map<UUID, Integer> uuidToNumberOfTimesReferenced) {
+        this.uuidToNumberOfTimesReferenced = uuidToNumberOfTimesReferenced;
+    }
+
+    public ImprovedFile getOffLineMessages() {
+        return offLineMessages;
+    }
+
+    public void setOffLineMessages(ImprovedFile offLineMessages) {
+        this.offLineMessages = offLineMessages;
+    }
+
+    public Map<UUID, Long> getUuidToLocation() {
+        return uuidToLocation;
+    }
+
+    public void setUuidToLocation(Map<UUID, Long> uuidToLocation) {
+        this.uuidToLocation = uuidToLocation;
+    }
+
+    public Map<UUID, Message> getUuidToMessage() {
+        return uuidToMessage;
+    }
+
+    public void setUuidToMessage(Map<UUID, Message> uuidToMessage) {
+        this.uuidToMessage = uuidToMessage;
+    }
+
+    public void initialize () throws LtsllcException {
         ImprovedProperties instance = Miranda.getProperties();
         try {
             loadLimit = instance.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
@@ -53,18 +98,22 @@ public class MessageCache {
             }
         }
 
-        offLineMessages = null;
-        try {
-            offLineMessages = ImprovedFile.createImprovedTempFile("temp_");
-        } catch (IOException e) {
-            logger.error ("Exception getting temp file",e);
-        } finally {
-            if (null == offLineMessages) {
-                logger.warn("Tempfile for messages is null");
-            }
+        offLineMessages = new ImprovedFile(instance.getProperty(Miranda.PROPERTY_OFFLINE_MESSAGES));
+        if (offLineMessages.exists()) {
+            logger.error("Offline messages file (" + offLineMessages + ") exists aborting");
+            throw new LtsllcException("offline messages file (" + offLineMessages + ") exists");
         }
+
+        location = 0;
     }
 
+    public int getLoadLimit() {
+        return loadLimit;
+    }
+
+    public void setLoadLimit(int loadLimit) {
+        this.loadLimit = loadLimit;
+    }
 
     public Map<UUID, Boolean> getUuidToOnline() {
         return uuidToOnline;
@@ -79,8 +128,8 @@ public class MessageCache {
      *
      * @return The new, empty cache
      */
-    public static MessageCache empty () {
-        return new MessageCache();
+    public boolean empty () {
+        return uuidToOnline.isEmpty();
     }
 
     /**
@@ -108,30 +157,43 @@ public class MessageCache {
      * @exception IOException If the temp file is not found or if skip throws an Exception
      */
     public Message get (UUID uuid) throws IOException {
+        Message returnValue = null;
+
+        if (null == uuidToOnline.get(uuid)) {
+            return null;
+        }
+
         if (isOnline(uuid)) {
-            return uuidToMessage.get (uuid);
+            returnValue = uuidToMessage.get (uuid);
+            Integer numberOfTimesReffernced = uuidToNumberOfTimesReferenced.get (uuid);
+            numberOfTimesReffernced++;
+            uuidToNumberOfTimesReferenced.put(uuid, numberOfTimesReffernced);
         } else {
             //
             // the message is offline
             //
-            FileInputStream fileInputStream = null;
-            InputStreamReader inputStreamReader = null;
+            FileReader fileReader = null;
+            BufferedReader bufferedReader = null;
             try {
                 long location = uuidToLocation.get(uuid);
-                fileInputStream = new FileInputStream(offLineMessages);
-                fileInputStream.skip(location);
-                inputStreamReader = new InputStreamReader(fileInputStream);
-                return ourGson.fromJson(inputStreamReader, Message.class);
+                fileReader = new FileReader(offLineMessages);
+                bufferedReader = new BufferedReader(fileReader);
+                bufferedReader.skip(location);
+                String line = bufferedReader.readLine();
+                returnValue = Message.readLongFormat(line);
             } finally {
-                if (inputStreamReader != null) {
-                    inputStreamReader.close();
+                if (bufferedReader != null) {
+                    bufferedReader.close();
                 }
 
-                if (fileInputStream != null) {
-                    fileInputStream.close();
+                if (fileReader != null) {
+                    fileReader.close();
                 }
             }
+
         }
+
+        return returnValue;
     }
 
     /**
@@ -152,6 +214,15 @@ public class MessageCache {
         }
 
         uuidToMessage.put(newMessage.getMessageID(), newMessage);
+        uuidToOnline.put(newMessage.getMessageID(), true);
+        Integer numberOfTimesReferened = uuidToNumberOfTimesReferenced.get(newMessage.getMessageID());
+        if (null == numberOfTimesReferened) {
+            uuidToNumberOfTimesReferenced.put(newMessage.getMessageID(), 1);
+        } else {
+            int newNumberOfTimesReferrenced = numberOfTimesReferened + 1;
+            uuidToNumberOfTimesReferenced.put(newMessage.getMessageID(), newNumberOfTimesReferrenced);
+        }
+
         currentLoad += newMessage.getContents().length;
     }
 
@@ -168,16 +239,10 @@ public class MessageCache {
             return;
         }
 
-        Message message = uuidToMessage.get(uuid);
-
         uuidToMessage.put(uuid, null);
         uuidToOnline.put(uuid, null);
         uuidToLocation.put(uuid, null);
         uuidToNumberOfTimesReferenced.put(uuid, null);
-
-        if (uuidToOnline.get(uuid)) {
-            currentLoad -= message.getContents().length;
-        }
     }
 
     /**
@@ -214,13 +279,13 @@ public class MessageCache {
 
         while (iterator.hasNext()) {
             uuid = iterator.next();
-            if ((smallestMessage == null) || (uuidToNumberOfTimesReferenced.get(smallestMessage.getMessageID()) < smallest)) {
+            if ((smallestMessage == null) || (uuidToNumberOfTimesReferenced.get(uuid) < smallest)) {
                 smallest = uuidToNumberOfTimesReferenced.get(uuid);
                 smallestMessage = uuidToMessage.get(uuid);
             }
         }
 
-        migrateInCoreMessageToOffline(smallestMessage.getMessageID());
+        migrateInCoreMessageToOffline(smallestMessage);
     }
 
     /**
@@ -228,28 +293,34 @@ public class MessageCache {
      *
      * All the variables, e.g. uuidToOnline, are updated to reflect this.
      *
-     * @param uuid The designated message.  This message must be present in uuidToMessage.
+     * @param message The designated message.  This message must be present in uuidToMessage.
      * @exception LtsllcException The method throws this if there is an error opening offlineMessage or if there is an
      * error writing to the file, or the UUID does not exist in uuidToMessage
      */
-    protected synchronized void migrateInCoreMessageToOffline (UUID uuid) throws LtsllcException {
-        if (uuidToMessage.get(uuid) == null) {
+    protected synchronized void migrateInCoreMessageToOffline (Message message) throws LtsllcException {
+        if (uuidToMessage.get(message.getMessageID()) == null) {
             throw new LtsllcException("uuid does not exist in uuidToMessage");
         }
-
-        String json = ourGson.toJson(uuidToMessage.get(uuid));
         FileWriter fileWriter = null;
+        BufferedWriter bufferedWriter = null;
         try {
-            fileWriter = new FileWriter(offLineMessages);
-            uuidToLocation.put(uuid, offLineMessages.length());
-            fileWriter.append(json);
-            currentLoad = currentLoad - uuidToMessage.get(uuid).getContents().length;
-            uuidToMessage.put(uuid, null);
-            uuidToOnline.put(uuid, false);
+            fileWriter = new FileWriter(offLineMessages.toString(), true);
+            bufferedWriter = new BufferedWriter(fileWriter);
+            location = offLineMessages.length();
+            bufferedWriter.write(message.longToString());
+            bufferedWriter.newLine();
+            currentLoad = currentLoad - message.getContents().length;
+            uuidToMessage.put(message.getMessageID(), null);
+            uuidToOnline.put(message.getMessageID(), false);
+            uuidToLocation.put(message.getMessageID(), location);
         } catch (IOException e) {
-            throw new LtsllcException("Exception opening or reading message " + uuid,e);
+            throw new LtsllcException("Exception opening or reading message " + message.getMessageID(),e);
         }finally {
             try {
+                if (bufferedWriter != null) {
+                    bufferedWriter.close();
+                }
+
                 if (fileWriter != null) {
                     fileWriter.close();
                 }
@@ -273,14 +344,20 @@ public class MessageCache {
             throw new LtsllcException("message does not exist in uuidToLocation");
         }
         FileReader fileReader = null;
+        BufferedReader bufferedReader = null;
         try {
             fileReader = new FileReader(offLineMessages);
-            fileReader.skip(uuidToLocation.get(uuid));
-            return ourGson.fromJson(fileReader, Message.class);
+            bufferedReader = new BufferedReader(fileReader);
+            bufferedReader.skip(uuidToLocation.get(uuid));
+            String inline = bufferedReader.readLine();
+            return Message.readLongFormat(inline);
         } catch (IOException e) {
             throw new LtsllcException("Execption opening or reading offline file", e);
         } finally {
             try {
+                if (bufferedReader != null) {
+                    bufferedReader.close();
+                }
                 if (fileReader != null) {
                     fileReader.close();
                 }
@@ -321,6 +398,11 @@ public class MessageCache {
     public synchronized void undefineMessage(Message message) {
         uuidToMessage.put(message.getMessageID(), null);
         uuidToLocation.put(message.getMessageID(), null);
+        uuidToOnline.put(message.getMessageID(), null);
         uuidToNumberOfTimesReferenced.put(message.getMessageID(), null);
+    }
+
+    public synchronized long getLocationFor (UUID uuid) {
+        return uuidToLocation.get(uuid);
     }
 }

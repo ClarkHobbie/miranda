@@ -85,6 +85,10 @@ public class Cluster {
     protected static ImprovedRandom randomNumberGenerator = new ImprovedRandom();
     protected static final Logger logger = LogManager.getLogger();
     protected static List<IoSession> nodes = new ArrayList<>();
+
+    public Cluster() throws LtsllcException {
+    }
+
     public static List<IoSession> getNodes() {
         return nodes;
     }
@@ -98,7 +102,7 @@ public class Cluster {
         nodes.add (session);
     }
 
-    protected MessageCache messageCache = MessageCache.empty();
+    protected MessageCache messageCache = new MessageCache();
 
 
     public static ImprovedRandom getRandomNumberGenerator() {

@@ -1,5 +1,6 @@
 package com.ltsllc.miranda.cluster;
 
+import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.Message;
 import com.ltsllc.miranda.Miranda;
@@ -20,7 +21,16 @@ import java.util.concurrent.TimeUnit;
 public class Node {
     public static final Logger logger = LogManager.getLogger();
 
-    protected static MessageCache ourMessageCache = new MessageCache();
+    protected static MessageCache ourMessageCache;
+
+    static {
+        try {
+            ourMessageCache = new MessageCache();
+        } catch (LtsllcException e) {
+            logger.error("exception initializing MessageCache",e);
+
+        }
+    }
 
     public static MessageCache getOurMessageCache() {
         return ourMessageCache;

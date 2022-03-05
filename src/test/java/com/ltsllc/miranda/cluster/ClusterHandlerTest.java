@@ -4,12 +4,9 @@ import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.commons.util.Utils;
 import com.ltsllc.miranda.Message;
-import com.ltsllc.miranda.MessageHandler;
-import com.ltsllc.miranda.Miranda;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.mina.core.session.IoSession;
-import org.junit.After;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -18,7 +15,6 @@ import org.mockito.internal.matchers.Any;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 import java.util.UUID;
 
 class ClusterHandlerTest {
@@ -468,7 +464,7 @@ class ClusterHandlerTest {
     }
 
     @Test
-    public void sessionCreated () {
+    public void sessionCreated () throws LtsllcException {
         Configurator.setRootLevel(Level.DEBUG);
 
         Cluster cluster = new Cluster();
@@ -514,7 +510,7 @@ class ClusterHandlerTest {
     }
 
     @Test
-    public void exceptionCaught () {
+    public void exceptionCaught () throws LtsllcException {
         ClusterHandler clusterHandler = new ClusterHandler();
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
@@ -526,7 +522,7 @@ class ClusterHandlerTest {
     }
 
     @Test
-    public void handleBid () {
+    public void handleBid () throws LtsllcException {
         UUID messageUuid = UUID.randomUUID();
         UUID ourUuid = UUID.randomUUID();
 
@@ -559,7 +555,7 @@ class ClusterHandlerTest {
     }
 
     @Test
-    public void handleGetMessage () throws IOException {
+    public void handleGetMessage () throws IOException, LtsllcException {
         UUID messageUuid = UUID.randomUUID();
         String strMessage = ClusterHandler.GET_MESSAGE;
         strMessage += " ";
@@ -597,7 +593,7 @@ class ClusterHandlerTest {
     }
 
     @Test
-    public void handleGetMessageAuction () throws IOException {
+    public void handleGetMessageAuction () throws IOException, LtsllcException {
         ClusterHandler clusterHandler = new ClusterHandler();
         UUID messageId = UUID.randomUUID();
         Message testMessage = createTestMessage(messageId);
@@ -692,7 +688,7 @@ class ClusterHandlerTest {
     }
 
     @Test
-    public void handleNewNode () throws IOException {
+    public void handleNewNode () throws IOException, LtsllcException {
         ClusterHandler clusterHandler = new ClusterHandler();
 
         StringBuffer stringBuffer = new StringBuffer();
@@ -715,7 +711,7 @@ class ClusterHandlerTest {
     }
 
     @Test
-    public void handleStart () {
+    public void handleStart () throws LtsllcException {
         ClusterHandler clusterHandler = new ClusterHandler();
         clusterHandler.setUuid(UUID.randomUUID());
 
@@ -739,7 +735,7 @@ class ClusterHandlerTest {
     }
 
     @Test
-    public void inputClosed () {
+    public void inputClosed () throws LtsllcException {
         ClusterHandler clusterHandler = new ClusterHandler();
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
@@ -766,7 +762,7 @@ class ClusterHandlerTest {
     }
 
     @Test
-    public void sendMessage () {
+    public void sendMessage () throws LtsllcException {
         ClusterHandler clusterHandler = new ClusterHandler();
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);

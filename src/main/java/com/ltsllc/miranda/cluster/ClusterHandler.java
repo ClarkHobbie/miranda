@@ -113,7 +113,7 @@ public class ClusterHandler implements IoHandler {
         this.cache = cache;
     }
 
-    public ClusterHandler () {
+    public ClusterHandler () throws LtsllcException {
         logger.debug("New instance of ClusterHandler");
     }
 

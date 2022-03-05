@@ -38,11 +38,14 @@ public class Miranda {
     public static final String PROPERTY_DEFAULT_CLUSTER_PORT = "2020";
     public static final String PROPERTY_CACHE_LOAD_LIMIT = "cache.loadLimit";
     public static final String PROPERTY_DEFAULT_CACHE_LOAD_LIMIT = "1048567"; // 2^20
+    public static final String PROPERTY_OFFLINE_MESSAGES = "offlineMessages";
+    public static final String PROPERTY_DEFAULT_OFFLINE_MESSAGES = "offlineMessages.msg";
     protected static final Logger logger = LogManager.getLogger();
 
     protected static List<Message> sendQueue;
     protected static volatile List<Message> newMessageQueue;
     protected static Map<UUID, UUID> uuidToOwner = new HashMap<>();
+    protected static boolean keepRunning = true;
 
     protected Cluster cluster;
     protected ImprovedFile sendQueueFile;
@@ -50,6 +53,14 @@ public class Miranda {
 
     public static synchronized UUID getOwnerOf (UUID uuid) {
         return uuidToOwner.get(uuid);
+    }
+
+    public static boolean getKeepRunning() {
+        return keepRunning;
+    }
+
+    public static void setKeepRunning(boolean keepRunning) {
+        Miranda.keepRunning = keepRunning;
     }
 
     public static synchronized void setOwnerOf (UUID messageUuid, UUID owner) {
@@ -135,35 +146,36 @@ public class Miranda {
      *         tell the cluster that we delivered it
      */
     public void mainLoop () {
-        logger.debug("starting mainLoop");
-        Message newMessage = getNewMessage();
-        if (newMessage != null) {
-            logger.debug("a new message has arrived message = " + newMessage);
+        logger.debug("starting mainLoop, with keepRunning = " + keepRunning);
+        if (keepRunning) {
+            Message newMessage = getNewMessage();
+            if (newMessage != null) {
+                logger.debug("a new message has arrived message = " + newMessage);
 
-            addMessage(newMessage);
+                addMessage(newMessage);
 
-            try {
-                cluster.informOfNewMessage(newMessage);
-            } catch (LtsllcException e) {
-                logger.error("exception telling cluster of new message");
-            }
-            logger.debug("we told the cluster of it");
+                try {
+                    cluster.informOfNewMessage(newMessage);
+                } catch (LtsllcException e) {
+                    logger.error("exception telling cluster of new message");
+                }
+                logger.debug("we told the cluster of it");
 
-            newMessage.informOfCreated();
-            logger.debug("we told the sender we created it");
-        }
-
-        Message message = getNextMessage();
-        if (message != null) {
-            Result result = message.deliver();
-            if (result.getStatus() == STATUS_SUCCESS) {
-                cluster.informOfDelivery(message);
-                message.informOfDelivery();
-            }
-            else {
-                sendQueue.add(sendQueue.size(), message);
+                newMessage.informOfCreated();
+                logger.debug("we told the sender we created it");
             }
 
+            Message message = getNextMessage();
+            if (message != null) {
+                Result result = message.deliver();
+                if (result.getStatus() == STATUS_SUCCESS) {
+                    cluster.informOfDelivery(message);
+                    message.informOfDelivery();
+                } else {
+                    sendQueue.add(sendQueue.size(), message);
+                }
+
+            }
         }
         logger.debug("leaving mainLoop");
     }
@@ -400,6 +412,7 @@ public class Miranda {
         properties.setIfNull(PROPERTY_CLUSTER_PORT, PROPERTY_DEFAULT_CLUSTER_PORT);
         properties.setIfNull(PROPERTY_CACHE_LOAD_LIMIT, PROPERTY_DEFAULT_CACHE_LOAD_LIMIT);
         properties.setIfNull(PROPERTY_BID_TIMEOUT, PROPERTY_DEFAULT_BID_TIMEOUT);
+        properties.setIfNull(PROPERTY_OFFLINE_MESSAGES, PROPERTY_DEFAULT_OFFLINE_MESSAGES);
     }
 
     //
@@ -429,5 +442,9 @@ public class Miranda {
         String json = gson.toJson(object);
         writer.write(json);
         writer.flush();
+    }
+
+    public static void stop () {
+        keepRunning = false;
     }
 }
