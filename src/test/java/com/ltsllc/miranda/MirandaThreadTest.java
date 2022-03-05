@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MirandaThreadTest {
+    
     @Test
     public void run () throws LtsllcException, InterruptedException {
         Configurator.setRootLevel(Level.DEBUG);

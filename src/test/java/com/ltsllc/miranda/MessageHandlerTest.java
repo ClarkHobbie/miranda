@@ -31,6 +31,7 @@ public class MessageHandlerTest {
     void setup () {
         Configurator.setRootLevel(Level.DEBUG);
     }
+
     @Test
     public void handle() throws LtsllcException, IOException {
         Configurator.setRootLevel(Level.DEBUG);

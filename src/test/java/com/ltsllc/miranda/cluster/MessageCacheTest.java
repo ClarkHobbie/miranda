@@ -177,7 +177,7 @@ public class MessageCacheTest {
         assert (message3.equals(messageCache.get(message3.getMessageID())));
         assert (true == messageCache.getUuidToOnline().get(message3.getMessageID()));
     }
-    
+
     @Test
     public void getIsOffline() throws LtsllcException, IOException {
         try {
