@@ -11,26 +11,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.mina.core.session.IoSession;
-import org.asynchttpclient.*;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.*;
-import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpClient;
-import java.net.http.HttpHeaders;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Test the main functions of Miranda
@@ -51,6 +38,9 @@ class MirandaTest {
     void loadProperties() throws LtsllcException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
+        //
+        // TODO: define all the cases
+        //
     }
 
     @Test
@@ -58,6 +48,9 @@ class MirandaTest {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
         miranda.startMessagePort(1234);
+        //
+        // TODO: check for other cases
+        //
     }
 
     @Test
@@ -74,6 +67,9 @@ class MirandaTest {
         assert (properties2.getProperty("l").equals("two"));
         assert (properties2.getProperty("R").equals("R"));
         assert (properties2.getProperty("T").equals("T"));
+        //
+        // TODO: check for other cases
+        //
     }
 
     @Test
@@ -88,6 +84,9 @@ class MirandaTest {
         improvedProperties = new ImprovedProperties();
         miranda.processArgument("prev", "abc", improvedProperties);
         assert (improvedProperties.getProperty("prev").equals("abc"));
+        //
+        // TODO: check for other cases
+        //
     }
 
     @Test
@@ -127,6 +126,9 @@ class MirandaTest {
         Message m2 = list.get(0);
 
         assert (Utils.bothEqualCheckForNull(message,m2));
+        //
+        // TODO: check for other cases
+        //
     }
 
     @Test
@@ -218,6 +220,19 @@ class MirandaTest {
                 mirandaThread.setKeepRunning(false);
             }
         }
+
     }
+
+    @Test
+    public void biddingMode() {
+        // TODO: define
+    }
+
+    @Test
+    public void mainLoop () {
+        // TODO: define
+    }
+
+
 
 }

@@ -1,6 +1,7 @@
 package com.ltsllc.miranda;
 
 import com.ltsllc.commons.io.ImprovedFile;
+import com.ltsllc.commons.util.ImprovedProperties;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -120,6 +121,16 @@ public class SendQueueFile {
         }
     }
 
-
-
+    /**
+     * Return whether this method thinks we should recover
+     *
+     * This method thinks we should recover if the send file exists.
+     *
+     * @return See above.
+     */
+    public static boolean shouldRecover () {
+        ImprovedProperties p = Miranda.getProperties();
+        ImprovedFile sendFile = new ImprovedFile(p.getProperty(Miranda.PROPERTY_SEND_FILE));
+        return sendFile.exists();
+    }
 }

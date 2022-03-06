@@ -1,6 +1,7 @@
 package com.ltsllc.miranda;
 
 import com.ltsllc.commons.io.ImprovedFile;
+import com.ltsllc.commons.util.ImprovedProperties;
 
 import java.io.*;
 import java.util.HashMap;
@@ -154,6 +155,21 @@ public class OtherMessagesFile {
     }
 
     /**
+     * Return whether this method thinks we should recover
+     *
+     * This method thinks we should recover if the other or the owner file exists.
+     *
+     * @return See above.
+     */
+    public static boolean shouldRecover () {
+        ImprovedProperties p = Miranda.getProperties();
+        ImprovedFile otherFile = new ImprovedFile(p.getProperty(Miranda.PROPERTY_OTHER_MESSAGES));
+        ImprovedFile ownerFile = new ImprovedFile(p.getProperty(Miranda.PROPERTY_OWNER_FILE));
+        return otherFile.exists() || ownerFile.exists();
+    }
+
+
+    /**
      * Record the owner of a message
      *
      * Note that the method uses Miranda#PROPERTY_OWNER_FILE as the file name for the file.
@@ -186,5 +202,15 @@ public class OtherMessagesFile {
                 bufferedWriter.close();
             }
         }
+    }
+
+    /**
+     * Return the owner of a message, or null if we don't know
+     *
+     * @param uuid The uuid of the message we are interested in.
+     * @return The uuid of the node that owns the message or null if we don't know.
+     */
+    public synchronized UUID getOwnerOf (UUID uuid) {
+        return uuidToOwner.get(uuid);
     }
 }

@@ -32,5 +32,8 @@ public class MirandaThreadTest {
 
         mirandaThread.setKeepRunning(false);
         assert (!mirandaThread.isKeepRunning());
+        //
+        // TODO: check for other cases
+        //
     }
 }
