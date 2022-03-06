@@ -95,14 +95,16 @@
             <artifactId>mockito-core</artifactId>
             <version>4.3.1</version>
         </dependency>
-<!--
-        <dependency>
-            <groupId>org.easymock</groupId>
-            <artifactId>easymock</artifactId>
-            <version>4.3</version>
-            <scope>test</scope>
-        </dependency>
--->
+
+
+        <!--
+                <dependency>
+                    <groupId>org.easymock</groupId>
+                    <artifactId>easymock</artifactId>
+                    <version>4.3</version>
+                    <scope>test</scope>
+                </dependency>
+        -->
         <!--  Gson -->
         <dependency>
             <groupId>com.google.code.gson</groupId>

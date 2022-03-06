@@ -5,6 +5,7 @@ import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.commons.util.Utils;
 import com.ltsllc.miranda.Message;
 import com.ltsllc.miranda.Miranda;
+import com.ltsllc.miranda.OtherMessagesFile;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -27,8 +28,8 @@ class ClusterHandlerTest {
     public static void setup () {
         Configurator.setRootLevel(Level.DEBUG);
 
-        Miranda miranda = new Miranda();
         try {
+            Miranda miranda = new Miranda();
             miranda.loadProperties();
         } catch (LtsllcException e) {
             logger.error("exception trying to load properties",e);
@@ -433,6 +434,12 @@ class ClusterHandlerTest {
         ClusterHandler clusterHandler = new ClusterHandler();
         clusterHandler.setState(ClusterConnectionStates.GENERAL);
 
+        UUID nodeUuid = UUID.randomUUID();
+        clusterHandler.setUuid(nodeUuid);
+
+        UUID otherUuid = UUID.randomUUID();
+        clusterHandler.setPartnerID(otherUuid);
+
         IoSession mockIoSession = Mockito.mock(IoSession.class);
 
         Message message = new Message();
@@ -679,6 +686,9 @@ class ClusterHandlerTest {
 
     @Test
     public void handleNewMessage () throws LtsllcException, IOException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
         StringBuffer stringBuffer = new StringBuffer();
 
         ClusterHandler clusterHandler = new ClusterHandler();
@@ -692,6 +702,8 @@ class ClusterHandlerTest {
 
         stringBuffer.append("NEW ");
         stringBuffer.append(message.longToString());
+
+        OtherMessagesFile.defineStatics();
 
         clusterHandler.handleNewMessage(stringBuffer.toString(),partnerId);
 

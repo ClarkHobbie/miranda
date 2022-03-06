@@ -234,6 +234,9 @@ public class Cluster {
         logger.debug("leaving connect with nodes = " + nodes);
     }
 
+    //
+    // TODO: define auctionMessages
+    //
     public void auctionMessages (List<Message> list) {
         //
         // auction all messages for each node in the cluster
@@ -246,4 +249,18 @@ public class Cluster {
         }
     }
 
+    /**
+     * Unbind all the ports that the cluster listens to
+     *
+     * Note that this method should unbind ALL our ports, not just those for the cluster
+     */
+    public synchronized void releasePorts() {
+        logger.debug("entering releaseMessagePort");
+        logger.debug("releasing all ports");
+        IoAcceptor ioAcceptor = new NioSocketAcceptor();
+        ioAcceptor.getFilterChain().addLast( "codec", new ProtocolCodecFilter( new TextLineCodecFactory( Charset.forName( "UTF-8" ))));
+
+        ioAcceptor.unbind();
+        logger.debug("leaving releaseMessagePort");
+    }
  }

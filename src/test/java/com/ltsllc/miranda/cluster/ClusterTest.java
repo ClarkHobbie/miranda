@@ -38,6 +38,8 @@ class ClusterTest {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
+        cluster.releasePorts();
+
         cluster.connect();
     }
 

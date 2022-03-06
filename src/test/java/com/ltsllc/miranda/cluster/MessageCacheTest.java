@@ -37,7 +37,7 @@ public class MessageCacheTest {
     }
 
     @Before
-    public static void setup () {
+    public static void setup () throws LtsllcException {
         Configurator.setRootLevel(Level.DEBUG);
         Miranda miranda = new Miranda();
         try {

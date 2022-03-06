@@ -73,7 +73,7 @@ class MirandaTest {
     }
 
     @Test
-    void processArgument () {
+    void processArgument () throws LtsllcException {
         Miranda miranda = new Miranda();
         ImprovedProperties improvedProperties = new ImprovedProperties();
         miranda.processArgument("prev", "-abc", improvedProperties);
@@ -144,7 +144,7 @@ class MirandaTest {
      * startUp with an existing sendFile
      */
     @Test
-    public void starupExistigFile () throws LtsllcException, IOException {
+    public void starupExistigFile () throws LtsllcException, IOException, InterruptedException {
         Message m1 = new Message();
         Date d1 = new Date();
         Date d2 = new Date();
@@ -159,6 +159,7 @@ class MirandaTest {
 
         Miranda miranda = new Miranda();
         miranda.loadProperties();
+        miranda.releasePorts();
 
         String sendFileName = miranda.getProperties().getProperty(Miranda.PROPERTY_SEND_FILE);
         FileOutputStream fileOutputStream = new FileOutputStream(sendFileName);
@@ -174,6 +175,12 @@ class MirandaTest {
         fileOutputStream.close();
 
         String[] args = new String[0];
+        miranda.releasePorts();
+
+        synchronized (this) {
+            wait(1000);
+        }
+
         miranda.startUp(args);
 
         list = miranda.getSendQueue();
@@ -204,7 +211,7 @@ class MirandaTest {
 
             logger.debug("MirandaThread running");
             synchronized (this) {
-                wait(250);
+                wait(1000);
             }
             List<IoSession> nodes = Cluster.getNodes();
             System.out.println(nodes.size());

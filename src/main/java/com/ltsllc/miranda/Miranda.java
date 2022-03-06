@@ -8,9 +8,14 @@ import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.cluster.Cluster;
+import com.ltsllc.miranda.cluster.ClusterHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.mina.core.service.IoAcceptor;
 import org.apache.mina.core.session.IoSession;
+import org.apache.mina.filter.codec.ProtocolCodecFilter;
+import org.apache.mina.filter.codec.textline.TextLineCodecFactory;
+import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
 import org.eclipse.jetty.io.ClientConnector;
 import org.eclipse.jetty.server.handler.ContextHandler;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
@@ -19,6 +24,7 @@ import org.eclipse.jetty.util.thread.Scheduler;
 
 import java.io.*;
 import java.lang.reflect.Type;
+import java.nio.charset.Charset;
 import java.util.*;
 
 public class Miranda {
@@ -26,7 +32,7 @@ public class Miranda {
     public static final String PROPERTY_PROPERTIES_FILE = "properties";
     public static final String PROPERTY_DEFAULT_PROPERTIES_FILE = "mirada.properties";
     public static final String PROPERTY_SEND_FILE = "sendFile";
-    public static final String PROPERTY_DEFAULT_SEND_FILE = "sendFile.jsn";
+    public static final String PROPERTY_DEFAULT_SEND_FILE = "sendFile.msg";
     public static final String PROPERTY_LONG_LOGGING_LEVEL = "loggingLevel";
     public static final String PROPERTY_SHORT_LOGGING_LEVEL = "l";
     public static final String PROPERTY_LOGGING_LEVEL = "loggingLevel";
@@ -56,6 +62,9 @@ public class Miranda {
     protected ImprovedFile sendQueueFile;
     protected ImprovedFile otherMessagesFile;
     protected static ImprovedProperties properties;
+
+    public Miranda() {
+    }
 
     public ImprovedFile getSendQueueFile() {
         return sendQueueFile;
@@ -471,5 +480,31 @@ public class Miranda {
 
     public static void stop () {
         keepRunning = false;
+    }
+
+    /**
+     * Release all the ports we are bound to
+     */
+    public void releasePorts () {
+        if (cluster != null) {
+            cluster.releasePorts();
+        }
+        releaseMessagePort();
+    }
+
+    /**
+     * Unbind the message port
+     *
+     * Note that this method unbinds ALL ports, not just the message port.
+     */
+    public synchronized void releaseMessagePort ()  {
+        logger.debug("entering releaseMessagePort.");
+        logger.debug("releasing ports");
+        IoAcceptor ioAcceptor = new NioSocketAcceptor();
+        ioAcceptor.getFilterChain().addLast( "codec", new ProtocolCodecFilter( new TextLineCodecFactory( Charset.forName( "UTF-8" ))));
+
+        ioAcceptor.unbind();
+        logger.debug("leaving releaseMessagePort");
+
     }
 }

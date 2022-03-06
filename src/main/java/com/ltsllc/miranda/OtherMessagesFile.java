@@ -197,10 +197,6 @@ public class OtherMessagesFile {
             if (fileWriter != null) {
                 fileWriter.close();
             }
-
-            if (bufferedWriter != null) {
-                bufferedWriter.close();
-            }
         }
     }
 

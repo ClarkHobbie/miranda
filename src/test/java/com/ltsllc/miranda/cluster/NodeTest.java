@@ -22,9 +22,10 @@ public class NodeTest {
 
     @Test
     public void auctionMessage () throws InterruptedException, LtsllcException {
-        Node node = new Node();
         Miranda miranda = new Miranda();
         miranda.loadProperties();
+        Node node = new Node();
+
 
         Message message = createTestMessage(UUID.randomUUID());
 
