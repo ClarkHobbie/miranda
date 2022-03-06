@@ -40,16 +40,36 @@ public class Miranda {
     public static final String PROPERTY_DEFAULT_CACHE_LOAD_LIMIT = "1048567"; // 2^20
     public static final String PROPERTY_OFFLINE_MESSAGES = "offlineMessages";
     public static final String PROPERTY_DEFAULT_OFFLINE_MESSAGES = "offlineMessages.msg";
+    public static final String PROPERTY_OTHER_MESSAGES = "otherMessages";
+    public static final String PROPERTY_DEFAULT_OTHER_MESSAGES = "otherMessage.msg";
+
     protected static final Logger logger = LogManager.getLogger();
 
-    protected static List<Message> sendQueue;
-    protected static volatile List<Message> newMessageQueue;
+    protected static List<Message> sendQueue = new ArrayList<>();
+    protected static volatile List<Message> newMessageQueue =  new ArrayList<>();
     protected static Map<UUID, UUID> uuidToOwner = new HashMap<>();
     protected static boolean keepRunning = true;
 
     protected Cluster cluster;
     protected ImprovedFile sendQueueFile;
+    protected ImprovedFile otherMessagesFile;
     protected static ImprovedProperties properties;
+
+    public ImprovedFile getSendQueueFile() {
+        return sendQueueFile;
+    }
+
+    public void setSendQueueFile(ImprovedFile sendQueueFile) {
+        this.sendQueueFile = sendQueueFile;
+    }
+
+    public ImprovedFile getOtherMessagesFile() {
+        return otherMessagesFile;
+    }
+
+    public void setOtherMessagesFile(ImprovedFile otherMessagesFile) {
+        this.otherMessagesFile = otherMessagesFile;
+    }
 
     public static synchronized UUID getOwnerOf (UUID uuid) {
         return uuidToOwner.get(uuid);
@@ -67,12 +87,12 @@ public class Miranda {
         uuidToOwner.put(messageUuid, owner);
     }
 
-    public Map<UUID, UUID> getUuidToOwner() {
+    public static Map<UUID, UUID> getUuidToOwner() {
         return uuidToOwner;
     }
 
-    public void setUuidToOwner(Map<UUID, UUID> uuidToOwner) {
-        this.uuidToOwner = uuidToOwner;
+    public static void setUuidToOwner(Map<UUID, UUID> uuidToOwner) {
+        Miranda.uuidToOwner = uuidToOwner;
     }
 
     public Cluster getCluster() {
@@ -407,12 +427,14 @@ public class Miranda {
                 }
             }
         }
+
         properties.setIfNull(PROPERTY_MESSAGE_PORT, PROPERTY_DEFAULT_MESSAGE_PORT);
         properties.setIfNull(PROPERTY_SEND_FILE, PROPERTY_DEFAULT_SEND_FILE);
         properties.setIfNull(PROPERTY_CLUSTER_PORT, PROPERTY_DEFAULT_CLUSTER_PORT);
         properties.setIfNull(PROPERTY_CACHE_LOAD_LIMIT, PROPERTY_DEFAULT_CACHE_LOAD_LIMIT);
         properties.setIfNull(PROPERTY_BID_TIMEOUT, PROPERTY_DEFAULT_BID_TIMEOUT);
         properties.setIfNull(PROPERTY_OFFLINE_MESSAGES, PROPERTY_DEFAULT_OFFLINE_MESSAGES);
+        properties.setIfNull(PROPERTY_OTHER_MESSAGES, PROPERTY_DEFAULT_OTHER_MESSAGES);
     }
 
     //
@@ -425,7 +447,7 @@ public class Miranda {
     // ********************************************************************************************
     //
     protected boolean shouldEnterRecovery() {
-        return sendQueueFile.exists();
+        return sendQueueFile.exists() || otherMessagesFile.exists() ;
     }
 
     /*

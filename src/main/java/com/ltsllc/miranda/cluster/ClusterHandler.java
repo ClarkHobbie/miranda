@@ -6,6 +6,8 @@ import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.commons.util.Utils;
 import com.ltsllc.miranda.Message;
 import com.ltsllc.miranda.MessageType;
+import com.ltsllc.miranda.Miranda;
+import com.ltsllc.miranda.OtherMessagesFile;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.mina.core.service.IoHandler;
@@ -577,7 +579,7 @@ public class ClusterHandler implements IoHandler {
      * @throws LtsllcException If there is a problem adding the message.
      *
      */
-    protected void handleNewMessage (String input, UUID partnerUuid) throws LtsllcException {
+    protected void handleNewMessage (String input, UUID partnerUuid) throws LtsllcException, IOException {
         logger.debug("entering handleNewMessage with " + input);
 
         Scanner scanner = new Scanner(input);
@@ -591,6 +593,8 @@ public class ClusterHandler implements IoHandler {
         message.setDeliveryURL(scanner.next());
         scanner.next(); // weird bug CONTENTS:
         message.setContents(Utils.hexDecode(scanner.next()));
+
+        OtherMessagesFile.getInstance().record(message);
 
         cache.add(message);
 

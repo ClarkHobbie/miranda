@@ -4,7 +4,10 @@ import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.commons.util.Utils;
 import com.ltsllc.miranda.Message;
+import com.ltsllc.miranda.Miranda;
 import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.mina.core.session.IoSession;
 import org.junit.jupiter.api.BeforeAll;
@@ -18,9 +21,18 @@ import java.util.List;
 import java.util.UUID;
 
 class ClusterHandlerTest {
+    public static final Logger logger = LogManager.getLogger();
+
     @BeforeAll
     public static void setup () {
         Configurator.setRootLevel(Level.DEBUG);
+
+        Miranda miranda = new Miranda();
+        try {
+            miranda.loadProperties();
+        } catch (LtsllcException e) {
+            logger.error("exception trying to load properties",e);
+        }
     }
 
     @Test
@@ -666,7 +678,7 @@ class ClusterHandlerTest {
     }
 
     @Test
-    public void handleNewMessage () throws LtsllcException {
+    public void handleNewMessage () throws LtsllcException, IOException {
         StringBuffer stringBuffer = new StringBuffer();
 
         ClusterHandler clusterHandler = new ClusterHandler();
