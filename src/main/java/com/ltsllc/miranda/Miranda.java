@@ -42,6 +42,8 @@ public class Miranda {
     public static final String PROPERTY_DEFAULT_OFFLINE_MESSAGES = "offlineMessages.msg";
     public static final String PROPERTY_OTHER_MESSAGES = "otherMessages";
     public static final String PROPERTY_DEFAULT_OTHER_MESSAGES = "otherMessage.msg";
+    public static final String PROPERTY_OWNER_FILE = "ownerFile";
+    public static final String PROPERTY_DEFAULT_OWNER_FILE = "owners.utu";
 
     protected static final Logger logger = LogManager.getLogger();
 
@@ -435,6 +437,7 @@ public class Miranda {
         properties.setIfNull(PROPERTY_BID_TIMEOUT, PROPERTY_DEFAULT_BID_TIMEOUT);
         properties.setIfNull(PROPERTY_OFFLINE_MESSAGES, PROPERTY_DEFAULT_OFFLINE_MESSAGES);
         properties.setIfNull(PROPERTY_OTHER_MESSAGES, PROPERTY_DEFAULT_OTHER_MESSAGES);
+        properties.setIfNull(PROPERTY_OWNER_FILE, PROPERTY_DEFAULT_OWNER_FILE);
     }
 
     //

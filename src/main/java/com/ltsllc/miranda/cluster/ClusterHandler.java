@@ -594,7 +594,7 @@ public class ClusterHandler implements IoHandler {
         scanner.next(); // weird bug CONTENTS:
         message.setContents(Utils.hexDecode(scanner.next()));
 
-        OtherMessagesFile.getInstance().record(message);
+        OtherMessagesFile.getInstance().record(message, partnerUuid);
 
         cache.add(message);
 

@@ -89,14 +89,18 @@ public class OtherMessagesFile {
      * Record the message in the file
      *
      * @param message The message to record.
+     * @param uuid The owner of the message.
      * @throws IOException If there was a problem manipulating the file.
      */
-    public synchronized void record (Message message) throws IOException {
+    public synchronized void record (Message message, UUID uuid) throws IOException {
         FileWriter fileWriter = null;
         BufferedWriter bufferedWriter = null;
 
         try {
             uuidToLocation.put(message.getMessageID(), offset);
+            recordOwner(message.getMessageID(), uuid);
+
+            recordOwner (message.getMessageID(), uuid);
 
             file = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_OTHER_MESSAGES));
             fileWriter = new FileWriter(file.toString(), true);
@@ -147,5 +151,40 @@ public class OtherMessagesFile {
         }
 
         return returnValue;
+    }
+
+    /**
+     * Record the owner of a message
+     *
+     * Note that the method uses Miranda#PROPERTY_OWNER_FILE as the file name for the file.
+     *
+     * @param messageUuid The uuid of a message.
+     * @param ownerUuid The uuid of the node that owns the message.
+     * @throws IOException If there is a problem manipulating the owner file.
+     * @see Miranda#PROPERTY_OWNER_FILE
+     */
+    public synchronized void recordOwner (UUID messageUuid, UUID ownerUuid) throws IOException {
+        ImprovedFile temp = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_OWNER_FILE));
+
+        FileWriter fileWriter = null;
+        BufferedWriter bufferedWriter = null;
+        try {
+            fileWriter = new FileWriter(temp, true);
+            bufferedWriter = new BufferedWriter(fileWriter);
+
+            bufferedWriter.write("MESSAGE_ID: ");
+            bufferedWriter.write(messageUuid.toString());
+            bufferedWriter.write(" OWNER: ");
+            bufferedWriter.write(ownerUuid.toString());
+            bufferedWriter.newLine();
+        } finally {
+            if (fileWriter != null) {
+                fileWriter.close();
+            }
+
+            if (bufferedWriter != null) {
+                bufferedWriter.close();
+            }
+        }
     }
 }
