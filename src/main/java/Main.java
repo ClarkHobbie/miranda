@@ -7,7 +7,7 @@ public class Main {
 
     protected static final Logger logger = LogManager.getLogger();
 
-    public static void main(String[] args) throws LtsllcException {
+    public static void main(String[] args) throws Exception {
         Miranda miranda = new Miranda();
         try {
             miranda.startUp(args);

@@ -217,11 +217,11 @@ public class Cluster {
         ioAcceptor.getFilterChain().addLast( "codec", new ProtocolCodecFilter( new TextLineCodecFactory( Charset.forName( "UTF-8" ))));
         ioAcceptor.setHandler(new ClusterHandler());
 
-        int socketNumber = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
-        SocketAddress socketAddress = new InetSocketAddress(socketNumber);
+        int tcpPort = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
+        SocketAddress socketAddress = new InetSocketAddress(tcpPort);
 
         try {
-            logger.debug("listening at port " + socketNumber);
+            logger.debug("listening at port " + tcpPort);
             ioAcceptor.bind(socketAddress);
         } catch (IOException e) {
             logger.error ("exception binding to cluster port, " + Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT), e);
@@ -232,21 +232,6 @@ public class Cluster {
             );
         }
         logger.debug("leaving connect with nodes = " + nodes);
-    }
-
-    //
-    // TODO: define auctionMessages
-    //
-    public void auctionMessages (List<Message> list) {
-        //
-        // auction all messages for each node in the cluster
-        //
-        for (IoSession ioSession : getNodes()) {
-            //
-            // auction everything in the list
-            //
-
-        }
     }
 
     /**

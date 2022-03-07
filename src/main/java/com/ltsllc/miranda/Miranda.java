@@ -1,26 +1,24 @@
 package com.ltsllc.miranda;
 
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
-import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.cluster.Cluster;
-import com.ltsllc.miranda.cluster.ClusterHandler;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.mina.core.service.IoAcceptor;
-import org.apache.mina.core.session.IoSession;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.mina.filter.codec.textline.TextLineCodecFactory;
 import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
-import org.eclipse.jetty.io.ClientConnector;
-import org.eclipse.jetty.server.handler.ContextHandler;
+import org.eclipse.jetty.server.*;
+import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
-import org.eclipse.jetty.util.thread.ScheduledExecutorScheduler;
-import org.eclipse.jetty.util.thread.Scheduler;
 
 import java.io.*;
 import java.lang.reflect.Type;
@@ -39,7 +37,7 @@ public class Miranda {
     public static final String PROPERTY_BID_TIMEOUT = "timeouts.bid";
     public static final String PROPERTY_DEFAULT_BID_TIMEOUT = "500";
     public static final String PROPERTY_MESSAGE_PORT = "messagePort";
-    public static final String PROPERTY_DEFAULT_MESSAGE_PORT = "80";
+    public static final String PROPERTY_DEFAULT_MESSAGE_PORT = "3030";
     public static final String PROPERTY_CLUSTER_PORT = "clusterPort";
     public static final String PROPERTY_DEFAULT_CLUSTER_PORT = "2020";
     public static final String PROPERTY_CACHE_LOAD_LIMIT = "cache.loadLimit";
@@ -219,7 +217,7 @@ public class Miranda {
      * file and enter the bidding mode.
      *
      */
-    public void startUp (String[] args) throws LtsllcException {
+    public void startUp (String[] args) throws Exception {
         logger.debug("Miranda starting up");
         logger.debug("parsing arguments");
         properties = new ImprovedProperties();
@@ -253,9 +251,11 @@ public class Miranda {
      *
      * @param portNumber The TCP port that we should listen at
      */
-    protected void startMessagePort (int portNumber) throws LtsllcException {
+    protected void startMessagePort (int portNumber) throws Exception {
         logger.debug("entering startMessagePort with portNumber = " + portNumber);
+        /*
         // Create and configure the thread pool.
+
         newMessageQueue = new ArrayList<>();
         sendQueue = new ArrayList<>();
         logger.debug("initialized sendQueue and newMessageQueue");
@@ -280,9 +280,32 @@ public class Miranda {
         contextHandler.setHandler(new MessageHandler());
         logger.debug("initialized contextHandler");
 
+         */
+// Create and configure a ThreadPool.
+        QueuedThreadPool threadPool = new QueuedThreadPool();
+        threadPool.setName("server");
+
+// Create a Server instance.
+        Server server = new Server(threadPool);
+
+
+        ServerConnector serverConnector = new ServerConnector(server, 3, 3, new HttpConnectionFactory());
+        server.addConnector(serverConnector);
+// Create a ServerConnector to accept connections from clients.
+
+        serverConnector.setPort(3030);
+        serverConnector.setHost("127.0.0.1");
+// Add the Connector to the Server
+        server.addConnector(serverConnector);
+
+// Set a simple Handler to handle requests/responses.
+        server.setHandler(new MessageHandler());
+
+// Start the Server so it starts accepting connections from clients.
+        server.start();
         try {
-            clientConnector.start();
-            logger.debug("listening for messages at port " + portNumber);
+            // clientConnector.start();
+            // logger.debug("listening for messages at port " + portNumber);
         } catch (Exception e) {
             throw new LtsllcException("exception starting the server", e);
         }

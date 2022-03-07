@@ -43,11 +43,6 @@ class ClusterTest {
         cluster.connect();
     }
 
-    @Test
-    public void auctionMessage () {
-
-    }
-
     /*
      * TODO the receiving side of informOfNewMessage
      * o    record the new message
@@ -90,6 +85,9 @@ class ClusterTest {
      */
     @Test
     void informOfNewMessage () throws LtsllcException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
         Cluster cluster = new Cluster();
         cluster.setNodes(new ArrayList<>());
 

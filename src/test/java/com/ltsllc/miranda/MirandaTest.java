@@ -38,19 +38,13 @@ class MirandaTest {
     void loadProperties() throws LtsllcException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
-        //
-        // TODO: define all the cases
-        //
     }
 
     @Test
-    void startMessagePort () throws LtsllcException {
+    void startMessagePort () throws Exception {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
         miranda.startMessagePort(1234);
-        //
-        // TODO: check for other cases
-        //
     }
 
     @Test
@@ -67,9 +61,6 @@ class MirandaTest {
         assert (properties2.getProperty("l").equals("two"));
         assert (properties2.getProperty("R").equals("R"));
         assert (properties2.getProperty("T").equals("T"));
-        //
-        // TODO: check for other cases
-        //
     }
 
     @Test
@@ -84,10 +75,7 @@ class MirandaTest {
         improvedProperties = new ImprovedProperties();
         miranda.processArgument("prev", "abc", improvedProperties);
         assert (improvedProperties.getProperty("prev").equals("abc"));
-        //
-        // TODO: check for other cases
-        //
-    }
+   }
 
     @Test
     public void loadSendFile () throws LtsllcException, IOException {
@@ -126,13 +114,10 @@ class MirandaTest {
         Message m2 = list.get(0);
 
         assert (Utils.bothEqualCheckForNull(message,m2));
-        //
-        // TODO: check for other cases
-        //
     }
 
     @Test
-    public void startUpNoFile () throws LtsllcException {
+    public void startUpNoFile () throws Exception {
         Configurator.setRootLevel(Level.DEBUG);
         Miranda miranda = new Miranda();
         miranda.loadProperties();
@@ -144,7 +129,7 @@ class MirandaTest {
      * startUp with an existing sendFile
      */
     @Test
-    public void starupExistigFile () throws LtsllcException, IOException, InterruptedException {
+    public void starupExistigFile () throws Exception {
         Message m1 = new Message();
         Date d1 = new Date();
         Date d2 = new Date();
@@ -175,11 +160,6 @@ class MirandaTest {
         fileOutputStream.close();
 
         String[] args = new String[0];
-        miranda.releasePorts();
-
-        synchronized (this) {
-            wait(1000);
-        }
 
         miranda.startUp(args);
 
@@ -190,7 +170,7 @@ class MirandaTest {
     }
 
     @Test
-    public void newNode () throws LtsllcException, InterruptedException, URISyntaxException, IOException {
+    public void newNode () throws Exception {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
         String[] args = new String[0];
