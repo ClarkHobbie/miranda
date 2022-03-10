@@ -11,8 +11,8 @@ import java.util.UUID;
 /**
  * A file that contains messages we are not responsible for delivering.
  */
-public class OtherMessagesFile {
-    protected static OtherMessagesFile instance;
+public class OtherMessages {
+    protected static OtherMessages instance = new OtherMessages();
 
     protected ImprovedFile file;
     protected Map<UUID, Long> uuidToLocation = new HashMap<>();
@@ -25,7 +25,6 @@ public class OtherMessagesFile {
      * This is essentially an initialize for static members.  In particular, it
      */
     public static synchronized void defineStatics () {
-        instance = new OtherMessagesFile();
         instance.file = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_OTHER_MESSAGES));
     }
 
@@ -78,12 +77,12 @@ public class OtherMessagesFile {
         this.file = file;
     }
 
-    public static OtherMessagesFile getInstance() {
+    public static OtherMessages getInstance() {
         return instance;
     }
 
-    public static void setInstance(OtherMessagesFile instance) {
-        OtherMessagesFile.instance = instance;
+    public static void setInstance(OtherMessages instance) {
+        OtherMessages.instance = instance;
     }
 
     /**

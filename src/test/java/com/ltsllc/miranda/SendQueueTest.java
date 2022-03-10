@@ -9,12 +9,10 @@ import org.junit.Before;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.UUID;
-import java.util.regex.Pattern;
 
-public class SendQueueFileTest {
+public class SendQueueTest {
     @BeforeAll
     public static void beforeAll () {
         Configurator.setRootLevel(Level.DEBUG);
@@ -46,10 +44,10 @@ public class SendQueueFileTest {
         ImprovedFile file = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_SEND_FILE));
 
         try {
-            Message message = SendQueueFileTest.createTestMessage(UUID.randomUUID());
+            Message message = SendQueueTest.createTestMessage(UUID.randomUUID());
 
-            SendQueueFile.defineStatics();
-            SendQueueFile.getInstance().record(message);
+            SendQueue.defineStatics();
+            SendQueue.getInstance().record(message);
 
             Grep grep = new Grep();
 
@@ -70,7 +68,7 @@ public class SendQueueFileTest {
         ImprovedFile file = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_SEND_FILE));
         try {
             file.touch();
-            assert(SendQueueFile.shouldRecover());
+            assert(SendQueue.shouldRecover());
         } finally {
             if (file.exists()) {
                 file.delete();

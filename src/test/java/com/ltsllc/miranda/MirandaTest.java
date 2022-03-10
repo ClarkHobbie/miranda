@@ -77,44 +77,6 @@ class MirandaTest {
         assert (improvedProperties.getProperty("prev").equals("abc"));
    }
 
-    @Test
-    public void loadSendFile () throws LtsllcException, IOException {
-        Configurator.setRootLevel(Level.DEBUG);
-        Miranda miranda = new Miranda();
-        miranda.loadProperties();
-
-
-        miranda = new Miranda();
-        miranda.loadProperties();
-        File sendFile = new File(Miranda.PROPERTY_DEFAULT_SEND_FILE);
-        FileOutputStream fileOutputStream = new FileOutputStream(sendFile);
-        Writer writer = new OutputStreamWriter(fileOutputStream);
-
-        Date d1 = new Date();
-        Date d2 = new Date();
-        UUID uuid = new UUID(d1.getTime(), d2.getTime());
-
-        Message message = new Message();
-        message.setMessageID(uuid);
-        message.setStatusURL("http://google.com");
-        message.setContents("Hi there!".getBytes());
-        message.setDeliveryURL("http://google.com");
-
-        List<Message> list = new ArrayList<>();
-        list.add(message);
-
-        miranda.writeJson(list,writer);
-        fileOutputStream.close();
-
-        Miranda.setSendQueue(new ArrayList<>());
-
-        miranda.loadSendFile();
-
-        list = Miranda.getSendQueue();
-        Message m2 = list.get(0);
-
-        assert (Utils.bothEqualCheckForNull(message,m2));
-    }
 
     @Test
     public void startUpNoFile () throws Exception {
@@ -131,9 +93,7 @@ class MirandaTest {
     @Test
     public void starupExistigFile () throws Exception {
         Message m1 = new Message();
-        Date d1 = new Date();
-        Date d2 = new Date();
-        UUID uuid1 = new UUID(d1.getTime(), d2.getTime());
+        UUID uuid1 = UUID.randomUUID();
         m1.setMessageID(uuid1);
         m1.setContents("hi there".getBytes());
         m1.setStatusURL("http://google.com");
@@ -163,7 +123,7 @@ class MirandaTest {
 
         miranda.startUp(args);
 
-        list = miranda.getSendQueue();
+        list = SendQueue.getInstance().copyMessages();
         assert (list != null && list.size() > 0);
         Message m2 = list.get(0);
         assert (m1.equals(m2));

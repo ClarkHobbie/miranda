@@ -1,13 +1,11 @@
 package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.commons.LtsllcException;
-import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.commons.util.Utils;
 import com.ltsllc.miranda.Message;
 import com.ltsllc.miranda.MessageType;
-import com.ltsllc.miranda.Miranda;
-import com.ltsllc.miranda.OtherMessagesFile;
+import com.ltsllc.miranda.OtherMessages;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.mina.core.service.IoHandler;
@@ -594,7 +592,7 @@ public class ClusterHandler implements IoHandler {
         scanner.next(); // weird bug CONTENTS:
         message.setContents(Utils.hexDecode(scanner.next()));
 
-        OtherMessagesFile.getInstance().record(message, partnerUuid);
+        OtherMessages.getInstance().record(message, partnerUuid);
 
         cache.add(message);
 
@@ -669,7 +667,7 @@ public class ClusterHandler implements IoHandler {
      * @param input The string we received.
      * @throws LtsllcException If the cache has problems removing the message
      */
-    public synchronized void handleMessageDelivered (String input) throws LtsllcException {
+    public synchronized void handleMessageDelivered (String input) throws LtsllcException, IOException {
         Scanner scanner = new Scanner(input);
         scanner.skip(MESSAGE_DELIVERED);
         String strUuid = scanner.next();

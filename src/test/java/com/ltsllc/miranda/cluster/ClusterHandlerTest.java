@@ -5,7 +5,7 @@ import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.commons.util.Utils;
 import com.ltsllc.miranda.Message;
 import com.ltsllc.miranda.Miranda;
-import com.ltsllc.miranda.OtherMessagesFile;
+import com.ltsllc.miranda.OtherMessages;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -486,13 +486,12 @@ class ClusterHandlerTest {
     public void sessionCreated () throws LtsllcException {
         Configurator.setRootLevel(Level.DEBUG);
 
-        Cluster cluster = new Cluster();
-        cluster.setNodes(new ArrayList<>());
+        Cluster.getInstance().setNodes(new ArrayList<>());
 
         ClusterHandler clusterHandler = new ClusterHandler();
         clusterHandler.sessionCreated(null);
 
-        List<IoSession> list = cluster.getNodes();
+        List<IoSession> list = Cluster.getInstance().getNodes();
         assert (list.size() > 0);
     }
 
@@ -504,7 +503,7 @@ class ClusterHandlerTest {
         List<IoSession> nodeList = new ArrayList<>();
         nodeList.add(mockIoSession);
 
-        Cluster cluster = new Cluster();
+        Cluster cluster = Cluster.getInstance();
         cluster.setNodes(nodeList);
 
         ClusterHandler clusterHandler = new ClusterHandler();
@@ -519,7 +518,7 @@ class ClusterHandlerTest {
         List<IoSession> nodeList = new ArrayList<>();
         nodeList.add(mockIoSession);
 
-        Cluster cluster = new Cluster();
+        Cluster cluster = Cluster.getInstance();
         cluster.setNodes(nodeList);
 
         ClusterHandler clusterHandler = new ClusterHandler();
@@ -666,7 +665,7 @@ class ClusterHandlerTest {
     }
 
     @Test
-    public void handleMessageDelivered () throws LtsllcException {
+    public void handleMessageDelivered () throws LtsllcException, IOException {
         ClusterHandler clusterHandler = new ClusterHandler();
 
         MessageCache mockMessageCache = Mockito.mock(MessageCache.class);
@@ -703,7 +702,7 @@ class ClusterHandlerTest {
         stringBuffer.append("NEW ");
         stringBuffer.append(message.longToString());
 
-        OtherMessagesFile.defineStatics();
+        OtherMessages.defineStatics();
 
         clusterHandler.handleNewMessage(stringBuffer.toString(),partnerId);
 
@@ -764,7 +763,7 @@ class ClusterHandlerTest {
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
 
-        Cluster cluster = new Cluster();
+        Cluster cluster = Cluster.getInstance();
 
         clusterHandler.inputClosed(mockIoSession);
 

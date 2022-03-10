@@ -29,8 +29,7 @@ class ClusterTest {
 
     @Test
     public void connect () throws LtsllcException {
-        Cluster cluster = new Cluster();
-        cluster.setNodes(new ArrayList<>());
+        Cluster.getInstance().setNodes(new ArrayList<>());
         ImprovedRandom improvedRandom = new ImprovedRandom();
         Cluster.setRandomNumberGenerator(improvedRandom);
 
@@ -38,9 +37,9 @@ class ClusterTest {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        cluster.releasePorts();
+        Cluster.getInstance().releasePorts();
 
-        cluster.connect();
+        Cluster.getInstance().connect();
     }
 
     /*
@@ -83,19 +82,19 @@ class ClusterTest {
      *  o   when does a node decide that another node is down?
      *  o   how does miranda react to a node coming online?
      */
+
     @Test
     void informOfNewMessage () throws LtsllcException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        Cluster cluster = new Cluster();
-        cluster.setNodes(new ArrayList<>());
+        Cluster.getInstance().setNodes(new ArrayList<>());
 
         Message message = new Message();
         message.setStatusURL("http://goggle.com");
         UUID uuid = UUID.randomUUID();
         message.setMessageID(uuid);
 
-        cluster.informOfNewMessage(message);
+        Cluster.getInstance().informOfNewMessage(message);
     }
 }

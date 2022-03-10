@@ -8,16 +8,16 @@ import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.Cluster;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.mina.core.service.IoAcceptor;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.mina.filter.codec.textline.TextLineCodecFactory;
 import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
+import org.asynchttpclient.*;
+import org.asynchttpclient.Request;
+import org.asynchttpclient.Response;
 import org.eclipse.jetty.server.*;
-import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
 import java.io.*;
@@ -51,37 +51,14 @@ public class Miranda {
 
     protected static final Logger logger = LogManager.getLogger();
 
-    protected static List<Message> sendQueue = new ArrayList<>();
-    protected static volatile List<Message> newMessageQueue =  new ArrayList<>();
-    protected static Map<UUID, UUID> uuidToOwner = new HashMap<>();
+
     protected static boolean keepRunning = true;
 
     protected Cluster cluster;
-    protected ImprovedFile sendQueueFile;
-    protected ImprovedFile otherMessagesFile;
     protected static ImprovedProperties properties;
+    protected List<Message> newMessageQueue = new ArrayList<>();
 
     public Miranda() {
-    }
-
-    public ImprovedFile getSendQueueFile() {
-        return sendQueueFile;
-    }
-
-    public void setSendQueueFile(ImprovedFile sendQueueFile) {
-        this.sendQueueFile = sendQueueFile;
-    }
-
-    public ImprovedFile getOtherMessagesFile() {
-        return otherMessagesFile;
-    }
-
-    public void setOtherMessagesFile(ImprovedFile otherMessagesFile) {
-        this.otherMessagesFile = otherMessagesFile;
-    }
-
-    public static synchronized UUID getOwnerOf (UUID uuid) {
-        return uuidToOwner.get(uuid);
     }
 
     public static boolean getKeepRunning() {
@@ -92,18 +69,6 @@ public class Miranda {
         Miranda.keepRunning = keepRunning;
     }
 
-    public static synchronized void setOwnerOf (UUID messageUuid, UUID owner) {
-        uuidToOwner.put(messageUuid, owner);
-    }
-
-    public static Map<UUID, UUID> getUuidToOwner() {
-        return uuidToOwner;
-    }
-
-    public static void setUuidToOwner(Map<UUID, UUID> uuidToOwner) {
-        Miranda.uuidToOwner = uuidToOwner;
-    }
-
     public Cluster getCluster() {
         return cluster;
     }
@@ -112,43 +77,16 @@ public class Miranda {
         this.cluster = cluster;
     }
 
-    public static List<Message> getSendQueue() {
-        return sendQueue;
-    }
 
-    public static void setSendQueue(List<Message> sendQueue) {
-        Miranda.sendQueue = sendQueue;
-    }
-
-    public static synchronized void addNewMessage (Message message) {
-        newMessageQueue.add(message);
-    }
-
-    public static synchronized void setNewMessageQueue(List<Message> newMessageQueue) {
-        Miranda.newMessageQueue = newMessageQueue;
-    }
-
-    public static synchronized List<Message> getNewMessageQueue () {
+    public synchronized List<Message> getNewMessageQueue () {
         return newMessageQueue;
     }
 
-    public static synchronized Message getNewMessage () {
+    public synchronized Message getNewMessage () {
         if (newMessageQueue.size() < 1)
             return null;
         else
             return newMessageQueue.get(0);
-    }
-
-    public static synchronized void addMessage(Message message) {
-        sendQueue.add(message);
-    }
-
-    public static synchronized Message getNextMessage () {
-        if (sendQueue.size() < 1) {
-            return null;
-        } else {
-            return sendQueue.remove(0);
-        }
     }
 
     public static ImprovedProperties getProperties() {
@@ -174,14 +112,14 @@ public class Miranda {
      *     if the delivery was successful
      *         tell the cluster that we delivered it
      */
-    public void mainLoop () {
+    public void mainLoop () throws LtsllcException, IOException {
         logger.debug("starting mainLoop, with keepRunning = " + keepRunning);
         if (keepRunning) {
             Message newMessage = getNewMessage();
             if (newMessage != null) {
                 logger.debug("a new message has arrived message = " + newMessage);
 
-                addMessage(newMessage);
+                SendQueue.getInstance().add(newMessage);
 
                 try {
                     cluster.informOfNewMessage(newMessage);
@@ -189,22 +127,16 @@ public class Miranda {
                     logger.error("exception telling cluster of new message");
                 }
                 logger.debug("we told the cluster of it");
-
-                newMessage.informOfCreated();
-                logger.debug("we told the sender we created it");
             }
 
-            Message message = getNextMessage();
-            if (message != null) {
-                Result result = message.deliver();
-                if (result.getStatus() == STATUS_SUCCESS) {
-                    cluster.informOfDelivery(message);
-                    message.informOfDelivery();
-                } else {
-                    sendQueue.add(sendQueue.size(), message);
-                }
-
+            /*
+             * Try and deliver all the messages
+             */
+            List<Message> allMessages = SendQueue.getInstance().copyMessages();
+            for (Message message : allMessages) {
+                deliver(message);
             }
+
         }
         logger.debug("leaving mainLoop");
     }
@@ -227,21 +159,14 @@ public class Miranda {
         loadProperties();
 
         logger.debug("Starting cluster");
-        cluster = new Cluster();
+        cluster = Cluster.getInstance();
         cluster.connect();
 
         logger.debug("starting the message port");
         startMessagePort(properties.getIntProperty(PROPERTY_MESSAGE_PORT));
 
-        sendQueueFile = new ImprovedFile(properties.getProperty(PROPERTY_SEND_FILE));
-        logger.debug("Checking for recovery");
-        if (sendQueueFile.exists()) {
-            logger.debug("send queue file exists, recovering");
-            sendQueueFile = sendQueueFile.copy();
-            loadSendFile();
-            biddingMode();
-        }
-
+        SendQueue.shouldRecover();
+        SendQueue.recover();
 
         logger.debug("Leaving startup");
     }
@@ -253,62 +178,28 @@ public class Miranda {
      */
     protected void startMessagePort (int portNumber) throws Exception {
         logger.debug("entering startMessagePort with portNumber = " + portNumber);
-        /*
-        // Create and configure the thread pool.
 
-        newMessageQueue = new ArrayList<>();
-        sendQueue = new ArrayList<>();
-        logger.debug("initialized sendQueue and newMessageQueue");
 
-        QueuedThreadPool threadPool = new QueuedThreadPool();
-        threadPool.setName("client");
-        logger.debug("initialized threadPool");
-
-        // Create and configure the scheduler.
-        Scheduler scheduler = new ScheduledExecutorScheduler("scheduler-client", false);
-        logger.debug("initialized scheduler");
-
-        // Create and configure the custom ClientConnector.
-        ClientConnector clientConnector = new ClientConnector();
-        clientConnector.setExecutor(threadPool);
-        clientConnector.setScheduler(scheduler);
-        logger.debug("initialized clientConnector");
-
-        // create and configure a ContextHandler
-        ContextHandler contextHandler = new ContextHandler();
-        contextHandler.setContextPath("/");
-        contextHandler.setHandler(new MessageHandler());
-        logger.debug("initialized contextHandler");
-
-         */
-// Create and configure a ThreadPool.
+        // Create and configure a ThreadPool.
         QueuedThreadPool threadPool = new QueuedThreadPool();
         threadPool.setName("server");
 
-// Create a Server instance.
         Server server = new Server(threadPool);
 
-
+        // Create a ServerConnector to accept connections from clients.
         ServerConnector serverConnector = new ServerConnector(server, 3, 3, new HttpConnectionFactory());
         server.addConnector(serverConnector);
-// Create a ServerConnector to accept connections from clients.
-
-        serverConnector.setPort(3030);
+        serverConnector.setPort(properties.getIntProperty(PROPERTY_MESSAGE_PORT));
         serverConnector.setHost("127.0.0.1");
-// Add the Connector to the Server
+
         server.addConnector(serverConnector);
 
-// Set a simple Handler to handle requests/responses.
+        // Set a simple Handler to handle requests/responses.
         server.setHandler(new MessageHandler());
 
-// Start the Server so it starts accepting connections from clients.
+        // Start the Server so it starts accepting connections from clients.
         server.start();
-        try {
-            // clientConnector.start();
-            // logger.debug("listening for messages at port " + portNumber);
-        } catch (Exception e) {
-            throw new LtsllcException("exception starting the server", e);
-        }
+
         logger.debug("leaving startMessagePort");
     }
 
@@ -380,63 +271,7 @@ public class Miranda {
         logger.debug("leaving processArgument with map = " + map);
     }
 
-    /*
-     * "bid" for each message
-     *
-     * for each message...
-     *    bid for it
-     *    if we didn't win the bid then remove the message from the sendqueue
-     */
-    public synchronized void biddingMode() throws LtsllcException {
-        for (int i = 0;i < sendQueue.size();i++) {
-            Message message = sendQueue.get(i);
-            logger.debug("bidding on " + message);
-
-            // Message ourMessage = cluster.bid(message);
-/*
-            if (ourMessage == null) {
-                logger.debug("we lost bid so removing the message");
-                sendQueue.remove(i);
-            } else {
-                logger.debug("we won the bid, keep the message");
-            }
-*/
-        }
-    }
-
-    /*
-     * load the send file
-     *
-     * This simply tells the system to reload the send file
-     */
-    protected void loadSendFile () throws LtsllcException {
-        logger.debug("entering loadSendFile");
-        String tempFileName = properties.getProperty(PROPERTY_SEND_FILE);
-        sendQueueFile = new ImprovedFile(tempFileName);
-        ImprovedFile temp = new ImprovedFile(tempFileName);
-        FileInputStream fileInputStream;
-        InputStreamReader reader;
-        try {
-            fileInputStream = new FileInputStream(temp);
-            reader = new InputStreamReader(fileInputStream);
-            logger.debug("Found send file");
-
-            GsonBuilder gsonBuilder = new GsonBuilder();
-            gsonBuilder.setPrettyPrinting();
-            Gson gson = gsonBuilder.create();
-
-            List<Message> temp2 = new ArrayList<>();
-            Type type = TypeToken.getParameterized(ArrayList.class, Message.class).getType();
-            sendQueue = gson.fromJson(reader, type);
-            logger.debug("loaded send file with " + sendQueue);
-        } catch (FileNotFoundException e) {
-            sendQueue = new ArrayList<>();
-        }
-
-        logger.debug("leaving loadSendFile");
-    }
-
-    /*
+     /*
      * reload the system properties
      *
      * This simply tells the system to reload the system properties
@@ -482,23 +317,7 @@ public class Miranda {
     // ********************************************************************************************
     //
     protected boolean shouldEnterRecovery() {
-        return sendQueueFile.exists() || otherMessagesFile.exists() ;
-    }
-
-    /*
-     * write an object to a Writer
-     *
-     * This method simply writes an object, converted to JSON, to a writer.  Note that this method
-     * does a flush to the writer after it writes the JSON.
-     */
-    protected void writeJson (Object object,Writer writer) throws IOException {
-        GsonBuilder gsonBuilder = new GsonBuilder();
-        gsonBuilder.setPrettyPrinting();
-        Gson gson = gsonBuilder.create();
-
-        String json = gson.toJson(object);
-        writer.write(json);
-        writer.flush();
+        return SendQueue.shouldRecover() || OtherMessages.shouldRecover() ;
     }
 
     public static void stop () {
@@ -529,5 +348,74 @@ public class Miranda {
         ioAcceptor.unbind();
         logger.debug("leaving releaseMessagePort");
 
+    }
+
+    /**
+     * Try to deliver a message
+     *
+     * This method tries to deliver a message asynchronously.  On success it calls successfulMessage to signal that this
+     * is so.
+     *
+     * @param message The message to deliver
+     */
+    public void deliver (Message message) {
+        AsyncHttpClient httpClient = Dsl.asyncHttpClient();
+        BoundRequestBuilder boundRequestBuilder = httpClient.preparePost(message.getDeliveryURL());
+
+        boundRequestBuilder.setBody(message.getContents())
+                .setBody("CREATED MESSAGE " + message.getMessageID().toString())
+                        .execute(new AsyncCompletionHandler<Response>() {
+                            @Override
+                            public Response onCompleted(Response response) {
+                                if (response.getStatusCode() == 200) {
+                                    successfulMessage(message);
+                                }
+                                // otherwise, keep trying
+                                return response;
+                            }
+                        });
+
+
+    }
+
+    /**
+     * Called when a message has been successfully delivered
+     *
+     * This method calls cluster.informOfDelivery to signal to the cluster that the message has been delivered,
+     * removes the message from the send queue and takes care of notifying the client that we have delivered the
+     * message.
+     *
+     * @param message The message
+     */
+    public void successfulMessage(Message message) {
+        logger.debug("entering successfulMessage with: " + message);
+        cluster.informOfDelivery(message);
+        try {
+            SendQueue.getInstance().remove(message);
+        } catch (LtsllcException|IOException e) {
+            logger.error ("Exception trying to remove message from the send queue",e);
+        }
+        notifyClientOfDelivery(message);
+        logger.debug("leaving successfulMessage");
+    }
+
+    /**
+     * Asynchronously tell a client that we delivered their message
+     *
+     * NOTE: this method ignores the state code of the client's response to this POST.
+     *
+     * @param message The message that was delivered
+     */
+    public void notifyClientOfDelivery(Message message) {
+        AsyncHttpClient httpClient = Dsl.asyncHttpClient();
+        BoundRequestBuilder
+                rb = httpClient.preparePost(message.getDeliveryURL());
+        rb.setBody("MESSAGE " + message.getMessageID() + " DELIVERED");
+        rb.execute(new AsyncCompletionHandler<Response>() {
+            @Override
+            public Response onCompleted(Response response) throws Exception {
+                return response;
+            }
+        });
     }
 }

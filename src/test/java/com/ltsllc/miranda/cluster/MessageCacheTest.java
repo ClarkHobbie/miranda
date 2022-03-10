@@ -418,7 +418,7 @@ public class MessageCacheTest {
     }
 
     @Test
-    public void remove () throws LtsllcException {
+    public void remove () throws LtsllcException, IOException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 

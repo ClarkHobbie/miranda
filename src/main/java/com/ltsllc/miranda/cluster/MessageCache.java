@@ -24,7 +24,6 @@ import java.util.*;
  */
 public class MessageCache {
     public static final Logger logger = LogManager.getLogger();
-    protected static final Gson ourGson;
 
     protected Map<UUID, Boolean> uuidToOnline = new HashMap<>();
     protected Map<UUID, Message> uuidToMessage = new HashMap<>();
@@ -38,12 +37,6 @@ public class MessageCache {
 
     public MessageCache() throws LtsllcException {
         initialize();
-    }
-
-    static {
-        GsonBuilder gsonBuilder = new GsonBuilder();
-        gsonBuilder.setPrettyPrinting();
-        ourGson = gsonBuilder.create();
     }
 
     public int getCurrentLoad() {
@@ -86,7 +79,7 @@ public class MessageCache {
         this.uuidToMessage = uuidToMessage;
     }
 
-    public void initialize () throws LtsllcException {
+    public void initialize() throws LtsllcException {
         ImprovedProperties instance = Miranda.getProperties();
         try {
             loadLimit = instance.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
@@ -128,7 +121,7 @@ public class MessageCache {
      *
      * @return The new, empty cache
      */
-    public boolean empty () {
+    public boolean empty() {
         return uuidToOnline.isEmpty();
     }
 
@@ -148,15 +141,15 @@ public class MessageCache {
 
     /**
      * Get a Message regardless of where it is.
-     *
+     * <p>
      * NOTE THAT THE MESSAGE MUST EXIST IN THE CACHE!
      * This method get an online or offline message.
      *
      * @param uuid The UUID of the message
      * @return The message
-     * @exception IOException If the temp file is not found or if skip throws an Exception
+     * @throws IOException If the temp file is not found or if skip throws an Exception
      */
-    public Message get (UUID uuid) throws IOException {
+    public Message get(UUID uuid) throws IOException {
         Message returnValue = null;
 
         if (null == uuidToOnline.get(uuid)) {
@@ -164,8 +157,8 @@ public class MessageCache {
         }
 
         if (isOnline(uuid)) {
-            returnValue = uuidToMessage.get (uuid);
-            Integer numberOfTimesReffernced = uuidToNumberOfTimesReferenced.get (uuid);
+            returnValue = uuidToMessage.get(uuid);
+            Integer numberOfTimesReffernced = uuidToNumberOfTimesReferenced.get(uuid);
             numberOfTimesReffernced++;
             uuidToNumberOfTimesReferenced.put(uuid, numberOfTimesReffernced);
         } else {
@@ -200,10 +193,14 @@ public class MessageCache {
      * Add a Message to the cache
      *
      * @param newMessage The message to add.
-     * @exception LtsllcException If there are problems accommodating the new message.  This method also throws the
-     * exception if the new message's contents are larger than the load limit.
+     * @throws LtsllcException If there are problems accommodating the new message.  This method also throws the
+     *                         exception if the new message's contents are larger than the load limit.
      */
-    public synchronized void add (Message newMessage) throws LtsllcException {
+    public synchronized void add(Message newMessage) throws LtsllcException {
+        if (newMessage == null) {
+            logger.error("null message in add");
+            return;
+        }
         while (currentLoad + newMessage.getContents().length > loadLimit && currentLoad != 0) {
             migrateLeastReferencedMessage();
         }
@@ -228,33 +225,93 @@ public class MessageCache {
 
     /**
      * Remove a message from the cache
-     *
-     * NOTE: this method expects the message to be in the cache.
+     * <p>
+     * NOTE: this method expects the message to be in the cache.  It will try to delete the message from
+     * offlineMessages.
      *
      * @param uuid The UUID of the message to remove.
-     * @exception LtsllcException If there is a problem removing the message.
+     * @throws LtsllcException If there is a problem removing the message.
      */
-    public synchronized void remove (UUID uuid) throws LtsllcException {
-        if (!contains(uuid)) {
-            return;
-        }
+    public synchronized void remove(UUID uuid) throws LtsllcException, IOException {
+        uuidToMessage.remove(uuid);
+        uuidToOnline.remove(uuid);
+        uuidToLocation.remove(uuid);
+        uuidToNumberOfTimesReferenced.remove(uuid);
 
-        uuidToMessage.put(uuid, null);
-        uuidToOnline.put(uuid, null);
-        uuidToLocation.put(uuid, null);
-        uuidToNumberOfTimesReferenced.put(uuid, null);
+        if (offLineMessages.exists()) {
+            FileReader fileReader = null;
+            BufferedReader bufferedReader = null;
+            FileWriter fileWriter = null;
+            BufferedWriter bufferedWriter = null;
+
+            try {
+                fileReader = new FileReader(offLineMessages);
+                bufferedReader = new BufferedReader(fileReader);
+                ImprovedFile tempfile = offLineMessages.copy();
+                fileWriter = new FileWriter(tempfile);
+                bufferedWriter = new BufferedWriter(fileWriter);
+                for (String line = bufferedReader.readLine(); line != null; line = bufferedReader.readLine()) {
+                    Message readMessage = Message.readLongFormat(line);
+                    if (!readMessage.getMessageID().equals(uuid)) {
+                        bufferedWriter.write(line);
+                        bufferedWriter.newLine();
+                    }
+                }
+
+                String tempFileName = offLineMessages.toString() + ".temp";
+                ImprovedFile tempFile = new ImprovedFile(tempFileName);
+                // rename the offLineMessages to a backup file
+                if (!offLineMessages.renameTo(tempFile)) {
+                    logger.error("Could not rename " + offLineMessages + " to " + tempFile + " aborting.");
+                    tempfile.delete();
+                    throw new LtsllcException("Could not rename " + offLineMessages + " to " + tempFile);
+                }
+
+                // try to rename the tempfile to offLineMessages
+                if (!tempfile.renameTo(offLineMessages)) {
+                    logger.error("Could not rename " + tempfile + " to " + offLineMessages);
+                    logger.error("tempfile," + tempfile + ", may still be around. Aborting");
+                    tempfile.delete();
+                    throw new LtsllcException("could not rename " + tempfile + " to " + offLineMessages);
+                }
+
+                // remove tempFile
+                if (!tempFile.delete()) {
+                    logger.error("Could not remove " + tempFile + ". Aborting.");
+                    throw new LtsllcException("could not remove " + tempFile);
+                }
+
+                // we successfully finished!
+            } finally {
+                if (bufferedReader != null) {
+                    bufferedReader.close();
+                }
+
+                if (fileReader != null) {
+                    fileReader.close();
+                }
+
+                if (bufferedWriter != null) {
+                    bufferedWriter.close();
+                }
+
+                if (fileWriter != null) {
+                    fileWriter.close();
+                }
+            }
+        }
     }
 
     /**
      * Put a new message in the cache
-     *
+     * <p>
      * NOTE: the message must not already be in the cache.
      *
      * @param message The new message.
      * @throws LtsllcException If the "new" message is already in the cache; o if there is a problem putting it in the
-     * cache.
+     *                         cache.
      */
-    public synchronized void putMessage (Message message) throws LtsllcException {
+    public synchronized void putMessage(Message message) throws LtsllcException {
         if (uuidToMessage.get(message.getMessageID()) != null) {
             throw new LtsllcException("messageID, " + message.getMessageID() + ", is already present in the cache");
         }
@@ -270,7 +327,7 @@ public class MessageCache {
     /**
      * Migrate the least referenced Message to the offline temp file
      */
-    public synchronized void migrateLeastReferencedMessage () throws LtsllcException {
+    public synchronized void migrateLeastReferencedMessage() throws LtsllcException {
         Set<UUID> set = uuidToNumberOfTimesReferenced.keySet();
         Iterator<UUID> iterator = set.iterator();
         UUID uuid = null;
@@ -290,14 +347,14 @@ public class MessageCache {
 
     /**
      * Migrate the designated message to the temp file
-     *
+     * <p>
      * All the variables, e.g. uuidToOnline, are updated to reflect this.
      *
      * @param message The designated message.  This message must be present in uuidToMessage.
-     * @exception LtsllcException The method throws this if there is an error opening offlineMessage or if there is an
-     * error writing to the file, or the UUID does not exist in uuidToMessage
+     * @throws LtsllcException The method throws this if there is an error opening offlineMessage or if there is an
+     *                         error writing to the file, or the UUID does not exist in uuidToMessage
      */
-    protected synchronized void migrateInCoreMessageToOffline (Message message) throws LtsllcException {
+    protected synchronized void migrateInCoreMessageToOffline(Message message) throws LtsllcException {
         if (uuidToMessage.get(message.getMessageID()) == null) {
             throw new LtsllcException("uuid does not exist in uuidToMessage");
         }
@@ -314,8 +371,8 @@ public class MessageCache {
             uuidToOnline.put(message.getMessageID(), false);
             uuidToLocation.put(message.getMessageID(), location);
         } catch (IOException e) {
-            throw new LtsllcException("Exception opening or reading message " + message.getMessageID(),e);
-        }finally {
+            throw new LtsllcException("Exception opening or reading message " + message.getMessageID(), e);
+        } finally {
             try {
                 if (bufferedWriter != null) {
                     bufferedWriter.close();
@@ -325,21 +382,21 @@ public class MessageCache {
                     fileWriter.close();
                 }
             } catch (IOException e) {
-                throw new LtsllcException("Exception trying to close offLineMessages",e);
+                throw new LtsllcException("Exception trying to close offLineMessages", e);
             }
         }
     }
 
     /**
      * Read a Message from the offline file
-     *
+     * <p>
      * NOTE: the file must exist in uuidToLocation for this method to work.
      *
      * @param uuid The message to read.  This UUID must exist in uuidToLocation
      * @return The specified message
      * @throws com.ltsllc.commons.LtsllcException If there is a problem opening the file, or reading the message.
      */
-    protected synchronized Message readOfflineMessage (UUID uuid) throws LtsllcException {
+    protected synchronized Message readOfflineMessage(UUID uuid) throws LtsllcException {
         if (uuidToLocation.get(uuid) == null) {
             throw new LtsllcException("message does not exist in uuidToLocation");
         }
@@ -362,21 +419,21 @@ public class MessageCache {
                     fileReader.close();
                 }
             } catch (IOException e) {
-                throw new LtsllcException("Exception closing offline file",e);
+                throw new LtsllcException("Exception closing offline file", e);
             }
         }
     }
 
     /**
      * Migrate an offline message to online
-     *
+     * <p>
      * The UUID must exist in uuidToLocation.  All the variables, e.g. uuidToMessages are updated to reflect this.
      *
      * @param uuid The Message to read.
      * @throws LtsllcException If the uuid does not exist in uuidToLocation, or there is a problem accessing the
-     * Message.
+     *                         Message.
      */
-    public synchronized void migrateMessageToOnline (UUID uuid) throws LtsllcException {
+    public synchronized void migrateMessageToOnline(UUID uuid) throws LtsllcException {
         if (uuidToLocation.get(uuid) == null) {
             throw new LtsllcException("uuid, " + uuid + ", does not exist in uuidToLocation");
         }
@@ -386,12 +443,12 @@ public class MessageCache {
             migrateLeastReferencedMessage();
         }
 
-        uuidToMessage.put (uuid, message);
-        uuidToLocation.put (uuid, null);
-        uuidToOnline.put (uuid, true);
+        uuidToMessage.put(uuid, message);
+        uuidToLocation.put(uuid, null);
+        uuidToOnline.put(uuid, true);
     }
 
-    public synchronized boolean contains (UUID uuid) {
+    public synchronized boolean contains(UUID uuid) {
         return uuidToOnline.containsKey(uuid);
     }
 
@@ -402,7 +459,100 @@ public class MessageCache {
         uuidToNumberOfTimesReferenced.put(message.getMessageID(), null);
     }
 
-    public synchronized long getLocationFor (UUID uuid) {
+    public synchronized long getLocationFor(UUID uuid) {
         return uuidToLocation.get(uuid);
+    }
+
+    public static boolean shouldRecover() {
+        logger.debug("entering shouldRecover");
+        ImprovedProperties p = Miranda.getProperties();
+        String fileName = p.getProperty(Miranda.PROPERTY_OFFLINE_MESSAGES);
+        ImprovedFile file = new ImprovedFile(fileName);
+        logger.debug("leaving shouldRecover with " + file.exists());
+
+        return file.exists();
+    }
+
+    /**
+     * Make a copy of all the messages
+     * <p>
+     * This method returns an independent list of messages.
+     *
+     * @return The new list of messages.
+     * @throws LtsllcException If there is a problem copying the messages
+     * @throws IOException     If these is a problem copying the messages
+     */
+    public synchronized List<Message> copyAllMessages() throws IOException, LtsllcException {
+        logger.debug("entering copyAllMessages");
+        ImprovedProperties p = Miranda.getProperties();
+
+        List<Message> list = new ArrayList<>(uuidToOnline.size());
+
+        Collection<Message> onlineMessages = uuidToMessage.values();
+        list.addAll(onlineMessages);
+
+        ImprovedFile file = new ImprovedFile(p.getProperty(Miranda.PROPERTY_OFFLINE_MESSAGES));
+
+        if (file.exists()) {
+            FileReader fileReader = null;
+            BufferedReader bufferedReader = null;
+            try {
+                fileReader = new FileReader(file);
+                bufferedReader = new BufferedReader(fileReader);
+
+                for (String line = bufferedReader.readLine(); line != null; line = bufferedReader.readLine()) {
+                    list.add(Message.readLongFormat(line));
+                }
+            } catch (IOException e) {
+                logger.error("Encountered exception while copying messages", e);
+                throw new LtsllcException(e);
+            } finally {
+                if (bufferedReader != null) {
+                    bufferedReader.close();
+                }
+
+                if (fileReader != null) {
+                    fileReader.close();
+                }
+            }
+        }
+        logger.debug("leaving copyAllMessages");
+
+        return list;
+    }
+
+    /**
+     * Try to recover from a crash.
+     * <p>
+     * The message cache looks for the file specified by Miranda.PROPERTY_OFFLINE_MESSAGES and, if it exists, the class
+     * tries to take it as its offline messages file.  It cannot recover those messages that were in memory when the
+     * crash occurred: those are lost.
+     */
+    public synchronized void recover() {
+        ImprovedProperties p = Miranda.getProperties();
+        ImprovedFile file = new ImprovedFile(p.getProperty(Miranda.PROPERTY_OFFLINE_MESSAGES));
+
+        if (!file.exists()) {
+            logger.warn("asked to recover when the file, " + p.getProperty(Miranda.PROPERTY_OFFLINE_MESSAGES) + ", does not exist");
+        } else {
+            offLineMessages = file;
+        }
+    }
+
+    public synchronized void removeNulls() {
+        clearMapping(uuidToMessage);
+        clearMapping(uuidToLocation);
+        clearMapping(uuidToOnline);
+        clearMapping(uuidToNumberOfTimesReferenced);
+    }
+
+    public static void clearMapping(Map map) {
+        Set set = map.keySet();
+        for (
+                Object key : set) {
+            if (map.get(key) == null) {
+                map.put(key, null);
+            }
+        }
     }
 }

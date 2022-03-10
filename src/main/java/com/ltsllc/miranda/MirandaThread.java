@@ -1,7 +1,10 @@
 package com.ltsllc.miranda;
 
+import com.ltsllc.commons.LtsllcException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
 
 public class MirandaThread extends Thread {
     public static final Logger logger = LogManager.getLogger();
@@ -43,7 +46,12 @@ public class MirandaThread extends Thread {
         logger.debug("starting run");
         while (keepRunning) {
             logger.debug("entering iteration");
-            miranda.mainLoop();
+            try {
+                miranda.mainLoop();
+            } catch (LtsllcException|IOException e) {
+                logger.error("Encountered exception while running mainLoop", e);
+                e.printStackTrace();
+            }
             if (sleepTime > 0) {
                 synchronized (this) {
                     try {

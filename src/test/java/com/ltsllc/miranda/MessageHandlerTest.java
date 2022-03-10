@@ -50,16 +50,11 @@ public class MessageHandlerTest {
         when(jettyRequest.getParameter(MessageHandler.PARAM_DESTINATION_URL)).thenReturn("http://google.com");
         when(jettyRequest.getInputStream()).thenReturn(mockInputStream);
 
-        Miranda miranda = new Miranda();
-        miranda.loadProperties();
-        List<Message> list = new ArrayList<>();
-        miranda.setNewMessageQueue(list);
-
         MessageHandler messageHandler = new MessageHandler();
 
         messageHandler.handle("hi there",jettyRequest, mockServletRequest, mockServletResponse);
 
-        list = miranda.getNewMessageQueue();
+        List<Message> list = SendQueue.getInstance().copyMessages();
         assert (list.size() > 0);
         logger.debug("The new message queue is not empty");
     }

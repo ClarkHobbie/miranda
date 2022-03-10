@@ -5,8 +5,7 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class MirandaThreadTest {
 
@@ -17,11 +16,7 @@ public class MirandaThreadTest {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        List<Message> list = new ArrayList<>();
-        miranda.setNewMessageQueue(list);
-
-        list = new ArrayList<>();
-        miranda.setSendQueue(list);
+        SendQueue.getInstance().clearAll();
 
         MirandaThread mirandaThread = new MirandaThread();
         mirandaThread.setMiranda(miranda);
