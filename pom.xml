@@ -96,15 +96,6 @@
             <version>4.3.1</version>
         </dependency>
 
-
-        <!--
-                <dependency>
-                    <groupId>org.easymock</groupId>
-                    <artifactId>easymock</artifactId>
-                    <version>4.3</version>
-                    <scope>test</scope>
-                </dependency>
-        -->
         <!--  Gson -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
@@ -146,17 +137,6 @@
             <artifactId>slf4j-log4j12</artifactId>
             <version>1.7.25</version>
         </dependency>
-
-        <!-- LTS commons -->
-        <!--
-        <dependency>
-            <groupId>com.ltsllc</groupId>
-            <artifactId>commons</artifactId>
-            <scope>system</scope>
-            <version>1.0</version>
-            <systemPath>c:/Users/Clark/IdeaProjects/commons/out/artifacts/commons_1_0_jar/commons.jar</systemPath>
-        </dependency>
-        -->
     </dependencies>
 
 </project>

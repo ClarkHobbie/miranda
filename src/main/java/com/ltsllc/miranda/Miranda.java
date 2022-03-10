@@ -41,7 +41,7 @@ public class Miranda {
     public static final String PROPERTY_CLUSTER_PORT = "clusterPort";
     public static final String PROPERTY_DEFAULT_CLUSTER_PORT = "2020";
     public static final String PROPERTY_CACHE_LOAD_LIMIT = "cache.loadLimit";
-    public static final String PROPERTY_DEFAULT_CACHE_LOAD_LIMIT = "1048567"; // 2^20
+    public static final String PROPERTY_DEFAULT_CACHE_LOAD_LIMIT = "104856700"; // 100 megabytes
     public static final String PROPERTY_OFFLINE_MESSAGES = "offlineMessages";
     public static final String PROPERTY_DEFAULT_OFFLINE_MESSAGES = "offlineMessages.msg";
     public static final String PROPERTY_OTHER_MESSAGES = "otherMessages";
@@ -278,6 +278,9 @@ public class Miranda {
      */
     public void loadProperties() throws LtsllcException {
         FileInputStream in = null;
+        if (properties ==  null) {
+            properties = new ImprovedProperties();
+        }
         try {
             in = new FileInputStream(PROPERTY_DEFAULT_PROPERTIES_FILE);
             Properties temp = new Properties();
@@ -305,6 +308,20 @@ public class Miranda {
         properties.setIfNull(PROPERTY_OFFLINE_MESSAGES, PROPERTY_DEFAULT_OFFLINE_MESSAGES);
         properties.setIfNull(PROPERTY_OTHER_MESSAGES, PROPERTY_DEFAULT_OTHER_MESSAGES);
         properties.setIfNull(PROPERTY_OWNER_FILE, PROPERTY_DEFAULT_OWNER_FILE);
+        properties.setIfNull(PROPERTY_PROPERTIES_FILE, PROPERTY_DEFAULT_PROPERTIES_FILE);
+    }
+
+    public void storeProperties () throws IOException {
+        FileWriter fileWriter = null;
+
+        try {
+            fileWriter = new FileWriter(properties.getProperty(PROPERTY_PROPERTIES_FILE));
+            properties.store(fileWriter, null);
+        } finally {
+            if (null != fileWriter) {
+                fileWriter.close();
+            }
+        }
     }
 
     //

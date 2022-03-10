@@ -16,6 +16,8 @@ public class RunTest {
     @Test
     public void go () throws Exception {
         Miranda miranda = new Miranda();
+        miranda.loadProperties();
+        miranda.storeProperties();
         String[] args = {};
         miranda.startUp(args);
         while (true) {
