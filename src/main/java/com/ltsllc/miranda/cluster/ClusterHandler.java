@@ -56,6 +56,15 @@ public class ClusterHandler implements IoHandler {
     protected Map<UUID, IoSession> uuidToNode = new HashMap<>();
     protected Map<UUID, UUID> uuidToOwner = new HashMap<>();
     protected UUID partnerID;
+    protected Map<IoSession, Node> ioSessionToNode = new HashMap<>();
+
+    public Map<IoSession, Node> getIoSessionToNode() {
+        return ioSessionToNode;
+    }
+
+    public void setIoSessionToNode(Map<IoSession, Node> ioSessionToNode) {
+        this.ioSessionToNode = ioSessionToNode;
+    }
 
     public static ImprovedRandom getOurRandom () {
         return ourRandom;
@@ -117,9 +126,8 @@ public class ClusterHandler implements IoHandler {
         logger.debug("New instance of ClusterHandler");
     }
 
-    public void sessionCreated (IoSession ioSession) {
-        logger.debug("adding new node, " + ioSession + " to cluster");
-        Cluster.addNode(ioSession);
+    @Override
+    public void sessionCreated(IoSession session) {
     }
 
     @Override
@@ -127,13 +135,12 @@ public class ClusterHandler implements IoHandler {
         //
         // the START state handles this
         //
-        Cluster.addNode(ioSession);
     }
 
     @Override
     public void sessionClosed(IoSession ioSession) throws Exception {
-        logger.debug("IoSessiob closed, removing instance, " + ioSession + " from cluster");
-        Cluster.removeNode(ioSession);
+        logger.debug("IoSession closed, removing instance, " + ioSession + " from cluster");
+        Cluster.getInstance().removeIoSession(ioSession);
     }
 
     /**
@@ -338,7 +345,7 @@ public class ClusterHandler implements IoHandler {
      */
     @Override
     public void inputClosed(IoSession ioSession)  {
-        Cluster.removeNode(ioSession);
+        Cluster.getInstance().removeIoSession(ioSession);
     }
 
     @Override
@@ -436,15 +443,7 @@ public class ClusterHandler implements IoHandler {
      */
     protected void sendMessage (UUID uuid, IoSession ioSession) throws IOException {
         Message message = cache.get(uuid);
-        String strMessage = MESSAGE;
-        strMessage += " ID: ";
-        strMessage += uuid;
-        strMessage += " STATUS: ";
-        strMessage += message.getStatusURL();
-        strMessage += " DELIVERY: ";
-        strMessage += message.getDeliveryURL();
-        strMessage += " CONTENTS: ";
-        strMessage += Utils.hexEncode(message.getContents());
+        String strMessage = message.longToString();
         ioSession.write (strMessage);
     }
 
@@ -657,6 +656,9 @@ public class ClusterHandler implements IoHandler {
         stringBuffer.append(" ");
         stringBuffer.append(uuid);
         ioSession.write(stringBuffer.toString());
+
+        Node node = new Node(null, null,ioSession);
+        Cluster.getInstance().addNode(node);
 
         state = ClusterConnectionStates.GENERAL;
     }

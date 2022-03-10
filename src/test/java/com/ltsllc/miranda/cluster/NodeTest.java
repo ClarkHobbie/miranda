@@ -24,6 +24,7 @@ public class NodeTest {
     public void auctionMessage () throws InterruptedException, LtsllcException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
+
         Node node = new Node();
 
 
@@ -73,19 +74,15 @@ public class NodeTest {
 
     @Test
     public void informOfMessageDelivery () {
-        Node node = new Node();
-        node.setUuid(UUID.randomUUID());
-        node.setPartnerID(UUID.randomUUID());
         Message newMessage = createTestMessage(UUID.randomUUID());
+        IoSession mockIoSession = Mockito.mock(IoSession.class);
 
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append(ClusterHandler.MESSAGE_DELIVERED);
         stringBuffer.append(" ");
         stringBuffer.append(newMessage.getMessageID());
 
-        IoSession mockIoSession = Mockito.mock(IoSession.class);
-        node.setIoSession(mockIoSession);
-        node.informOfMessageDelivery(newMessage);
+        Node node = new Node(UUID.randomUUID(),UUID.randomUUID(),mockIoSession);
 
         assert (node.getOwnerFor(newMessage.getMessageID()) == null);
         Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(stringBuffer.toString());
@@ -93,8 +90,6 @@ public class NodeTest {
 
     @Test
     public void informOfMessageCreation () {
-        Node node = new Node();
-
         Message newMessage = createTestMessage(UUID.randomUUID());
 
         StringBuffer stringBuffer = new StringBuffer();
@@ -103,34 +98,24 @@ public class NodeTest {
         stringBuffer.append(newMessage.internalsToString());
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        node.setIoSession(mockIoSession);
 
-        UUID nodeUuid = UUID.randomUUID();
-        UUID partnerUuid = UUID.randomUUID();
-        node.setUuid(nodeUuid);
-        node.setPartnerID(partnerUuid);
+        Node node = new Node(UUID.randomUUID(), UUID.randomUUID(), mockIoSession);
 
         node.informOfMessageCreation(newMessage);
 
         Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(stringBuffer.toString());
-        assert (node.getOwnerFor(newMessage.getMessageID()).equals(nodeUuid));
+        assert (node.getOwnerFor(newMessage.getMessageID()).equals(node.getUuid()));
     }
 
     @Test
     public void informOfStartOfAuction () {
-        Node node = new Node();
-        node.setUuid(UUID.randomUUID());
+        IoSession mockIoSession = Mockito.mock(IoSession.class);
+        Node node = new Node(UUID.randomUUID(), UUID.randomUUID(), mockIoSession);
 
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append(ClusterHandler.AUCTION);
         stringBuffer.append(" ");
         stringBuffer.append(node.getUuid());
-
-        UUID partnerUuid = UUID.randomUUID();
-        node.setPartnerID(partnerUuid);
-
-        IoSession mockIoSession = Mockito.mock(IoSession.class);
-        node.setIoSession(mockIoSession);
 
         node.informOfStartOfAuction(node.getUuid());
 
@@ -139,10 +124,8 @@ public class NodeTest {
 
     @Test
     public void informOfEndOfAuction () {
-        Node node = new Node();
-
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        node.setIoSession(mockIoSession);
+        Node node = new Node(UUID.randomUUID(), UUID.randomUUID(), mockIoSession);
 
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append(ClusterHandler.AUCTION_OVER);

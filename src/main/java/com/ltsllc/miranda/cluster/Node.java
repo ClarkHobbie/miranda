@@ -21,24 +21,16 @@ import java.util.concurrent.TimeUnit;
 public class Node {
     public static final Logger logger = LogManager.getLogger();
 
-    protected static MessageCache ourMessageCache;
 
-    static {
-        try {
-            ourMessageCache = new MessageCache();
-        } catch (LtsllcException e) {
-            logger.error("exception initializing MessageCache",e);
-
-        }
+    public Node (UUID myUUID, UUID partnerID, IoSession ioSession){
+        this.ioSession = ioSession;
+        this.uuid = myUUID;
+        this.partnerID = partnerID;
     }
 
-    public static MessageCache getOurMessageCache() {
-        return ourMessageCache;
+    public Node () {
     }
 
-    public static void setOurMessageCache(MessageCache ourMessageCache) {
-        Node.ourMessageCache = ourMessageCache;
-    }
 
     /**
      * for bids

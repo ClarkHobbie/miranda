@@ -6,6 +6,7 @@ import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.commons.util.Utils;
 import com.ltsllc.miranda.cluster.Cluster;
+import com.ltsllc.miranda.cluster.Node;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -153,7 +154,7 @@ class MirandaTest {
             synchronized (this) {
                 wait(1000);
             }
-            List<IoSession> nodes = Cluster.getNodes();
+            List<Node> nodes = Cluster.getInstance().getNodes();
             System.out.println(nodes.size());
             assert (nodes.size() > 0);
         } finally {

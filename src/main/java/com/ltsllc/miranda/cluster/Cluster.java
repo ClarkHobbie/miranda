@@ -19,7 +19,9 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -84,10 +86,18 @@ public class Cluster {
 
     protected static ImprovedRandom randomNumberGenerator = new ImprovedRandom();
     protected static final Logger logger = LogManager.getLogger();
-    protected static List<IoSession> nodes = new ArrayList<>();
+    protected List<Node> nodes = new ArrayList<>();
     protected static Cluster instance = new Cluster();
 
+    protected Map<IoSession, Node> ioSessionToNode = new HashMap<>();
 
+    public Map<IoSession, Node> getIoSessionToNode() {
+        return ioSessionToNode;
+    }
+
+    public void setIoSessionToNode(Map<IoSession, Node> ioSessionToNode) {
+        this.ioSessionToNode = ioSessionToNode;
+    }
 
     public static Cluster getInstance() {
         return instance;
@@ -100,17 +110,18 @@ public class Cluster {
     public Cluster() {
     }
 
-    public static List<IoSession> getNodes() {
+    public synchronized List<Node> getNodes() {
         return nodes;
     }
 
-    public static void setNodes(List<IoSession> n) {
+    public synchronized void setNodes(List<Node> n) {
         nodes = n;
     }
 
-    public static synchronized void addNode (IoSession session) {
-        logger.debug("Adding new node, " + session + " to nodes");
-        nodes.add (session);
+    public synchronized void addNode (Node node) {
+        logger.debug("Adding new node, " + node + " to nodes");
+        nodes.add (node);
+        ioSessionToNode.put(node.getIoSession(), node);
     }
 
     public static ImprovedRandom getRandomNumberGenerator() {
@@ -131,9 +142,10 @@ public class Cluster {
      *
      * This method does so synchronously, so it is thread safe.
      */
-    public static synchronized void removeNode(IoSession ioSession) {
-        logger.debug("removing node, " + ioSession + " from nodes");
-        nodes.remove(ioSession);
+    public synchronized void removeNode(Node node) {
+        logger.debug("removing node, " + node + " from nodes");
+        nodes.remove(node);
+        ioSessionToNode.remove(node.getIoSession());
     }
 
     /*
@@ -145,8 +157,8 @@ public class Cluster {
         contents += message.getContents();
 
         logger.debug("POST contents = " + contents);
-        for (IoSession ioSession : nodes) {
-            WriteFuture future = ioSession.write(contents);
+        for (Node node : nodes) {
+            WriteFuture future = node.getIoSession().write(contents);
             try {
                 if (!future.await(IONM_TIMEOUT, IONM_TIMEOUT_UNITS)) {
                     logger.error("write timed out informing another node of message delivery");
@@ -182,8 +194,8 @@ public class Cluster {
 
         String contents = "MESSAGE DELIVERED " + message.getMessageID();
         logger.debug("POST contents = " + contents);
-        for (IoSession ioSession: nodes) {
-            WriteFuture  future = ioSession.write(contents);
+        for (Node node : nodes) {
+            WriteFuture  future = node.getIoSession().write(contents);
             try {
                 future.await(IOD_TIMEOUT, IOD_TIMEOUT_UNITS);
             } catch (InterruptedException e) {
@@ -255,5 +267,12 @@ public class Cluster {
 
         ioAcceptor.unbind();
         logger.debug("leaving releaseMessagePort");
+    }
+
+    public synchronized void removeIoSession (IoSession ioSession) {
+        Node node = ioSessionToNode.get(ioSession);
+
+        nodes.remove(node);
+        ioSessionToNode.remove(ioSession);
     }
  }

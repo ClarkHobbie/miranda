@@ -491,7 +491,7 @@ class ClusterHandlerTest {
         ClusterHandler clusterHandler = new ClusterHandler();
         clusterHandler.sessionCreated(null);
 
-        List<IoSession> list = Cluster.getInstance().getNodes();
+        List<Node> list = Cluster.getInstance().getNodes();
         assert (list.size() > 0);
     }
 
@@ -500,8 +500,9 @@ class ClusterHandlerTest {
         Configurator.setRootLevel(Level.DEBUG);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        List<IoSession> nodeList = new ArrayList<>();
-        nodeList.add(mockIoSession);
+        List<Node> nodeList = new ArrayList<>();
+        Node node = new Node(null,null,mockIoSession);
+        nodeList.add(node);
 
         Cluster cluster = Cluster.getInstance();
         cluster.setNodes(nodeList);
@@ -515,8 +516,8 @@ class ClusterHandlerTest {
     @Test
     public void sessionOpened () throws Exception {
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        List<IoSession> nodeList = new ArrayList<>();
-        nodeList.add(mockIoSession);
+        List<Node> nodeList = new ArrayList<>();
+
 
         Cluster cluster = Cluster.getInstance();
         cluster.setNodes(nodeList);
@@ -762,12 +763,13 @@ class ClusterHandlerTest {
         ClusterHandler clusterHandler = new ClusterHandler();
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
+        Node node = new Node(null,null,mockIoSession);
 
         Cluster cluster = Cluster.getInstance();
 
         clusterHandler.inputClosed(mockIoSession);
 
-        assert(!Cluster.getNodes().contains(mockIoSession));
+        assert(!Cluster.getInstance().getNodes().contains(mockIoSession));
     }
 
     @Test
