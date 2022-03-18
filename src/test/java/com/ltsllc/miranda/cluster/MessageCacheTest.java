@@ -95,7 +95,7 @@ public class MessageCacheTest {
         assert (messageCache.getLocationFor(message.getMessageID()) != -1);
     }
 
-    public Message createTestMessage (UUID uuid) {
+    public static Message createTestMessage (UUID uuid) {
         Message message = new Message();
         message.setMessageID(uuid);
         message.setStatusURL("HTTP://GOOGLE.COM");

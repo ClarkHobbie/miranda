@@ -94,7 +94,21 @@ class ClusterTest {
         message.setStatusURL("http://goggle.com");
         UUID uuid = UUID.randomUUID();
         message.setMessageID(uuid);
+        byte[] contents = {1,2,3};
+        message.setContents(contents);
 
         Cluster.getInstance().informOfNewMessage(message);
+    }
+
+    @Test
+    public void testClustered () throws Exception {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
+        Cluster.defineStatics();
+        Cluster.getInstance().connect();
+
+        List<Node> list = Cluster.getInstance().getNodes();
+        assert (list.size() > 0);
     }
 }

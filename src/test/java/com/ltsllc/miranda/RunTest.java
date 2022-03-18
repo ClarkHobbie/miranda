@@ -8,16 +8,15 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 public class RunTest {
-    // @BeforeAll
-    // public static void setUp () {
-       // Configurator.setRootLevel(Level.DEBUG);
-    // }
+     @BeforeAll
+     public static void setUp () {
+        Configurator.setRootLevel(Level.DEBUG);
+     }
 
     @Test
     public void go () throws Exception {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
-        miranda.storeProperties();
         String[] args = {};
         miranda.startUp(args);
         while (true) {

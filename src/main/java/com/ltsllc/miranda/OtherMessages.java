@@ -1,7 +1,11 @@
 package com.ltsllc.miranda;
 
+import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
+import com.ltsllc.miranda.cluster.MessageCache;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.util.HashMap;
@@ -12,28 +16,24 @@ import java.util.UUID;
  * A file that contains messages we are not responsible for delivering.
  */
 public class OtherMessages {
-    protected static OtherMessages instance = new OtherMessages();
+    public static final Logger logger = LogManager.getLogger();
 
-    protected ImprovedFile file;
-    protected Map<UUID, Long> uuidToLocation = new HashMap<>();
-    protected Map<UUID,UUID> uuidToOwner = new HashMap<>();
-    protected long offset = 0;
+    protected static OtherMessages instance;
 
-    /**
-     * Define the classes static variables
-     *
-     * This is essentially an initialize for static members.  In particular, it
-     */
-    public static synchronized void defineStatics () {
-        instance.file = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_OTHER_MESSAGES));
+    static {
+        try {
+            instance = new OtherMessages();
+            instance.messageCache.setLoadLimit(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT)/10);
+        } catch (LtsllcException e) {
+            logger.error("Encountered exception during initialization",e);
+        }
     }
 
-    public long getOffset() {
-        return offset;
-    }
+    protected MessageCache messageCache;
+    protected Map<UUID, UUID> uuidToOwner = new HashMap<>();
 
-    public void setOffset(long offset) {
-        this.offset = offset;
+    protected OtherMessages () throws LtsllcException {
+        messageCache = new MessageCache();
     }
 
     public Map<UUID, UUID> getUuidToOwner() {
@@ -44,37 +44,12 @@ public class OtherMessages {
         this.uuidToOwner = uuidToOwner;
     }
 
-    /**
-     * Get the location for a UUID
-     *
-     * NOTE: this method returns -1 in the case where the location is undefined.
-     *
-     * @param uuid The UUID the caller wants a location for.
-     * @return The location that the caller wants a location for or -1 if the location is undefined.
-     */
-    public long getLocationFor (UUID uuid) {
-        Long location = uuidToLocation.get(uuid);
-        if (null == location) {
-            return -1;
-        }
-
-        return location.longValue();
+    public MessageCache getMessageCache() {
+        return messageCache;
     }
 
-    public Map<UUID, Long> getUuidToLocation() {
-        return uuidToLocation;
-    }
-
-    public void setUuidToLocation(Map<UUID, Long> uuidToLocation) {
-        this.uuidToLocation = uuidToLocation;
-    }
-
-    public ImprovedFile getFile() {
-        return file;
-    }
-
-    public void setFile(ImprovedFile file) {
-        this.file = file;
+    public void setMessageCache(MessageCache messageCache) {
+        this.messageCache = messageCache;
     }
 
     public static OtherMessages getInstance() {
@@ -83,74 +58,6 @@ public class OtherMessages {
 
     public static void setInstance(OtherMessages instance) {
         OtherMessages.instance = instance;
-    }
-
-    /**
-     * Record the message in the file
-     *
-     * @param message The message to record.
-     * @param uuid The owner of the message.
-     * @throws IOException If there was a problem manipulating the file.
-     */
-    public synchronized void record (Message message, UUID uuid) throws IOException {
-        FileWriter fileWriter = null;
-        BufferedWriter bufferedWriter = null;
-
-        try {
-            uuidToLocation.put(message.getMessageID(), offset);
-            recordOwner(message.getMessageID(), uuid);
-
-            recordOwner (message.getMessageID(), uuid);
-
-            file = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_OTHER_MESSAGES));
-            fileWriter = new FileWriter(file.toString(), true);
-            bufferedWriter = new BufferedWriter(fileWriter);
-            bufferedWriter.write(message.longToString());
-            bufferedWriter.newLine();
-
-            offset = file.length();
-        } finally {
-            if (bufferedWriter != null) {
-                bufferedWriter.close();
-            }
-
-            if (fileWriter != null) {
-                fileWriter.close();
-            }
-        }
-    }
-
-    /**
-     * Read a message from a certain location
-     *
-     * Note that the method throws an exception rather than returning a value.
-     *
-     * @param location Where to read.
-     * @return The message at that location.
-     * @throws IOException If there is a problem manipulating the file.
-     */
-    public Message read (long location) throws IOException {
-        Message returnValue = null;
-        FileReader fileReader = null;
-        BufferedReader bufferedReader = null;
-        try {
-            file = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_OTHER_MESSAGES));
-            fileReader = new FileReader(file);
-            bufferedReader = new BufferedReader(fileReader);
-            bufferedReader.skip(location);
-            String inline = bufferedReader.readLine();
-            returnValue = Message.readLongFormat(inline);
-        } finally {
-            if (bufferedReader != null) {
-                bufferedReader.close();
-            }
-
-            if (fileReader != null) {
-                fileReader.close();
-            }
-        }
-
-        return returnValue;
     }
 
     /**
@@ -183,6 +90,7 @@ public class OtherMessages {
 
         FileWriter fileWriter = null;
         BufferedWriter bufferedWriter = null;
+
         try {
             fileWriter = new FileWriter(temp, true);
             bufferedWriter = new BufferedWriter(fileWriter);
@@ -193,6 +101,10 @@ public class OtherMessages {
             bufferedWriter.write(ownerUuid.toString());
             bufferedWriter.newLine();
         } finally {
+            if (null != bufferedWriter) {
+                bufferedWriter.close();
+            }
+
             if (fileWriter != null) {
                 fileWriter.close();
             }
@@ -207,5 +119,10 @@ public class OtherMessages {
      */
     public synchronized UUID getOwnerOf (UUID uuid) {
         return uuidToOwner.get(uuid);
+    }
+
+    public void record (Message message, UUID owner) throws LtsllcException {
+        messageCache.add(message);
+        uuidToOwner.put(message.getMessageID(), owner);
     }
 }

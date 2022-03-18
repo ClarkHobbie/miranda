@@ -1,27 +1,32 @@
 package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.Message;
 import com.ltsllc.miranda.Miranda;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.mina.core.RuntimeIoException;
+import org.apache.mina.core.future.ConnectFuture;
 import org.apache.mina.core.future.ReadFuture;
 import org.apache.mina.core.future.WriteFuture;
 import org.apache.mina.core.service.IoAcceptor;
+import org.apache.mina.core.service.IoConnector;
 import org.apache.mina.core.session.IoSession;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.mina.filter.codec.textline.TextLineCodecFactory;
+import org.apache.mina.handler.stream.StreamIoHandler;
 import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
+import org.apache.mina.transport.socket.nio.NioSocketConnector;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -90,6 +95,24 @@ public class Cluster {
     protected static Cluster instance = new Cluster();
 
     protected Map<IoSession, Node> ioSessionToNode = new HashMap<>();
+    protected UUID uuid = UUID.randomUUID();
+    protected IoConnector ioConnector = null;
+
+    public IoConnector getIoConnector() {
+        return ioConnector;
+    }
+
+    public void setIoConnector(IoConnector ioConnector) {
+        this.ioConnector = ioConnector;
+    }
+
+    public UUID getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(UUID uuid) {
+        this.uuid = uuid;
+    }
 
     public Map<IoSession, Node> getIoSessionToNode() {
         return ioSessionToNode;
@@ -118,10 +141,15 @@ public class Cluster {
         nodes = n;
     }
 
-    public synchronized void addNode (Node node) {
+    public synchronized void addNode(Node node) {
         logger.debug("Adding new node, " + node + " to nodes");
-        nodes.add (node);
+        nodes.add(node);
         ioSessionToNode.put(node.getIoSession(), node);
+    }
+
+    public synchronized Node getNodeForSession(IoSession ioSession) {
+        Node node = ioSessionToNode.get(ioSession);
+        return node;
     }
 
     public static ImprovedRandom getRandomNumberGenerator() {
@@ -153,8 +181,7 @@ public class Cluster {
      */
     public void informOfNewMessage(Message message) throws LtsllcException {
         logger.debug("entering informOfNewMessage with message = " + message);
-        String contents = "MESSAGE CREATED " + message.getMessageID() + " CONTENTS: ";
-        contents += message.getContents();
+        String contents = "MESSAGE CREATED " + message.longToString();
 
         logger.debug("POST contents = " + contents);
         for (Node node : nodes) {
@@ -195,7 +222,7 @@ public class Cluster {
         String contents = "MESSAGE DELIVERED " + message.getMessageID();
         logger.debug("POST contents = " + contents);
         for (Node node : nodes) {
-            WriteFuture  future = node.getIoSession().write(contents);
+            WriteFuture future = node.getIoSession().write(contents);
             try {
                 future.await(IOD_TIMEOUT, IOD_TIMEOUT_UNITS);
             } catch (InterruptedException e) {
@@ -227,32 +254,134 @@ public class Cluster {
      * This method tries to connect to the other nodes of the cluster.  It sets up a listener for
      * new nodes
      */
-    public void connect () throws LtsllcException {
-        logger.debug("entering connect with nodes = " + nodes);
+    public void connect() throws LtsllcException {
+        uuid = UUID.randomUUID();
+        listen();
+        connectNodes();
+    }
+
+    /**
+     * Listen at the cluster port
+     *
+     * @throws LtsllcException If there is a problem listening
+     */
+    public void listen() throws LtsllcException {
+        logger.debug("entering listen ");
         if (nodes == null) {
             nodes = new ArrayList<>();
         }
-        logger.debug("building IoAcceptor");
-        IoAcceptor ioAcceptor = new NioSocketAcceptor();
-        ioAcceptor.getFilterChain().addLast( "codec", new ProtocolCodecFilter( new TextLineCodecFactory( Charset.forName( "UTF-8" ))));
-        ioAcceptor.setHandler(new ClusterHandler());
 
-        int tcpPort = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
-        SocketAddress socketAddress = new InetSocketAddress(tcpPort);
+        IoAcceptor ioAcceptor = new NioSocketAcceptor();
+        ioAcceptor.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory(Charset.forName("UTF-8"))));
+        Node node = new Node();
+        ioAcceptor.setHandler(new ClusterHandler(node));
+
+        int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
+
+        SocketAddress socketAddress = new InetSocketAddress(port);
 
         try {
-            logger.debug("listening at port " + tcpPort);
+            logger.debug("listening at port " + port);
             ioAcceptor.bind(socketAddress);
         } catch (IOException e) {
-            logger.error ("exception binding to cluster port, " + Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT), e);
+            logger.error("exception binding to cluster port, " + Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT), e);
             throw new LtsllcException(
                     "exception binding to cluster port, "
                             + Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT),
                     e
             );
         }
-        logger.debug("leaving connect with nodes = " + nodes);
+        logger.debug("leaving listen");
     }
+
+    /**
+     * Connect to the other nodes in the cluster
+     *
+     * @throws LtsllcException If there is a problem with the ClusterHandler for the connection.
+     */
+    public synchronized void connectNodes() throws LtsllcException {
+        logger.debug("entering connectNodes");
+
+        if (Miranda.getProperties().getProperty(Miranda.PROPERTY_CLUSTER).equals("off")) {
+            return;
+        }
+
+        List<Node> list = new ArrayList<>();
+        ioConnector = new NioSocketConnector();
+        Node newNode = new Node();
+        ioConnector.setHandler(new ClusterHandler(newNode));
+        ioConnector.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory()));
+
+
+        if (Miranda.getProperties().getProperty(Miranda.PROPERTY_FIRST_CLUSTER_NODE) != null) {
+            Node node = new Node();
+            node.setIpAddr(Miranda.getProperties().getProperty(Miranda.PROPERTY_FIRST_CLUSTER_NODE));
+            int port = Integer.parseInt(Miranda.getProperties().getProperty(Miranda.PROPERTY_FIRST_CLUSTER_PORT));
+            node.setPort(port);
+            node.setConnected(false);
+            list.add(node);
+        }
+
+        if (Miranda.getProperties().getProperty(Miranda.PROPERTY_SECOND_CLUSTER_NODE) != null) {
+            Node node = new Node();
+            node.setIpAddr(Miranda.getProperties().getProperty(Miranda.PROPERTY_SECOND_CLUSTER_NODE));
+            int port = Integer.parseInt(Miranda.getProperties().getProperty(Miranda.PROPERTY_SECOND_CLUSTER_NODE));
+            node.setPort(port);
+            node.setConnected(false);
+            list.add(node);
+        }
+
+        nodes = list;
+        List<Node> list2 = new ArrayList<>();
+        list2.addAll(nodes);
+        for (Node node : list2) {
+            if (node.isConnected()) {
+                continue;
+            }
+
+            node.setConnected(connectToNode(node,ioConnector));
+        }
+    }
+
+    /**
+     * Try to connect to a Node
+     *
+     * @param node The node to try and connect to.
+     * @param ioConnector Over what to make the connection.
+     * @return true if we were able to connect to the node, false otherwise.
+     */
+    public boolean connectToNode(Node node, IoConnector ioConnector) {
+        boolean returnValue = true;
+        logger.debug("entering connectToNode with node = " + node + ", and ioConnector = " + ioConnector);
+        InetSocketAddress addrRemote = new InetSocketAddress(node.getIpAddr(), node.getPort());
+        ConnectFuture future = ioConnector.connect(addrRemote);
+        future.awaitUninterruptibly();
+        IoSession ioSession = null;
+        try {
+            ioSession = future.getSession();
+            StringBuffer stringBuffer = new StringBuffer();
+            stringBuffer.append(ClusterHandler.START);
+            stringBuffer.append(" ");
+            node.setUuid(uuid);
+            stringBuffer.append(node.getUuid());
+            WriteFuture writeFuture = ioSession.write(stringBuffer.toString());
+            try {
+                writeFuture.await();
+            } catch (InterruptedException e) {
+            }
+            node.setUuid(uuid);
+            node.setIoSession(writeFuture.getSession());
+            addNode(node);
+            logger.debug("wrote " + stringBuffer.toString());
+        } catch (RuntimeIoException e) {
+            logger.error("encountered exception", e);
+            returnValue = false;
+            Miranda.getInstance().setClusterAlarm(System.currentTimeMillis() + 10);
+        }
+        logger.debug("leaving connectToNode with " + returnValue);
+        return returnValue;
+    }
+
 
     /**
      * Unbind all the ports that the cluster listens to
@@ -274,5 +403,62 @@ public class Cluster {
 
         nodes.remove(node);
         ioSessionToNode.remove(ioSession);
+    }
+
+    public synchronized static void defineStatics () {
+        instance = new Cluster();
+    }
+
+    /**
+     * try to connect to all nodes that we're not already connected to.
+     *
+     * @return Whether we are connected to all the other nodes.
+     */
+    public boolean reconnect () {
+        logger.debug("entering reconnect");
+        boolean returnValue = true;
+
+        //
+        // if we're already connected to everyone then there is nothing to do
+        //
+        if (connectedToAll()){
+            Miranda.getInstance().setClusterAlarm(-1);
+            logger.debug("we're all connected, returning true");
+            return true;
+        }
+
+        for (Node node : nodes) {
+            if (!node.isConnected()) {
+                if (connectToNode(node,ioConnector)) {
+                    node.setConnected(true);
+                } else {
+                    node.setConnected(false);
+                    Miranda.getInstance().setClusterAlarm(System.currentTimeMillis() + 10);
+                    returnValue = false;
+                }
+            }
+        }
+        logger.debug("leaving reconnect with " + returnValue);
+        return returnValue;
+    }
+
+    /**
+     * Return whether we are connected to all of the other nodes in the cluster
+     *
+     * @return Whether we are connected to all of the other nodes in the cluster.  True if we're connected false
+     * otherwise.
+     */
+    public boolean connectedToAll() {
+        boolean returnValue = true;
+
+        //
+        // create a list of the other nodes we know about
+        //
+        for (Node node : nodes ) {
+            if (!node.isConnected()) {
+                returnValue = false;
+            }
+        }
+        return returnValue;
     }
  }

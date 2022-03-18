@@ -37,7 +37,7 @@ public class ClusterHandler implements IoHandler {
     public static final String MESSAGE = "MESSAGE";
     public static final String MESSAGE_DELIVERED = "MESSAGE DELIVERED";
     public static final String MESSAGE_NOT_FOUND = "MESSAGE NOT FOUND";
-    public static final String NEW_MESSAGE = "NEW MESSAGE";
+    public static final String NEW_MESSAGE = "MESSAGE CREATED";
     public static final String NEW_NODE = "NEW NODE";
     public static final String NEW_NODE_CONFIRMED = "NEW NODE CONFIRMED";
     public static final String NEW_NODE_OVER = "NEW NODE OVER";
@@ -52,11 +52,18 @@ public class ClusterHandler implements IoHandler {
     protected ClusterConnectionStates state = ClusterConnectionStates.START;
     protected MessageCache cache = new MessageCache();
     protected Stack<ClusterConnectionStates> stateStack = new Stack<>();
-    protected UUID uuid; // our UUID
-    protected Map<UUID, IoSession> uuidToNode = new HashMap<>();
-    protected Map<UUID, UUID> uuidToOwner = new HashMap<>();
+    protected UUID uuid = UUID.randomUUID(); // our UUID
     protected UUID partnerID;
     protected Map<IoSession, Node> ioSessionToNode = new HashMap<>();
+    protected Node node = null;
+
+    public Node getNode() {
+        return node;
+    }
+
+    public void setNode(Node node) {
+        this.node = node;
+    }
 
     public Map<IoSession, Node> getIoSessionToNode() {
         return ioSessionToNode;
@@ -70,13 +77,6 @@ public class ClusterHandler implements IoHandler {
         return ourRandom;
     }
 
-    public Map<UUID, UUID> getUuidToOwner() {
-        return uuidToOwner;
-    }
-
-    public void setUuidToOwner(Map<UUID, UUID> uuidToOwner) {
-        this.uuidToOwner = uuidToOwner;
-    }
 
     public UUID getPartnerID() {
         return partnerID;
@@ -122,8 +122,9 @@ public class ClusterHandler implements IoHandler {
         this.cache = cache;
     }
 
-    public ClusterHandler () throws LtsllcException {
+    public ClusterHandler (Node node) throws LtsllcException {
         logger.debug("New instance of ClusterHandler");
+        this.node = node;
     }
 
     @Override
@@ -132,23 +133,14 @@ public class ClusterHandler implements IoHandler {
 
     @Override
     public void sessionOpened(IoSession ioSession) throws Exception {
-        //
-        // the START state handles this
-        //
     }
 
     @Override
     public void sessionClosed(IoSession ioSession) throws Exception {
-        logger.debug("IoSession closed, removing instance, " + ioSession + " from cluster");
-        Cluster.getInstance().removeIoSession(ioSession);
+        logger.debug("IoSession closed, removing instance from cluster");
+        Cluster.getInstance().removeNode(node);
     }
 
-    /**
-     * Do nothing for a sessionIdle message
-     *
-     * @param session The idle session.
-     * @param status Weather both nodes are idle.
-     */
     @Override
     public void sessionIdle(IoSession session, IdleStatus status) {}
 
@@ -185,7 +177,7 @@ public class ClusterHandler implements IoHandler {
     public void messageReceived(IoSession ioSession, Object o) throws IOException, LtsllcException {
         logger.debug("entering messageReceived with state = " + state + " and message = " + o);
         String s = (String) o;
-        s.toUpperCase();
+        s = s.toUpperCase();
         MessageType messageType = determineMessageType(s);
 
         switch (state) {
@@ -199,6 +191,11 @@ public class ClusterHandler implements IoHandler {
                     case NEW_NODE: {
                         handleNewNode(s, ioSession);
                         state =  ClusterConnectionStates.NEW_NODE;
+                        break;
+                    }
+
+                    case ERROR: {
+                        handleError(s, ioSession);
                         break;
                     }
 
@@ -321,10 +318,18 @@ public class ClusterHandler implements IoHandler {
                         break;
                     }
 
+                    case ERROR: {
+                        handleError(s, ioSession);
+                        break;
+                    }
+
+                    case START: {
+                        break;
+                    }
+
                     default: {
                         ioSession.write(ERROR);
-                        logger.error ("protocol error while in general state, sending error and returning to START");
-                        state = ClusterConnectionStates.START;
+                        handleError(s,ioSession);
                         break;
                     }
                 }
@@ -380,12 +385,12 @@ public class ClusterHandler implements IoHandler {
             messageType = MessageType.HEART_BEAT;
         } else if (s.startsWith(MESSAGE_DELIVERED)) {
             messageType = MessageType.MESSAGE_DELIVERED;
+        } else if (s.startsWith(NEW_MESSAGE)) {
+            messageType = MessageType.NEW_MESSAGE;
         } else if (s.startsWith(MESSAGE_NOT_FOUND)) {
             messageType = MessageType.MESSAGE_NOT_FOUND;
         } else if (s.startsWith(MESSAGE)) {
             messageType = MessageType.MESSAGE;
-        } else if (s.startsWith(NEW_MESSAGE)) {
-            messageType = MessageType.NEW_MESSAGE;
         } else if (s.startsWith(NEW_NODE_CONFIRMED)) {
             messageType = MessageType.NEW_NODE_CONFIRMED;
         } else if (s.startsWith(NEW_NODE_OVER)) {
@@ -528,8 +533,6 @@ public class ClusterHandler implements IoHandler {
             }
         }
 
-        logger.debug("setting owner to " + owner + ", our uuid = " + uuid);
-        uuidToOwner.put (messageID, owner);
         logger.debug("leaving handleBid");
     }
 
@@ -549,7 +552,7 @@ public class ClusterHandler implements IoHandler {
         strMessage += " ";
         strMessage += this.uuid;
         ioSession.write(strMessage);
-        uuidToNode.put (uuid, ioSession);
+
         synchronized (cache) {
             Set<UUID> set = cache.getUuidToOnline().keySet();
             Iterator<UUID> iterator = set.iterator();
@@ -580,22 +583,12 @@ public class ClusterHandler implements IoHandler {
         logger.debug("entering handleNewMessage with " + input);
 
         Scanner scanner = new Scanner(input);
-        scanner.skip("NEW MESSAGE ID:");
-        Message message = new Message();
-        UUID uuid = UUID.fromString(scanner.next());
-        message.setMessageID(uuid);
-        scanner.next(); // weird bug STATUS:
-        message.setStatusURL(scanner.next());
-        scanner.next(); // weird bug DELIVERY:
-        message.setDeliveryURL(scanner.next());
-        scanner.next(); // weird bug CONTENTS:
-        message.setContents(Utils.hexDecode(scanner.next()));
-
-        OtherMessages.getInstance().record(message, partnerUuid);
+        scanner.skip(ClusterHandler.NEW_MESSAGE);
+        Message message = Message.readLongFormat(scanner);
 
         cache.add(message);
 
-        uuidToOwner.put(message.getMessageID(), partnerUuid);
+        OtherMessages.getInstance().record(message, partnerUuid);
 
         logger.debug("leaving handleNewMessage");
     }
@@ -634,7 +627,6 @@ public class ClusterHandler implements IoHandler {
      */
     public synchronized void undefineMessage(Message message, UUID owner) {
         cache.undefineMessage(message);
-        uuidToOwner.put(message.getMessageID(), owner);
     }
 
     /**
@@ -657,8 +649,9 @@ public class ClusterHandler implements IoHandler {
         stringBuffer.append(uuid);
         ioSession.write(stringBuffer.toString());
 
-        Node node = new Node(null, null,ioSession);
-        Cluster.getInstance().addNode(node);
+        boolean connected = true;
+        node.setIoSession(ioSession);
+        node.setPartnerID(partnerID);
 
         state = ClusterConnectionStates.GENERAL;
     }
@@ -725,8 +718,20 @@ public class ClusterHandler implements IoHandler {
         logger.debug("leaving handleMessage");
     }
 
-    public synchronized UUID getOwnerOf (UUID uuid) {
-        return uuidToOwner.get(uuid);
+    /**
+     * Handle an error by sending a start message
+     *
+     * @param s The error message (unused).
+     * @param ioSession The session we should send the start over.
+     */
+    public void handleError (String s, IoSession ioSession) {
+        logger.debug("entering handleError");
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(ClusterHandler.START);
+        stringBuffer.append(" ");
+        stringBuffer.append(uuid);
+        ioSession.write(stringBuffer.toString());
+        logger.debug("wrote " + stringBuffer.toString());
+        logger.debug("leaving handleError");
     }
 }
-

@@ -1,29 +1,34 @@
 package com.ltsllc.miranda;
 
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
 import com.ltsllc.commons.LtsllcException;
-import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.Cluster;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.Filter;
+import org.apache.logging.log4j.core.config.Configurator;
+import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilder;
+import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory;
+import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration;
 import org.apache.mina.core.service.IoAcceptor;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.mina.filter.codec.textline.TextLineCodecFactory;
 import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
 import org.asynchttpclient.*;
-import org.asynchttpclient.Request;
-import org.asynchttpclient.Response;
-import org.eclipse.jetty.server.*;
+import org.eclipse.jetty.server.HttpConnectionFactory;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
-import java.io.*;
-import java.lang.reflect.Type;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
 
 public class Miranda {
     public static final int STATUS_SUCCESS = 200;
@@ -34,6 +39,7 @@ public class Miranda {
     public static final String PROPERTY_LONG_LOGGING_LEVEL = "loggingLevel";
     public static final String PROPERTY_SHORT_LOGGING_LEVEL = "l";
     public static final String PROPERTY_LOGGING_LEVEL = "loggingLevel";
+    public static final String PROPERTY_DEFAULT_LOGGING_LEVEL = "error";
     public static final String PROPERTY_BID_TIMEOUT = "timeouts.bid";
     public static final String PROPERTY_DEFAULT_BID_TIMEOUT = "500";
     public static final String PROPERTY_MESSAGE_PORT = "messagePort";
@@ -47,18 +53,40 @@ public class Miranda {
     public static final String PROPERTY_OTHER_MESSAGES = "otherMessages";
     public static final String PROPERTY_DEFAULT_OTHER_MESSAGES = "otherMessage.msg";
     public static final String PROPERTY_OWNER_FILE = "ownerFile";
-    public static final String PROPERTY_DEFAULT_OWNER_FILE = "owners.utu";
+    public static final String PROPERTY_DEFAULT_OWNER_FILE = "owners.msg";
+    public static final String PROPERTY_CLUSTER = "cluster";
+    public static final String PROPERTY_DEFAULT_CLUSTER = "off";
+    public static final String PROPERTY_FIRST_CLUSTER_NODE = "cluster.one.ip";
+    public static final String PROPERTY_SECOND_CLUSTER_NODE = "cluster.two.ip";
+    public static final String PROPERTY_FIRST_CLUSTER_PORT = "cluster.one.port";
+    public static final String PROPERTY_SECOND_CLUSTER_PORT = "cluster.two.port";
 
     protected static final Logger logger = LogManager.getLogger();
-
-
     protected static boolean keepRunning = true;
+    public static Miranda instance = new Miranda();
 
     protected Cluster cluster;
     protected static ImprovedProperties properties;
     protected List<Message> newMessageQueue = new ArrayList<>();
+    protected long clusterAlarm = -1;
 
     public Miranda() {
+    }
+
+    public long getClusterAlarm() {
+        return clusterAlarm;
+    }
+
+    public void setClusterAlarm(long clusterAlarm) {
+        this.clusterAlarm = clusterAlarm;
+    }
+
+    public static Miranda getInstance() {
+        return instance;
+    }
+
+    public static void setInstance(Miranda instance) {
+        Miranda.instance = instance;
     }
 
     public static boolean getKeepRunning() {
@@ -137,10 +165,31 @@ public class Miranda {
                 deliver(message);
             }
 
+            /*
+             * See if it is time to connect to other nodes in the cluster
+             */
+            connectToOtherNodes();
         }
         logger.debug("leaving mainLoop");
     }
 
+    public void connectToOtherNodes () {
+        //
+        // first see if it is time to connect
+        //
+        if (clusterAlarm == -1) {
+            return;
+        }
+
+        if (clusterAlarm < System.currentTimeMillis()) {
+            return;
+        }
+
+        //
+        // it's time to connect
+        //
+        Cluster.getInstance().reconnect();
+    }
     /*
      *
      * start up miranda
@@ -178,7 +227,6 @@ public class Miranda {
      */
     protected void startMessagePort (int portNumber) throws Exception {
         logger.debug("entering startMessagePort with portNumber = " + portNumber);
-
 
         // Create and configure a ThreadPool.
         QueuedThreadPool threadPool = new QueuedThreadPool();
@@ -309,6 +357,8 @@ public class Miranda {
         properties.setIfNull(PROPERTY_OTHER_MESSAGES, PROPERTY_DEFAULT_OTHER_MESSAGES);
         properties.setIfNull(PROPERTY_OWNER_FILE, PROPERTY_DEFAULT_OWNER_FILE);
         properties.setIfNull(PROPERTY_PROPERTIES_FILE, PROPERTY_DEFAULT_PROPERTIES_FILE);
+        properties.setIfNull(PROPERTY_LOGGING_LEVEL, PROPERTY_DEFAULT_LOGGING_LEVEL);
+        properties.setIfNull(PROPERTY_CLUSTER, PROPERTY_DEFAULT_CLUSTER);
     }
 
     public void storeProperties () throws IOException {

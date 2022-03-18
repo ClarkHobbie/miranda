@@ -97,6 +97,9 @@ public class Node {
         this.partnerID = partnerID;
     }
 
+    /**
+     * Map of owners
+     */
     protected static Map<UUID, UUID> uuidToOwner = new HashMap ();
 
     public static Map<UUID, UUID> getUuidToOwner() {
@@ -105,6 +108,42 @@ public class Node {
 
     public static void setUuidToOwner(Map<UUID, UUID> uuidToOwner) {
         Node.uuidToOwner = uuidToOwner;
+    }
+
+    /**
+     * Are we connected?
+     */
+    protected boolean connected = false;
+
+    /**
+     * The IP address of the node
+     */
+    protected String ipAddr = null;
+
+    protected int port = -1;
+
+    public int getPort() {
+        return port;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
+
+    public String getIpAddr() {
+        return ipAddr;
+    }
+
+    public void setIpAddr(String ipAddr) {
+        this.ipAddr = ipAddr;
+    }
+
+    public boolean isConnected() {
+        return connected;
+    }
+
+    public void setConnected(boolean connected) {
+        this.connected = connected;
     }
 
     public static UUID getOwnerFor (UUID messageID) {

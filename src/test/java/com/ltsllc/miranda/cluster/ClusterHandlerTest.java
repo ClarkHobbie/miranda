@@ -1,5 +1,6 @@
 package com.ltsllc.miranda.cluster;
 
+
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.commons.util.Utils;
@@ -49,7 +50,8 @@ class ClusterHandlerTest {
         strMessage += Utils.hexEncode(contents);
         strMessage.toUpperCase();
 
-        ClusterHandler clusterHandler = new ClusterHandler();
+        Node node = new Node();
+        ClusterHandler clusterHandler = new ClusterHandler(node);
         clusterHandler.setState(ClusterConnectionStates.START);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
@@ -64,7 +66,9 @@ class ClusterHandlerTest {
 
     @Test
     public void testStartStart () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        Node node = new Node();
+        node.setPartnerID(UUID.randomUUID());
+        ClusterHandler clusterHandler = new ClusterHandler(node);
         clusterHandler.setState(ClusterConnectionStates.START);
 
         String strMessage = ClusterHandler.START;
@@ -85,7 +89,7 @@ class ClusterHandlerTest {
         strMessage += " ";
         strMessage += uuid;
 
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.setState(ClusterConnectionStates.START);
         clusterHandler.setUuid(uuid);
 
@@ -101,7 +105,7 @@ class ClusterHandlerTest {
     @Test
     public void testStartBid () throws LtsllcException, IOException {
         String strMessage = "BID 123e4567-e89b-42d3-a456-556642440000 123456";
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.setState(ClusterConnectionStates.MESSAGE);
         IoSession mockIoSession = Mockito.mock(IoSession.class);
         Mockito.when(mockIoSession.write("ERROR")).thenReturn(null);
@@ -114,7 +118,7 @@ class ClusterHandlerTest {
 
     @Test
     public void testAuctionHeartBeat () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.setState(ClusterConnectionStates.AUCTION);
 
         String strMessage = ClusterHandler.HEART_BEAT;
@@ -137,7 +141,7 @@ class ClusterHandlerTest {
         strMessage += " ";
         strMessage += "1234";
 
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.setState(ClusterConnectionStates.AUCTION);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
@@ -159,7 +163,7 @@ class ClusterHandlerTest {
 
     @Test
     public void testAuctionBidLost () throws IOException, LtsllcException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.setState(ClusterConnectionStates.AUCTION);
 
         MessageCache mockCache = Mockito.mock(MessageCache.class);
@@ -186,7 +190,7 @@ class ClusterHandlerTest {
 
     @Test
     public void testAuctionGetMessageInCache () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.setState(ClusterConnectionStates.AUCTION);
 
         MessageCache mockCache = Mockito.mock(MessageCache.class);
@@ -230,7 +234,7 @@ class ClusterHandlerTest {
 
     @Test
     public void testAuctionGetMessageCacheMiss () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.setState(ClusterConnectionStates.AUCTION);
 
         MessageCache mockCache = Mockito.mock(MessageCache.class);
@@ -255,7 +259,7 @@ class ClusterHandlerTest {
 
     @Test
     public void testAuctionAuctionOver () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.setState(ClusterConnectionStates.AUCTION);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
@@ -272,7 +276,7 @@ class ClusterHandlerTest {
 
     @Test
     public void testGeneralAuction () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.setState(ClusterConnectionStates.GENERAL);
 
         MessageCache mockCache = Mockito.mock(MessageCache.class);
@@ -293,7 +297,7 @@ class ClusterHandlerTest {
 
     @Test
     public void testGeneralDeadNode () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.setState(ClusterConnectionStates.GENERAL);
 
         MessageCache mockCache = Mockito.mock(MessageCache.class);
@@ -317,7 +321,7 @@ class ClusterHandlerTest {
 
     @Test
     public void testGeneralGetMessageCacheMiss () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.setState(ClusterConnectionStates.GENERAL);
 
         MessageCache mockCache = Mockito.mock(MessageCache.class);
@@ -352,7 +356,7 @@ class ClusterHandlerTest {
 
     @Test
     public void testGeneralGetMessageCacheHit () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.setState(ClusterConnectionStates.GENERAL);
 
         MessageCache mockCache = Mockito.mock(MessageCache.class);
@@ -381,7 +385,7 @@ class ClusterHandlerTest {
 
     @Test
     public void testGeneralHeartBeat () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.setState(ClusterConnectionStates.GENERAL);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
@@ -395,7 +399,7 @@ class ClusterHandlerTest {
 
     @Test
     public void testGeneralMessageDelivered () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.setState(ClusterConnectionStates.GENERAL);
 
         MessageCache mockCache = Mockito.mock(MessageCache.class);
@@ -431,7 +435,7 @@ class ClusterHandlerTest {
         strMessage += " CONTENTS: ";
         strMessage += "010203";
 
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.setState(ClusterConnectionStates.GENERAL);
 
         UUID nodeUuid = UUID.randomUUID();
@@ -467,7 +471,7 @@ class ClusterHandlerTest {
         strMessage += uuid;
         strMessage += " 1234 ";
 
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.setState(ClusterConnectionStates.GENERAL);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
@@ -484,21 +488,23 @@ class ClusterHandlerTest {
 
     @Test
     public void sessionCreated () throws LtsllcException {
-        Configurator.setRootLevel(Level.DEBUG);
+        // Configurator.setRootLevel(Level.DEBUG);
+
 
         Cluster.getInstance().setNodes(new ArrayList<>());
 
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.sessionCreated(null);
 
         List<Node> list = Cluster.getInstance().getNodes();
-        assert (list.size() > 0);
+        assert (list.size() == 0);
     }
 
     @Test
     public void sessionClosed () throws Exception {
         Configurator.setRootLevel(Level.DEBUG);
 
+        Cluster.defineStatics();
         IoSession mockIoSession = Mockito.mock(IoSession.class);
         List<Node> nodeList = new ArrayList<>();
         Node node = new Node(null,null,mockIoSession);
@@ -507,7 +513,8 @@ class ClusterHandlerTest {
         Cluster cluster = Cluster.getInstance();
         cluster.setNodes(nodeList);
 
-        ClusterHandler clusterHandler = new ClusterHandler();
+        Node node2 = new Node();
+        ClusterHandler clusterHandler = new ClusterHandler(node2);
         clusterHandler.sessionClosed(mockIoSession);
 
         assert (nodeList.size() < 1);
@@ -522,7 +529,7 @@ class ClusterHandlerTest {
         Cluster cluster = Cluster.getInstance();
         cluster.setNodes(nodeList);
 
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.sessionOpened(mockIoSession);
 
         assert (nodeList.size() > 0);
@@ -530,7 +537,7 @@ class ClusterHandlerTest {
 
     @Test
     public void exceptionCaught () throws LtsllcException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
 
@@ -559,7 +566,7 @@ class ClusterHandlerTest {
 
         MessageCache mockMessageCache = Mockito.mock(MessageCache.class);
         Mockito.when(mockMessageCache.contains(messageUuid)).thenReturn(true);
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
 
         clusterHandler.setCache(mockMessageCache);
         clusterHandler.setOurRandom(mockImprovedRandom);
@@ -568,7 +575,7 @@ class ClusterHandlerTest {
 
         clusterHandler.handleBid(strMessage, mockIoSession, UUID.randomUUID());
 
-        assert (clusterHandler.getUuidToOwner().get(messageUuid) == ourUuid);
+        assert (OtherMessages.getInstance().getOwnerOf(messageUuid) == ourUuid);
         assert (clusterHandler.getState() == ClusterConnectionStates.AUCTION);
         Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write("BID " + messageUuid + " 456");
     }
@@ -588,7 +595,7 @@ class ClusterHandlerTest {
         Mockito.when(mockMessageCache.contains(messageUuid)).thenReturn(true);
         Mockito.when(mockMessageCache.get(messageUuid)).thenReturn(testMessage);
 
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
 
         clusterHandler.setCache(mockMessageCache);
 
@@ -613,7 +620,7 @@ class ClusterHandlerTest {
 
     @Test
     public void handleGetMessageAuction () throws IOException, LtsllcException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         UUID messageId = UUID.randomUUID();
         Message testMessage = createTestMessage(messageId);
 
@@ -647,7 +654,7 @@ class ClusterHandlerTest {
 
     @Test
     public void handleMessage () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.pushState(ClusterConnectionStates.GENERAL);
 
         Message message = createTestMessage(UUID.randomUUID());
@@ -667,7 +674,9 @@ class ClusterHandlerTest {
 
     @Test
     public void handleMessageDelivered () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        Node node = new Node();
+        node.setUuid(UUID.randomUUID());
+        ClusterHandler clusterHandler = new ClusterHandler(node);
 
         MessageCache mockMessageCache = Mockito.mock(MessageCache.class);
         clusterHandler.setCache(mockMessageCache);
@@ -689,9 +698,11 @@ class ClusterHandlerTest {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
+        Node node = new Node();
+        node.setPartnerID(UUID.randomUUID());
         StringBuffer stringBuffer = new StringBuffer();
 
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(node);
 
         UUID partnerId = UUID.randomUUID();
 
@@ -703,17 +714,15 @@ class ClusterHandlerTest {
         stringBuffer.append("NEW ");
         stringBuffer.append(message.longToString());
 
-        OtherMessages.defineStatics();
-
         clusterHandler.handleNewMessage(stringBuffer.toString(),partnerId);
 
         Mockito.verify(mockMessageCache, Mockito.atLeastOnce()).add(message);
-        assert (clusterHandler.getOwnerOf(message.getMessageID()) == partnerId);
+        assert (OtherMessages.getInstance().getOwnerOf(message.getMessageID()) == partnerId);
     }
 
     @Test
     public void handleNewNode () throws IOException, LtsllcException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
 
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append("NEW NODE ");
@@ -736,7 +745,7 @@ class ClusterHandlerTest {
 
     @Test
     public void handleStart () throws LtsllcException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         clusterHandler.setUuid(UUID.randomUUID());
 
         UUID partnerID = UUID.randomUUID();
@@ -760,7 +769,7 @@ class ClusterHandlerTest {
 
     @Test
     public void inputClosed () throws LtsllcException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
         Node node = new Node(null,null,mockIoSession);
@@ -774,7 +783,7 @@ class ClusterHandlerTest {
 
     @Test
     public void popState () throws LtsllcException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
         LtsllcException ltsllcException = null;
 
         try {
@@ -788,7 +797,7 @@ class ClusterHandlerTest {
 
     @Test
     public void sendMessage () throws LtsllcException {
-        ClusterHandler clusterHandler = new ClusterHandler();
+        ClusterHandler clusterHandler = new ClusterHandler(null);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
 

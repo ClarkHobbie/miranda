@@ -258,7 +258,7 @@ public class Message {
         Scanner scanner = new Scanner(s);
         scanner.skip ("MESSAGE ID: ");
         newMessage.messageID = UUID.fromString(scanner.next());
-        scanner.next(); // weird bug
+        scanner.next(); // <UUID>
         newMessage.statusURL = scanner.next();
         scanner.next(); // weird bug
         newMessage.deliveryURL = scanner.next();
@@ -268,6 +268,22 @@ public class Message {
         logger.debug("leaving readLongFormat with newMessage = " + newMessage);
 
         return newMessage;
+    }
+
+    public static Message readLongFormat (Scanner scanner) {
+        logger.debug ("entering readLong with scanner = " + scanner.toString());
+
+        Message message = new Message();
+        scanner.next(); scanner.next(); // weird bug MESSAGE ID
+        message.setMessageID(UUID.fromString(scanner.next()));
+        scanner.next(); // weird bug STATUS:
+        message.setStatusURL(scanner.next());
+        scanner.next(); // weird bug DELIVERY:
+        message.setDeliveryURL(scanner.next());
+        scanner.next(); // weird bug CONTENTS
+        message.contents = Utils.hexDecode(scanner.next());
+
+        return message;
     }
 
     /**

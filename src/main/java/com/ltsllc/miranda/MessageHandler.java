@@ -1,6 +1,7 @@
 package com.ltsllc.miranda;
 
 import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.miranda.cluster.Cluster;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.asynchttpclient.*;
@@ -89,8 +90,13 @@ public class MessageHandler extends AbstractHandler {
             }
         }
 
-        //tell the client (again!) that we created the message
-        tellClient(message.getStatusURL(), message.getMessageID());
+        try {
+            Cluster.getInstance().informOfNewMessage(message);
+            //tell the client (again!) that we created the message
+            tellClient(message.getStatusURL(), message.getMessageID());
+        } catch (LtsllcException e) {
+            logger.error("Encoutered exception while telling cluster of new message",e);
+        }
     }
 
     public void tellClient (String url, UUID uuid) {

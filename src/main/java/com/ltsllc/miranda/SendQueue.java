@@ -65,7 +65,7 @@ public class SendQueue {
      * Record the message in the file
      *
      * @param message The message to record.
-     * @throws IOException If there was a problem manipulating the file.
+     * @throws LtsllcException If there was a problem manipulating the file.
      */
     public synchronized void record (Message message) throws LtsllcException {
         messageCache.add(message);
