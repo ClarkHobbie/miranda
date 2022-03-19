@@ -94,11 +94,9 @@ public class LoggingMap {
     }
 
     /**
-     * Go through the logfile and copy only those messageIDs that are valid
-     *
-     * @param validator How the method determines if a UUID is valid.
+     * Go through the logfile and copy only those messageIDs that exist in uuidToUuid
      */
-    public synchronized void compact (Validator validator) throws IOException {
+    public synchronized void compact () throws IOException {
         FileReader fileReader = null;
         BufferedReader bufferedReader = null;
         FileWriter fileWriter = null;
@@ -111,7 +109,7 @@ public class LoggingMap {
             bufferedReader = new BufferedReader(fileReader);
 
             String oldFileName = file.toString();
-            newFile = new ImprovedFile(oldFileName + ".temp");
+            newFile = new ImprovedFile(file.toString() + ".temp");
             fileWriter = new FileWriter(newFile);
             bufferedWriter = new BufferedWriter(fileWriter);
 
@@ -119,12 +117,9 @@ public class LoggingMap {
             while (line != null) {
                 Scanner scanner = new Scanner(line);
                 UUID message = UUID.fromString(scanner.next());
-                if (validator.isValid(message)) {
-                    UUID owner = UUID.fromString(scanner.next());
+                if (uuidToUuid.containsKey(message)) {
                     bufferedWriter.write(line);
                     bufferedWriter.newLine();
-
-                    add (message, owner);
                 } else {
                     remove (message);
                 }
@@ -193,7 +188,7 @@ public class LoggingMap {
                 Scanner scanner = new Scanner(line);
                 UUID message = UUID.fromString(scanner.next());
                 UUID owner = UUID.fromString(scanner.next());
-                add(message, owner);
+                uuidToUuid.put(message, owner);
 
                 line = bufferedReader.readLine();
             }
