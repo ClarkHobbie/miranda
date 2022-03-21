@@ -29,6 +29,9 @@ import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+
+
+
 /**
  * A Miranda cluster
  *
@@ -273,7 +276,8 @@ public class Cluster {
 
         IoAcceptor ioAcceptor = new NioSocketAcceptor();
         ioAcceptor.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory(Charset.forName("UTF-8"))));
-        Node node = new Node();
+        ImprovedProperties p = Miranda.getProperties();
+        Node node = new Node(UUID.randomUUID(), p.getProperty(Miranda.PROPERTY_HOST), p.getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
         ioAcceptor.setHandler(new ClusterHandler(node));
 
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
@@ -308,26 +312,16 @@ public class Cluster {
 
         List<Node> list = new ArrayList<>();
         ioConnector = new NioSocketConnector();
-        Node newNode = new Node();
+        ImprovedProperties p = Miranda.getProperties();
+        Node newNode = new Node(UUID.randomUUID(), p.getProperty(Miranda.PROPERTY_HOST), p.getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
         ioConnector.setHandler(new ClusterHandler(newNode));
         ioConnector.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory()));
 
-
-        if (Miranda.getProperties().getProperty(Miranda.PROPERTY_FIRST_CLUSTER_NODE) != null) {
-            Node node = new Node();
-            node.setIpAddr(Miranda.getProperties().getProperty(Miranda.PROPERTY_FIRST_CLUSTER_NODE));
-            int port = Integer.parseInt(Miranda.getProperties().getProperty(Miranda.PROPERTY_FIRST_CLUSTER_PORT));
-            node.setPort(port);
-            node.setConnected(false);
-            list.add(node);
-        }
-
-        if (Miranda.getProperties().getProperty(Miranda.PROPERTY_SECOND_CLUSTER_NODE) != null) {
-            Node node = new Node();
-            node.setIpAddr(Miranda.getProperties().getProperty(Miranda.PROPERTY_SECOND_CLUSTER_NODE));
-            int port = Integer.parseInt(Miranda.getProperties().getProperty(Miranda.PROPERTY_SECOND_CLUSTER_NODE));
-            node.setPort(port);
-            node.setConnected(false);
+        int count = 1;
+        while (null != p.getProperty("cluster." + count + ".host")) {
+            String host = p.getProperty("cluser." + count + ".host");
+            int port = p.getIntProperty("cluster." + count + ".port");
+            Node node = new Node(host, port);
             list.add(node);
         }
 
@@ -353,7 +347,7 @@ public class Cluster {
     public boolean connectToNode(Node node, IoConnector ioConnector) {
         boolean returnValue = true;
         logger.debug("entering connectToNode with node = " + node + ", and ioConnector = " + ioConnector);
-        InetSocketAddress addrRemote = new InetSocketAddress(node.getIpAddr(), node.getPort());
+        InetSocketAddress addrRemote = new InetSocketAddress(node.getHost(), node.getPort());
         ConnectFuture future = ioConnector.connect(addrRemote);
         future.awaitUninterruptibly();
         IoSession ioSession = null;
@@ -362,14 +356,13 @@ public class Cluster {
             StringBuffer stringBuffer = new StringBuffer();
             stringBuffer.append(ClusterHandler.START);
             stringBuffer.append(" ");
-            node.setUuid(uuid);
-            stringBuffer.append(node.getUuid());
+            stringBuffer.append(uuid);
+
             WriteFuture writeFuture = ioSession.write(stringBuffer.toString());
             try {
                 writeFuture.await();
             } catch (InterruptedException e) {
             }
-            node.setUuid(uuid);
             node.setIoSession(writeFuture.getSession());
             addNode(node);
             logger.debug("wrote " + stringBuffer.toString());
@@ -388,14 +381,13 @@ public class Cluster {
      *
      * Note that this method should unbind ALL our ports, not just those for the cluster
      */
-    public synchronized void releasePorts() {
+    public synchronized void releasePorts() throws InterruptedException {
         logger.debug("entering releaseMessagePort");
-        logger.debug("releasing all ports");
-        IoAcceptor ioAcceptor = new NioSocketAcceptor();
-        ioAcceptor.getFilterChain().addLast( "codec", new ProtocolCodecFilter( new TextLineCodecFactory( Charset.forName( "UTF-8" ))));
+        logger.debug("releasing cluster port");
 
+        IoAcceptor ioAcceptor = new NioSocketAcceptor();
         ioAcceptor.unbind();
-        logger.debug("leaving releaseMessagePort");
+        logger.debug("leaving releasePort");
     }
 
     public synchronized void removeIoSession (IoSession ioSession) {

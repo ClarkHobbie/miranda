@@ -4,6 +4,7 @@ import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.MessageCache;
+import com.ltsllc.miranda.logcache.LoggingCache;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -30,13 +31,13 @@ public class SendQueue {
     /**
      * The messages in the sendQueue
      */
-    protected MessageCache messageCache = null;
+    protected LoggingCache messageCache = null;
 
-    public MessageCache getMessageCache() {
+    public LoggingCache getMessageCache() {
         return messageCache;
     }
 
-    public void setMessageCache(MessageCache messageCache) {
+    public void setMessageCache(LoggingCache messageCache) {
         this.messageCache = messageCache;
     }
 
@@ -49,16 +50,21 @@ public class SendQueue {
     }
 
     protected SendQueue () throws LtsllcException {
-        messageCache = new MessageCache();
+        ImprovedFile logfile = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_SEND_FILE));
+        int loadLimit = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
+        messageCache = new LoggingCache(logfile, loadLimit);
     }
-     /**
+
+    /**
      * Define the classes static variables
-     *
+     * <P>
      * This is essentially an initialize for static members.  In particular, it defines the send queue file.
      */
     public static synchronized void defineStatics () throws LtsllcException {
+        ImprovedFile logfile = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_SEND_FILE));
+        int loadLimit = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
         instance = new SendQueue();
-        instance.messageCache = new MessageCache();
+        instance.messageCache = new LoggingCache(logfile, loadLimit);
     }
 
     /**
@@ -67,7 +73,7 @@ public class SendQueue {
      * @param message The message to record.
      * @throws LtsllcException If there was a problem manipulating the file.
      */
-    public synchronized void record (Message message) throws LtsllcException {
+    public synchronized void record (Message message) throws LtsllcException, IOException {
         messageCache.add(message);
     }
 
@@ -104,7 +110,7 @@ public class SendQueue {
         getInstance().instanceRecover();
     }
 
-    public void instanceRecover () {
+    public void instanceRecover () throws LtsllcException, IOException {
         messageCache.recover();
     }
 
@@ -115,7 +121,7 @@ public class SendQueue {
      *
      * @param message The message to add.
      */
-    public synchronized void add(Message message) throws LtsllcException {
+    public synchronized void add(Message message) throws LtsllcException, IOException {
         messageCache.add(message);
     }
 
@@ -134,14 +140,9 @@ public class SendQueue {
      * @throws LtsllcException Thrown if there is a problem
      */
     public synchronized void clearAll () throws LtsllcException {
-        messageCache = new MessageCache();
-    }
-
-    /**
-     * Remove any null messages from the list
-     */
-    public synchronized void removeNulls () {
-        messageCache.removeNulls();
+        ImprovedFile logfile = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_SEND_FILE));
+        int loadLimit = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
+        messageCache = new LoggingCache(logfile, loadLimit);
     }
 }
 

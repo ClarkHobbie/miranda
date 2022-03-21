@@ -4,7 +4,6 @@ import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.Message;
 import com.ltsllc.miranda.Miranda;
-import com.ltsllc.miranda.cluster.MessageCacheTest;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.junit.jupiter.api.BeforeAll;
@@ -68,9 +67,9 @@ public class TestLoggingCache extends TestSuperclass {
             Miranda miranda = new Miranda();
             miranda.loadProperties();
 
-            Message message1 = MessageCacheTest.createTestMessage(UUID.randomUUID());
-            Message message2 = MessageCacheTest.createTestMessage(UUID.randomUUID());
-            Message message3 = MessageCacheTest.createTestMessage(UUID.randomUUID());
+            Message message1 = createTestMessage(UUID.randomUUID());
+            Message message2 = createTestMessage(UUID.randomUUID());
+            Message message3 = createTestMessage(UUID.randomUUID());
 
             logfile = new ImprovedFile("testLogfile.msg");
 

@@ -86,16 +86,7 @@ public class TestLoggingMap extends TestSuperclass {
             loggingMap.add(otherMessageID, ownerUuid);
             loggingMap.remove(otherMessageID);
 
-            Validator validator = new Validator() {
-                @Override
-                public boolean isValid(UUID uuid) {
-                    if (uuid.equals(otherMessageID)) {
-                        return false;
-                    } else {
-                        return true;
-                    }
-                }
-            };
+
 
             loggingMap.compact ();
             fileReader = new FileReader(logfile);

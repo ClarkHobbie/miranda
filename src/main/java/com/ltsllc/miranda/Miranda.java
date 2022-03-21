@@ -4,6 +4,8 @@ package com.ltsllc.miranda;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.Cluster;
+import com.ltsllc.miranda.cluster.ClusterHandler;
+import com.ltsllc.miranda.cluster.Node;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.Filter;
@@ -12,6 +14,7 @@ import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilder;
 import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory;
 import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration;
 import org.apache.mina.core.service.IoAcceptor;
+import org.apache.mina.core.session.IoSession;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.mina.filter.codec.textline.TextLineCodecFactory;
 import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
@@ -25,10 +28,13 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.UUID;
 
 public class Miranda {
     public static final int STATUS_SUCCESS = 200;
@@ -56,10 +62,10 @@ public class Miranda {
     public static final String PROPERTY_DEFAULT_OWNER_FILE = "owners.msg";
     public static final String PROPERTY_CLUSTER = "cluster";
     public static final String PROPERTY_DEFAULT_CLUSTER = "off";
-    public static final String PROPERTY_FIRST_CLUSTER_NODE = "cluster.one.ip";
-    public static final String PROPERTY_SECOND_CLUSTER_NODE = "cluster.two.ip";
-    public static final String PROPERTY_FIRST_CLUSTER_PORT = "cluster.one.port";
-    public static final String PROPERTY_SECOND_CLUSTER_PORT = "cluster.two.port";
+    public static final String PROPERTY_HOST = "host";
+    public static final String PROPERTY_OTHER_MESSAGES_LOAD_LIMIT = "otherMessages.loadLimit";
+    public static final String PROPERTY_DEFAULT_OTHER_MESSAGES_LOAD_LIMIT = "104856670"; // 10 MegaBytes
+
 
     protected static final Logger logger = LogManager.getLogger();
     protected static boolean keepRunning = true;
@@ -69,8 +75,10 @@ public class Miranda {
     protected static ImprovedProperties properties;
     protected List<Message> newMessageQueue = new ArrayList<>();
     protected long clusterAlarm = -1;
+    protected Server server;
 
     public Miranda() {
+        cluster = new Cluster();
     }
 
     public long getClusterAlarm() {
@@ -214,8 +222,8 @@ public class Miranda {
         logger.debug("starting the message port");
         startMessagePort(properties.getIntProperty(PROPERTY_MESSAGE_PORT));
 
-        SendQueue.shouldRecover();
-        SendQueue.recover();
+        if (SendQueue.shouldRecover())
+            SendQueue.recover();
 
         logger.debug("Leaving startup");
     }
@@ -227,12 +235,21 @@ public class Miranda {
      */
     protected void startMessagePort (int portNumber) throws Exception {
         logger.debug("entering startMessagePort with portNumber = " + portNumber);
+        /*
+        IoAcceptor ioAcceptor = new NioSocketAcceptor();
+        ioAcceptor.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory(Charset.forName("UTF-8"))));
+        ioAcceptor.setHandler(new MirandaHandler());
+
+        SocketAddress addr = new InetSocketAddress(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_MESSAGE_PORT));
+        ioAcceptor.bind (addr);
+
+        */
 
         // Create and configure a ThreadPool.
         QueuedThreadPool threadPool = new QueuedThreadPool();
         threadPool.setName("server");
 
-        Server server = new Server(threadPool);
+        server = new Server(threadPool);
 
         // Create a ServerConnector to accept connections from clients.
         ServerConnector serverConnector = new ServerConnector(server, 3, 3, new HttpConnectionFactory());
@@ -245,8 +262,12 @@ public class Miranda {
         // Set a simple Handler to handle requests/responses.
         server.setHandler(new MessageHandler());
 
-        // Start the Server so it starts accepting connections from clients.
+
+
+        // Start the Server, so it starts accepting connections from clients.
         server.start();
+
+
 
         logger.debug("leaving startMessagePort");
     }
@@ -359,6 +380,7 @@ public class Miranda {
         properties.setIfNull(PROPERTY_PROPERTIES_FILE, PROPERTY_DEFAULT_PROPERTIES_FILE);
         properties.setIfNull(PROPERTY_LOGGING_LEVEL, PROPERTY_DEFAULT_LOGGING_LEVEL);
         properties.setIfNull(PROPERTY_CLUSTER, PROPERTY_DEFAULT_CLUSTER);
+        properties.setIfNull(PROPERTY_OTHER_MESSAGES_LOAD_LIMIT, PROPERTY_DEFAULT_OTHER_MESSAGES_LOAD_LIMIT);
     }
 
     public void storeProperties () throws IOException {
@@ -394,10 +416,8 @@ public class Miranda {
     /**
      * Release all the ports we are bound to
      */
-    public void releasePorts () {
-        if (cluster != null) {
-            cluster.releasePorts();
-        }
+    public void releasePorts () throws Exception {
+        Cluster.getInstance().releasePorts();
         releaseMessagePort();
     }
 
@@ -406,13 +426,13 @@ public class Miranda {
      *
      * Note that this method unbinds ALL ports, not just the message port.
      */
-    public synchronized void releaseMessagePort ()  {
+    public synchronized void releaseMessagePort () throws Exception {
         logger.debug("entering releaseMessagePort.");
-        logger.debug("releasing ports");
-        IoAcceptor ioAcceptor = new NioSocketAcceptor();
-        ioAcceptor.getFilterChain().addLast( "codec", new ProtocolCodecFilter( new TextLineCodecFactory( Charset.forName( "UTF-8" ))));
-
-        ioAcceptor.unbind();
+        logger.debug("server = " + server);
+        if (server != null) {
+            server.stop();
+            //server.destroy();
+        }
         logger.debug("leaving releaseMessagePort");
 
     }

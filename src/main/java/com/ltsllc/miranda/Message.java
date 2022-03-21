@@ -256,7 +256,7 @@ public class Message {
         logger.debug("entering readLongFormat with s = " + s);
         Message newMessage = new Message();
         Scanner scanner = new Scanner(s);
-        scanner.skip ("MESSAGE ID: ");
+        scanner.next();scanner.next(); // MESSAGE ID:
         newMessage.messageID = UUID.fromString(scanner.next());
         scanner.next(); // <UUID>
         newMessage.statusURL = scanner.next();
@@ -337,6 +337,20 @@ public class Message {
         scanner.skip("LAST STATUS:");
         newMessage.status = Integer.parseInt(scanner.next());
         scanner.skip("CONTENTS:");
+        newMessage.contents = Utils.hexDecode(scanner.next());
+
+        return newMessage;
+    }
+
+    public static Message readShorterFormat (Scanner scanner) {
+        Message newMessage = new Message();
+        scanner.next(); // ID:
+        newMessage.messageID = UUID.fromString(scanner.next());
+        scanner.next(); // STATUS:
+        newMessage.statusURL = scanner.next();
+        scanner.next(); // DELIVERY:
+        newMessage.deliveryURL = scanner.next();
+        scanner.next(); // CONTENTS:
         newMessage.contents = Utils.hexDecode(scanner.next());
 
         return newMessage;

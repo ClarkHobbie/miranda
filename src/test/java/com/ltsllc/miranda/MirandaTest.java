@@ -2,23 +2,24 @@ package com.ltsllc.miranda;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.util.ImprovedProperties;
-import com.ltsllc.commons.util.Utils;
 import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.cluster.Node;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.mina.core.session.IoSession;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.io.*;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStreamWriter;
 import java.net.Socket;
-import java.net.URISyntaxException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+import java.util.UUID;
 
 /**
  * Test the main functions of Miranda
@@ -36,56 +37,76 @@ class MirandaTest {
     }
 
     @Test
-    void loadProperties() throws LtsllcException {
+    void loadProperties() throws Exception {
         Miranda miranda = new Miranda();
-        miranda.loadProperties();
+        try {
+            miranda.loadProperties();
+        } finally {
+            miranda.releasePorts();
+        }
     }
 
     @Test
     void startMessagePort () throws Exception {
         Miranda miranda = new Miranda();
-        miranda.loadProperties();
-        miranda.startMessagePort(1234);
+        try {
+            miranda.loadProperties();
+            miranda.startMessagePort(1234);
+        } finally {
+            miranda.releasePorts();
+        }
     }
 
     @Test
-    void processArguments () throws LtsllcException {
+    void processArguments () throws Exception {
         Miranda miranda = new Miranda();
-        miranda.loadProperties();
-        String[] args = {"-one", "two"};
-        Properties properties = miranda.processArguments(args);
-        assert (properties.getProperty("o").equals("o"));
-        assert (properties.getProperty("n").equals("n"));
-        assert (properties.getProperty("e").equals("two"));
-        String[] args2 = { "-l", "two","-RT"};
-        Properties properties2 = miranda.processArguments(args2);
-        assert (properties2.getProperty("l").equals("two"));
-        assert (properties2.getProperty("R").equals("R"));
-        assert (properties2.getProperty("T").equals("T"));
+        try {
+            miranda.loadProperties();
+            String[] args = {"-one", "two"};
+            Properties properties = miranda.processArguments(args);
+            assert (properties.getProperty("o").equals("o"));
+            assert (properties.getProperty("n").equals("n"));
+            assert (properties.getProperty("e").equals("two"));
+            String[] args2 = {"-l", "two", "-RT"};
+            Properties properties2 = miranda.processArguments(args2);
+            assert (properties2.getProperty("l").equals("two"));
+            assert (properties2.getProperty("R").equals("R"));
+            assert (properties2.getProperty("T").equals("T"));
+        } finally {
+            miranda.releasePorts();
+        }
     }
 
     @Test
-    void processArgument () throws LtsllcException {
+    void processArgument () throws Exception {
         Miranda miranda = new Miranda();
-        ImprovedProperties improvedProperties = new ImprovedProperties();
-        miranda.processArgument("prev", "-abc", improvedProperties);
-        assert (improvedProperties.getProperty("a").equals("a"));
-        assert (improvedProperties.getProperty("b").equals("b"));
-        assert (improvedProperties.getProperty("c").equals("c"));
+        try {
+            ImprovedProperties improvedProperties = new ImprovedProperties();
+            miranda.processArgument("prev", "-abc", improvedProperties);
+            assert (improvedProperties.getProperty("a").equals("a"));
+            assert (improvedProperties.getProperty("b").equals("b"));
+            assert (improvedProperties.getProperty("c").equals("c"));
 
-        improvedProperties = new ImprovedProperties();
-        miranda.processArgument("prev", "abc", improvedProperties);
-        assert (improvedProperties.getProperty("prev").equals("abc"));
+            improvedProperties = new ImprovedProperties();
+            miranda.processArgument("prev", "abc", improvedProperties);
+            assert (improvedProperties.getProperty("prev").equals("abc"));
+        } finally {
+            miranda.releasePorts();
+        }
    }
 
 
     @Test
     public void startUpNoFile () throws Exception {
-        Configurator.setRootLevel(Level.DEBUG);
         Miranda miranda = new Miranda();
-        miranda.loadProperties();
-        String[] args = new String[0];
-        miranda.startUp(args);
+        try {
+            miranda.loadProperties();
+            Cluster.defineStatics();
+            String[] args = new String[0];
+            miranda.startUp(args);
+        } finally {
+            miranda.releasePorts();
+        }
     }
 
     /*
@@ -104,69 +125,80 @@ class MirandaTest {
         list.add(m1);
 
         Miranda miranda = new Miranda();
-        miranda.loadProperties();
-        miranda.releasePorts();
+        try {
 
-        String sendFileName = miranda.getProperties().getProperty(Miranda.PROPERTY_SEND_FILE);
-        FileOutputStream fileOutputStream = new FileOutputStream(sendFileName);
-        OutputStreamWriter outputStreamWriter = new OutputStreamWriter(fileOutputStream);
 
-        GsonBuilder builder = new GsonBuilder();
-        builder.setPrettyPrinting();
+            miranda.loadProperties();
+            miranda.releasePorts();
 
-        Gson gson = builder.create();
-        gson.toJson(list, outputStreamWriter);
+            String sendFileName = miranda.getProperties().getProperty(Miranda.PROPERTY_SEND_FILE);
+            FileOutputStream fileOutputStream = new FileOutputStream(sendFileName);
+            OutputStreamWriter outputStreamWriter = new OutputStreamWriter(fileOutputStream);
 
-        outputStreamWriter.close();
-        fileOutputStream.close();
+            GsonBuilder builder = new GsonBuilder();
+            builder.setPrettyPrinting();
 
-        String[] args = new String[0];
+            Gson gson = builder.create();
+            gson.toJson(list, outputStreamWriter);
 
-        miranda.startUp(args);
+            outputStreamWriter.close();
+            fileOutputStream.close();
 
-        list = SendQueue.getInstance().copyMessages();
-        assert (list != null && list.size() > 0);
-        Message m2 = list.get(0);
-        assert (m1.equals(m2));
+            String[] args = new String[0];
+
+            miranda.startUp(args);
+
+            list = SendQueue.getInstance().copyMessages();
+            assert (list != null && list.size() > 0);
+            Message m2 = list.get(0);
+            assert (m1.equals(m2));
+        } finally {
+            miranda.releasePorts();
+        }
     }
 
     @Test
     public void newNode () throws Exception {
         Miranda miranda = new Miranda();
-        miranda.loadProperties();
-        String[] args = new String[0];
-        miranda.startUp(args);
-
-        MirandaThread mirandaThread  = new MirandaThread();
-        mirandaThread.setMiranda(miranda);
-        mirandaThread.setSleepTime(500);
-
-        mirandaThread.start();
-
-        Socket socket = null;
-        InputStream inputStream = null;
 
         try {
-            socket = new Socket("localhost", miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
-            inputStream = socket.getInputStream();
+            miranda.loadProperties();
+            String[] args = new String[0];
+            miranda.startUp(args);
 
-            logger.debug("MirandaThread running");
-            synchronized (this) {
-                wait(1000);
+            MirandaThread mirandaThread = new MirandaThread();
+            mirandaThread.setMiranda(miranda);
+            mirandaThread.setSleepTime(500);
+
+            mirandaThread.start();
+
+            Socket socket = null;
+            InputStream inputStream = null;
+
+            try {
+                socket = new Socket("localhost", miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
+                inputStream = socket.getInputStream();
+
+                logger.debug("MirandaThread running");
+                synchronized (this) {
+                    wait(1000);
+                }
+                List<Node> nodes = Cluster.getInstance().getNodes();
+                System.out.println(nodes.size());
+                assert (nodes.size() > 0);
+            } finally {
+                if (inputStream != null) {
+                    inputStream.close();
+                }
+                if (socket != null) {
+                    socket.close();
+                }
+                if (mirandaThread != null) {
+                    mirandaThread.setKeepRunning(false);
+                }
             }
-            List<Node> nodes = Cluster.getInstance().getNodes();
-            System.out.println(nodes.size());
-            assert (nodes.size() > 0);
         } finally {
-            if (inputStream != null) {
-                inputStream.close();
-            }
-            if (socket != null) {
-                socket.close();
-            }
-            if (mirandaThread != null) {
-                mirandaThread.setKeepRunning(false);
-            }
+            miranda.releasePorts();
         }
 
     }

@@ -28,7 +28,7 @@ class ClusterTest {
 
 
     @Test
-    public void connect () throws LtsllcException {
+    public void connect () throws LtsllcException, InterruptedException {
         Cluster.getInstance().setNodes(new ArrayList<>());
         ImprovedRandom improvedRandom = new ImprovedRandom();
         Cluster.setRandomNumberGenerator(improvedRandom);

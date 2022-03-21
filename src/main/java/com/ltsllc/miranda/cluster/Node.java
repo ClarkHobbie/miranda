@@ -28,7 +28,15 @@ public class Node {
         this.partnerID = partnerID;
     }
 
-    public Node () {
+    public Node (UUID myUuid, String host, int myPort) {
+        this.uuid = myUuid;
+        this.host = host;
+        this.port = myPort;
+    }
+
+    public Node (String host, int port) {
+        this.host = host;
+        this.port = port;
     }
 
 
@@ -116,11 +124,22 @@ public class Node {
     protected boolean connected = false;
 
     /**
-     * The IP address of the node
+     * The IP address host of the node
      */
-    protected String ipAddr = null;
+    protected String host = null;
 
+    /**
+     * The port portion of the IP address
+     */
     protected int port = -1;
+
+    public String getHost() {
+        return host;
+    }
+
+    public void setHost(String host) {
+        this.host = host;
+    }
 
     public int getPort() {
         return port;
@@ -130,13 +149,6 @@ public class Node {
         this.port = port;
     }
 
-    public String getIpAddr() {
-        return ipAddr;
-    }
-
-    public void setIpAddr(String ipAddr) {
-        this.ipAddr = ipAddr;
-    }
 
     public boolean isConnected() {
         return connected;

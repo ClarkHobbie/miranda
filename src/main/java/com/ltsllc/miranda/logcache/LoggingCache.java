@@ -2,12 +2,12 @@ package com.ltsllc.miranda.logcache;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
+import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.Message;
+import com.ltsllc.miranda.Miranda;
 
 import java.io.*;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * An object that records objects as they come into the class, keeps a portion of those objects in memory, and recovers
@@ -396,5 +396,52 @@ public class LoggingCache {
                 fis.close();
             }
         }
+    }
+
+    public boolean contains(UUID uuid) {
+        return (null != uuidToLocation.get(uuid));
+    }
+
+    public synchronized List<Message> copyAllMessages () throws IOException {
+        List<Message> list = new ArrayList<>();
+        list.addAll(uuidToMessage.values());
+
+        if (!file.exists()) {
+            return new ArrayList<>();
+        }
+
+        FileReader fileReader = null;
+        BufferedReader bufferedReader = null;
+        try {
+            fileReader = new FileReader(file);
+            bufferedReader = new BufferedReader(fileReader);
+            String line = bufferedReader.readLine();
+            while (line != null) {
+                Message message = Message.readLongFormat(line);
+                list.add(message);
+                line = bufferedReader.readLine();
+            }
+        } finally {
+            if (bufferedReader != null) {
+                bufferedReader.close();
+            }
+
+            if (fileReader != null) {
+                fileReader.close();
+            }
+        }
+
+        return list;
+    }
+
+    public synchronized boolean isInMemory (UUID uuid) {
+        return uuidToInMemory.get(uuid);
+    }
+
+    public synchronized void undefine (UUID uuid) {
+        uuidToMessage.remove(uuid);
+        uuidToLocation.remove(uuid);
+        uuidToTimesReferenced.remove(uuid);
+        uuidToInMemory.remove(uuid);
     }
 }

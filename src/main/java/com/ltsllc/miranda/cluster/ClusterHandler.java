@@ -1,11 +1,14 @@
 package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.commons.util.Utils;
 import com.ltsllc.miranda.Message;
 import com.ltsllc.miranda.MessageType;
+import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.OtherMessages;
+import com.ltsllc.miranda.logcache.LoggingCache;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.mina.core.service.IoHandler;
@@ -50,7 +53,7 @@ public class ClusterHandler implements IoHandler {
      * The connection state.  The connection starts in the start state.
      */
     protected ClusterConnectionStates state = ClusterConnectionStates.START;
-    protected MessageCache cache = new MessageCache();
+    protected LoggingCache cache = null;
     protected Stack<ClusterConnectionStates> stateStack = new Stack<>();
     protected UUID uuid = UUID.randomUUID(); // our UUID
     protected UUID partnerID;
@@ -114,17 +117,21 @@ public class ClusterHandler implements IoHandler {
         this.state = state;
     }
 
-    public MessageCache getCache() {
+    public LoggingCache getCache() {
         return cache;
     }
 
-    public void setCache(MessageCache cache) {
+    public void setCache(LoggingCache cache) {
         this.cache = cache;
     }
 
     public ClusterHandler (Node node) throws LtsllcException {
         logger.debug("New instance of ClusterHandler");
         this.node = node;
+
+        ImprovedFile logfile = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_SEND_FILE));
+        int loadLimit = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
+        cache = new LoggingCache(logfile, loadLimit);
     }
 
     @Override
@@ -446,7 +453,7 @@ public class ClusterHandler implements IoHandler {
      * @param uuid The Message to send.  NOTE: the uuid must exist in the message cache.
      * @param ioSession The IoSession over which to send it.
      */
-    protected void sendMessage (UUID uuid, IoSession ioSession) throws IOException {
+    protected void sendMessage (UUID uuid, IoSession ioSession) throws IOException, LtsllcException {
         Message message = cache.get(uuid);
         String strMessage = message.longToString();
         ioSession.write (strMessage);
@@ -485,7 +492,7 @@ public class ClusterHandler implements IoHandler {
      * @param ioSession The IoSession to respond to.
      * @param partnerID The uuid of the other node for this ioSession
      */
-    protected void handleBid (String input, IoSession ioSession, UUID partnerID) {
+    protected void handleBid (String input, IoSession ioSession, UUID partnerID) throws IOException {
         logger.debug("entering handleBid with input = " + input + " and ioSession = " + ioSession + " and partnerID = " + partnerID);
         Scanner scanner = new Scanner(input);
         scanner.skip(BID);
@@ -508,7 +515,7 @@ public class ClusterHandler implements IoHandler {
 
         UUID owner = null;
         //
-        // if we lost the bid, then set the owner to
+        // if we lost the bid, then set the owner to the partner
         //
         if (myBid < theirBid) {
             owner = partnerID;
@@ -533,6 +540,7 @@ public class ClusterHandler implements IoHandler {
             }
         }
 
+        OtherMessages.getInstance().recordOwner(messageID, owner);
         logger.debug("leaving handleBid");
     }
 
@@ -544,7 +552,7 @@ public class ClusterHandler implements IoHandler {
      * @param input A string containing the message.
      * @param ioSession The session for the new node.
      */
-    protected void handleNewNode (String input, IoSession ioSession) throws IOException {
+    protected void handleNewNode (String input, IoSession ioSession) throws IOException, LtsllcException {
         Scanner scanner = new Scanner(input);
         scanner.skip(NEW_NODE);
         UUID uuid = UUID.fromString(scanner.next());
@@ -554,7 +562,7 @@ public class ClusterHandler implements IoHandler {
         ioSession.write(strMessage);
 
         synchronized (cache) {
-            Set<UUID> set = cache.getUuidToOnline().keySet();
+            Set<UUID> set = cache.getUuidToInMemory().keySet();
             Iterator<UUID> iterator = set.iterator();
             while (iterator.hasNext()) {
                 uuid = iterator.next();
@@ -583,7 +591,9 @@ public class ClusterHandler implements IoHandler {
         logger.debug("entering handleNewMessage with " + input);
 
         Scanner scanner = new Scanner(input);
-        scanner.skip(ClusterHandler.NEW_MESSAGE);
+        scanner.next(); // MESSAGE
+        scanner.next(); // CREATED
+
         Message message = Message.readLongFormat(scanner);
 
         cache.add(message);
@@ -603,7 +613,7 @@ public class ClusterHandler implements IoHandler {
      * @param ioSession The session over which to respond.
      * @throws IOException If there is a problem looking up the message in the cache.
      */
-    protected void handleGetMessage (String input, IoSession ioSession) throws IOException {
+    protected void handleGetMessage (String input, IoSession ioSession) throws IOException, LtsllcException {
         logger.debug("entering handleGetMessage with input = " + input + " and ioSession = " + ioSession);
         Scanner scanner = new Scanner(input);
         scanner.skip(GET_MESSAGE);
@@ -626,7 +636,7 @@ public class ClusterHandler implements IoHandler {
      * @param owner The owner.
      */
     public synchronized void undefineMessage(Message message, UUID owner) {
-        cache.undefineMessage(message);
+        cache.undefine(message.getMessageID());
     }
 
     /**
@@ -677,7 +687,7 @@ public class ClusterHandler implements IoHandler {
      * @param ioSession The IoSession over which we received it
      * @throws IOException If there is a problem sending the message
      */
-    public synchronized void handleGetMessageAuction (String input, IoSession ioSession) throws IOException {
+    public synchronized void handleGetMessageAuction (String input, IoSession ioSession) throws IOException, LtsllcException {
         logger.debug("entering the handleGetMessageAuction method with input = " + input + " and ioSession = " + ioSession);
         Scanner scanner = new Scanner(input);
         scanner.skip(GET_MESSAGE);
@@ -701,7 +711,7 @@ public class ClusterHandler implements IoHandler {
      * @param ioSession The ioSession over which we received the message.
      * @throws LtsllcException If there is a problem looking up the message.
      */
-    public synchronized void handleMessage (String input, IoSession ioSession) throws LtsllcException {
+    public synchronized void handleMessage (String input, IoSession ioSession) throws LtsllcException, IOException {
         logger.debug("entering handleMessage with input = " + input +" and ioSession = " + ioSession);
         Message message = Message.readLongFormat(input);
         cache.add(message);
@@ -726,12 +736,10 @@ public class ClusterHandler implements IoHandler {
      */
     public void handleError (String s, IoSession ioSession) {
         logger.debug("entering handleError");
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(ClusterHandler.START);
-        stringBuffer.append(" ");
-        stringBuffer.append(uuid);
-        ioSession.write(stringBuffer.toString());
-        logger.debug("wrote " + stringBuffer.toString());
+
+        ioSession.write(ClusterHandler.ERROR);
+        state = ClusterConnectionStates.START;
+        logger.debug("wrote " + ClusterHandler.ERROR);
         logger.debug("leaving handleError");
     }
 }

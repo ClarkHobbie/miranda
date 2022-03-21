@@ -25,7 +25,7 @@ public class NodeTest {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        Node node = new Node();
+        Node node = new Node("localhost", 2020);
 
 
         Message message = createTestMessage(UUID.randomUUID());
@@ -83,6 +83,7 @@ public class NodeTest {
         stringBuffer.append(newMessage.getMessageID());
 
         Node node = new Node(UUID.randomUUID(),UUID.randomUUID(),mockIoSession);
+        node.informOfMessageDelivery(newMessage);
 
         assert (node.getOwnerFor(newMessage.getMessageID()) == null);
         Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(stringBuffer.toString());

@@ -4,6 +4,8 @@ import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.MessageCache;
+import com.ltsllc.miranda.logcache.LoggingCache;
+import com.ltsllc.miranda.logcache.LoggingMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -22,34 +24,38 @@ public class OtherMessages {
 
     static {
         try {
-            instance = new OtherMessages();
+            ImprovedFile logfile = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_OTHER_MESSAGES));
+            instance = new OtherMessages(logfile);
             instance.messageCache.setLoadLimit(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT)/10);
         } catch (LtsllcException e) {
-            logger.error("Encountered exception during initialization",e);
+            logger.error("Encountered exception during initialization of OtherMessages",e);
         }
     }
 
-    protected MessageCache messageCache;
-    protected Map<UUID, UUID> uuidToOwner = new HashMap<>();
+    protected LoggingCache messageCache;
+    protected LoggingMap uuidToOwner = null;
 
-    protected OtherMessages () throws LtsllcException {
-        messageCache = new MessageCache();
+    protected OtherMessages (ImprovedFile logfile) throws LtsllcException {
+        uuidToOwner = new LoggingMap(logfile);
+        ImprovedFile logfile2 = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_OTHER_MESSAGES));
+        int loadlimit = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_OTHER_MESSAGES_LOAD_LIMIT);
+        messageCache = new LoggingCache(logfile2, loadlimit);
     }
 
-    public Map<UUID, UUID> getUuidToOwner() {
-        return uuidToOwner;
-    }
-
-    public void setUuidToOwner(Map<UUID, UUID> uuidToOwner) {
-        this.uuidToOwner = uuidToOwner;
-    }
-
-    public MessageCache getMessageCache() {
+    public LoggingCache getMessageCache() {
         return messageCache;
     }
 
-    public void setMessageCache(MessageCache messageCache) {
+    public void setMessageCache(LoggingCache messageCache) {
         this.messageCache = messageCache;
+    }
+
+    public LoggingMap getUuidToOwner() {
+        return uuidToOwner;
+    }
+
+    public void setUuidToOwner(LoggingMap uuidToOwner) {
+        this.uuidToOwner = uuidToOwner;
     }
 
     public static OtherMessages getInstance() {
@@ -86,29 +92,7 @@ public class OtherMessages {
      * @see Miranda#PROPERTY_OWNER_FILE
      */
     public synchronized void recordOwner (UUID messageUuid, UUID ownerUuid) throws IOException {
-        ImprovedFile temp = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_OWNER_FILE));
-
-        FileWriter fileWriter = null;
-        BufferedWriter bufferedWriter = null;
-
-        try {
-            fileWriter = new FileWriter(temp, true);
-            bufferedWriter = new BufferedWriter(fileWriter);
-
-            bufferedWriter.write("MESSAGE_ID: ");
-            bufferedWriter.write(messageUuid.toString());
-            bufferedWriter.write(" OWNER: ");
-            bufferedWriter.write(ownerUuid.toString());
-            bufferedWriter.newLine();
-        } finally {
-            if (null != bufferedWriter) {
-                bufferedWriter.close();
-            }
-
-            if (fileWriter != null) {
-                fileWriter.close();
-            }
-        }
+        uuidToOwner.add(messageUuid, ownerUuid);
     }
 
     /**
@@ -121,8 +105,9 @@ public class OtherMessages {
         return uuidToOwner.get(uuid);
     }
 
-    public void record (Message message, UUID owner) throws LtsllcException {
+    public void record (Message message, UUID owner) throws LtsllcException, IOException {
         messageCache.add(message);
-        uuidToOwner.put(message.getMessageID(), owner);
+        uuidToOwner.add(message.getMessageID(), owner);
     }
+
 }

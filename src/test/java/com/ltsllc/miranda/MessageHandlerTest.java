@@ -4,6 +4,7 @@ package com.ltsllc.miranda;
 
 import com.ltsllc.commons.LtsllcException;
 import jakarta.servlet.ServletInputStream;
+import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
@@ -15,9 +16,12 @@ import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.util.MultiMap;
 import org.junit.Test;
 import org.junit.jupiter.api.BeforeAll;
+import org.mockito.Mockito;
+
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,25 +38,31 @@ public class MessageHandlerTest {
 
     @Test
     public void handle() throws LtsllcException, IOException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
         Configurator.setRootLevel(Level.DEBUG);
         logger.debug("handle");
 
+        byte[] mockContents = "hi there".getBytes();
         ServletInputStream mockInputStream = mock(ServletInputStream.class);
-        when(mockInputStream.read()).thenReturn(15);
+        when(mockInputStream.read()).thenReturn(8);
 
+        PrintWriter mockPrintWriter = Mockito.mock(PrintWriter.class);
         HttpServletRequest mockServletRequest = mock(HttpServletRequest.class);
         when(mockServletRequest.getInputStream()).thenReturn(mockInputStream);
 
         HttpServletResponse mockServletResponse = mock(HttpServletResponse.class);
+        Mockito.when(mockServletResponse.getWriter()).thenReturn(mockPrintWriter);
 
-        Request jettyRequest = mock(Request.class);
-        when(jettyRequest.getParameter(MessageHandler.PARAM_STATUS_URL)).thenReturn("HTTP://google.com");
-        when(jettyRequest.getParameter(MessageHandler.PARAM_DESTINATION_URL)).thenReturn("http://google.com");
-        when(jettyRequest.getInputStream()).thenReturn(mockInputStream);
-
+        Request mockJettyRequest = mock(Request.class);
+        when(mockJettyRequest.getParameter(MessageHandler.PARAM_STATUS_URL)).thenReturn("HTTP://google.com");
+        when(mockJettyRequest.getParameter(MessageHandler.PARAM_DESTINATION_URL)).thenReturn("http://google.com");
+        when(mockJettyRequest.getInputStream()).thenReturn(mockInputStream);
+        when(mockJettyRequest.getContentLength()).thenReturn(8);
         MessageHandler messageHandler = new MessageHandler();
 
-        messageHandler.handle("hi there",jettyRequest, mockServletRequest, mockServletResponse);
+        messageHandler.handle("hi there",mockJettyRequest, mockServletRequest, mockServletResponse);
 
         List<Message> list = SendQueue.getInstance().copyMessages();
         assert (list.size() > 0);
