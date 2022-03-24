@@ -1,6 +1,8 @@
 package com.ltsllc.miranda;
 
 
+import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.miranda.logcache.TestSuperclass;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -10,63 +12,139 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.Date;
+import java.util.Scanner;
 import java.util.UUID;
 
-class MessageTest {
+class MessageTest extends TestSuperclass {
     public static Logger logger = LogManager.getLogger();
 
-    // Initialization of CollectionClass moved here (instead of a static block) for two
-    // reasons:
-    // 1. If the initialization fails, you can't run the test anyway - better fail
-    //    right here that print an error and continue to the test which we
-    //    know won't work
-    // 2. It just looks neater
     @BeforeAll
     public static void initializeCollectionClass() throws IOException {
         Configurator.setRootLevel(Level.DEBUG);
     }
 
 
-
     @Test
-    void informOfCreated() {
-        Message message = new Message();
-        message.setStatusURL("http://goggle.com");
-        Date date1 = new Date();
-        Date date2 = new Date();
-        UUID uuid = new UUID(date1.getTime(), date2.getTime());
-        message.setMessageID(uuid);
+    public void contentsAreEquivalent () {
+        byte[] array1 = "hi there".getBytes();
+        byte[] array2 = null;
 
-        message.setDeliveryURL("http://google.com");
-        message.informOfCreated();
+        boolean result = Message.contentsAreEquivalent(array1, array1);
+        assert (result);
+
+        result = Message.contentsAreEquivalent(array1,array2);
+        assert (!result);
+
+        result = Message.contentsAreEquivalent(array2, array1);
+        assert (!result);
+
+        byte[] array3 = "low there".getBytes();
+
+        result = Message.contentsAreEquivalent(array1,array3);
+        assert (!result);
+
+        byte[] array4 = "hi there".getBytes();
+
+        result = Message.contentsAreEquivalent(array1, array4);
+        assert (result);
+
+        byte[] array5 = "h1 there".getBytes();
+
+        result = Message.contentsAreEquivalent(array1, array5);
+        assert (!result);
     }
 
     @Test
-    public void deliver() {
-        Message message = new Message();
-        message.setStatusURL("http://goggle.com");
-        Date date1 = new Date();
-        Date date2 = new Date();
-        UUID uuid = new UUID(date1.getTime(), date2.getTime());
-        message.setMessageID(uuid);
+    public void equals () {
+        Message message1 = createTestMessage(UUID.randomUUID());
+        Message message2 = createTestMessage(UUID.randomUUID());
 
-        message.setDeliveryURL("http://google.com");
-        message.deliver();
+        boolean result = message1.equals(message1);
+        assert (result);
+
+        result = message1.equals(message2);
+        assert (!result);
+
+        message2.setMessageID(message1.getMessageID());
+        result = message1.equals(message2);
+        assert (result);
+
+        message2.setStatusURL("HTTP://GOOGLE.COM");
+        result = message1.equals(message2);
+        assert (!result);
+
+        message2.setStatusURL(message1.getStatusURL());
+        message2.setDeliveryURL("HTTP://GOOGLE.COM");
+        result = message1.equals(message2);
+        assert (!result);
+
+        message2.setDeliveryURL(message1.getDeliveryURL());
+        byte[] array = {1,2,4};
+        message2.setContents(array);
+        result = message1.equals(message2);
+        assert (!result);
     }
 
     @Test
-    public void informOfDelivery () {
-        Message message = new Message();
-        message.setStatusURL("http://goggle.com");
-        Date date1 = new Date();
-        Date date2 = new Date();
-        UUID uuid = new UUID(date1.getTime(), date2.getTime());
-        message.setMessageID(uuid);
-
-        message.setDeliveryURL("http://google.com");
-        message.informOfDelivery();
-
+    public void everythingToString () {
+        String strUuid = "12345678-9abc-def1-2345-6789abcdef12";
+        UUID uuid = UUID.randomUUID();
+        Message message1 = createTestMessage(UUID.fromString(strUuid));
+        message1.setStatus(401);
+        String s1 = message1.everythingToString();
+        String s2 = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 STATUS: HTTP://localhost:8080 DELIVERY: HTTP://localhost:8080 LAST STATUS: 401 CONTENTS: 010203";
+        boolean result = s1.equals(s2);
+        assert (result);
     }
 
+    @Test
+    public void internalsToString () {
+        String  strUuid = "12345678-9abc-def1-2345-6789abcdef12";
+        Message message = createTestMessage(UUID.fromString(strUuid));
+        String s2 = "ID: 12345678-9abc-def1-2345-6789abcdef12 STATUS: HTTP://localhost:8080 DELIVERY: HTTP://localhost:8080 CONTENTS: 010203";
+        assert (s2.equals(message.internalsToString()));
+    }
 
+    @Test
+    public void longToString () {
+        String  strUuid = "12345678-9abc-def1-2345-6789abcdef12";
+        Message message = createTestMessage(UUID.fromString(strUuid));
+        String s2 = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 STATUS: HTTP://localhost:8080 DELIVERY: HTTP://localhost:8080 CONTENTS: 010203";
+        assert (s2.equals(message.longToString()));
+    }
+
+    @Test
+    public void readEverything () {
+        String s = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 STATUS: HTTP://localhost:8080 DELIVERY: HTTP://localhost:8080 LAST STATUS: 401 CONTENTS: 010203";
+        String  strUuid = "12345678-9abc-def1-2345-6789abcdef12";
+        Message message = createTestMessage(UUID.fromString(strUuid));
+        message.setStatus(401);
+        Message message2 = Message.readEverything(s);
+        assert (message2.equals(message));
+    }
+
+    @Test
+    public void readLongFormat () {
+        String  strUuid = "12345678-9abc-def1-2345-6789abcdef12";
+        String s2 = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 STATUS: HTTP://localhost:8080 DELIVERY: HTTP://localhost:8080 CONTENTS: 010203";
+        Message message1 = createTestMessage(UUID.fromString(strUuid));
+        assert (message1.equals(Message.readLongFormat(s2)));
+    }
+
+    @Test
+    public void readLongFormatFromScanner () {
+        String  strUuid = "12345678-9abc-def1-2345-6789abcdef12";
+        String s = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 STATUS: HTTP://localhost:8080 DELIVERY: HTTP://localhost:8080 CONTENTS: 010203";
+        Message message = createTestMessage(UUID.fromString(strUuid));
+        Scanner scanner = new Scanner(s);
+        assert (message.equals(Message.readLongFormat(scanner)));
+    }
+
+    @Test
+    public void testToString () {
+        String  strUuid = "12345678-9abc-def1-2345-6789abcdef12";
+        String s = "12345678-9abc-def1-2345-6789abcdef12";
+        Message message = createTestMessage(UUID.fromString(strUuid));
+        assert (s.equals(message.toString()));
+    }
 }

@@ -2,9 +2,12 @@ package com.ltsllc.miranda;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.cluster.Node;
+import com.ltsllc.miranda.logcache.TestSuperclass;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -13,6 +16,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
@@ -24,7 +28,7 @@ import java.util.UUID;
 /**
  * Test the main functions of Miranda
  */
-class MirandaTest {
+class MirandaTest extends TestSuperclass {
 
     public static final Logger logger = LogManager.getLogger();
 
@@ -34,6 +38,26 @@ class MirandaTest {
     @BeforeAll
     public static void setup () {
         Configurator.setRootLevel(Level.DEBUG);
+    }
+
+    @Test
+    public void connectToOtherNodes () throws LtsllcException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
+        miranda.setClusterAlarm(-1);
+        miranda.connectToOtherNodes();
+
+        List<Node> list = Cluster.getInstance().getNodes();
+        assert (list.size() < 1);
+
+        long now = System.currentTimeMillis();
+        miranda.setClusterAlarm(now);
+
+        miranda.connectToOtherNodes();
+
+        list = Cluster.getInstance().getNodes();
+        assert (list.size() > 0);
     }
 
     @Test
@@ -132,18 +156,8 @@ class MirandaTest {
             miranda.releasePorts();
 
             String sendFileName = miranda.getProperties().getProperty(Miranda.PROPERTY_SEND_FILE);
-            FileOutputStream fileOutputStream = new FileOutputStream(sendFileName);
-            OutputStreamWriter outputStreamWriter = new OutputStreamWriter(fileOutputStream);
-
-            GsonBuilder builder = new GsonBuilder();
-            builder.setPrettyPrinting();
-
-            Gson gson = builder.create();
-            gson.toJson(list, outputStreamWriter);
-
-            outputStreamWriter.close();
-            fileOutputStream.close();
-
+            ImprovedFile file = new ImprovedFile(sendFileName);
+            file.touch();
             String[] args = new String[0];
 
             miranda.startUp(args);
@@ -204,15 +218,46 @@ class MirandaTest {
     }
 
     @Test
-    public void biddingMode() {
-        // TODO: define
+    public void mainLoopNotRunning () throws LtsllcException, IOException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+        Message message = createTestMessage(UUID.randomUUID());
+        List<Message> list = new ArrayList<>();
+        list.add(message);
+        miranda.setNewMessageQueue(list);
+        Miranda.setKeepRunning(false);
+
+        miranda.mainLoop();
+
+        list = miranda.getNewMessageQueue();
+        assert (list.size() > 0);
     }
 
     @Test
-    public void mainLoop () {
-        // TODO: define
+    public void mainLoopRunning () throws LtsllcException, IOException, InterruptedException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+        Message message = createTestMessage(UUID.randomUUID());
+        List<Message> list = new ArrayList<>();
+        list.add(message);
+        miranda.setNewMessageQueue(list);
+        Miranda.setKeepRunning(true);
+
+        miranda.mainLoop();
+
+        list = miranda.getNewMessageQueue();
+        assert (list.size() == 0);
     }
 
+    @Test
+    public void setClusterAlarm () throws LtsllcException, IOException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
 
+        miranda.setClusterAlarm(System.currentTimeMillis() - 10);
 
+        miranda.mainLoop();
+
+        assert (Cluster.getInstance().getNodes().size() > 0);
+    }
 }

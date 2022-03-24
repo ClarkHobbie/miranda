@@ -73,92 +73,6 @@ public class Message {
     }
 
     /*
-     * Tell the client that we have created their message
-     *
-     * In the situation that the client doesn't return a 200 code this method logs an error.
-     */
-    public void informOfCreated() {
-        logger.debug("entering informOfCreated");
-        HttpClient httpClient = HttpClient.newBuilder().build();
-        String postContents = "MESSAGE CREATED " + messageID;
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(getDeliveryURL()))
-                .POST(HttpRequest.BodyPublishers.ofString(postContents))
-                .build();
-        logger.debug("built message, " + postContents);
-        CompletableFuture<HttpResponse<String>> response =
-                httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString());
-
-        int statusCode;
-        try {
-            statusCode = response.thenApply(HttpResponse::statusCode).get(5, TimeUnit.SECONDS);
-            logger.debug("status code = " + statusCode);
-            if (statusCode != 200) {
-                logger.error("Status returned " + statusCode + " instead of a 200");
-            }
-        } catch (Exception e) {
-            logger.error("Exception during informOfCreated", e);
-        }
-        logger.debug("leaving informOfCreated");
-    }
-
-    public Result deliver() {
-        logger.debug("entering deliver");
-        HttpClient httpClient = HttpClient.newBuilder().build();
-        String postContents = "MESSAGE DELIVERED " + messageID;
-        logger.debug("built message, " + postContents);
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(getDeliveryURL()))
-                .POST(HttpRequest.BodyPublishers.ofString(postContents))
-                .build();
-        CompletableFuture<HttpResponse<String>> response =
-                httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString());
-
-        int statusCode = 0;
-        try {
-            statusCode = response.thenApply(HttpResponse::statusCode).get(5, TimeUnit.SECONDS);
-            logger.debug("statusCode = " + statusCode);
-            if (statusCode != 200) {
-                logger.info("deliver failed");
-            }
-        } catch (Exception e) {
-            logger.info("Exception during deliver", e);
-        }
-
-        Result result = new Result();
-        result.setStatus(statusCode);
-        logger.debug("leaving deliver, status code = " + statusCode);
-        return result;
-    }
-
-
-    public void informOfDelivery() {
-        logger.debug("entering informOfDelivery");
-        HttpClient httpClient = HttpClient.newBuilder().build();
-        String postContents = "MESSAGE DELIVERED " + messageID;
-        logger.debug("POST contents = " + postContents);
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(getDeliveryURL()))
-                .POST(HttpRequest.BodyPublishers.ofString(postContents))
-                .build();
-        CompletableFuture<HttpResponse<String>> response =
-                httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString());
-
-        int statusCode;
-        try {
-            statusCode = response.thenApply(HttpResponse::statusCode).get(5, TimeUnit.SECONDS);
-            logger.debug("statusCode = " + statusCode);
-            if (statusCode != 200) {
-                logger.error("informOfDelivery failed");
-            }
-        } catch (Exception e) {
-            logger.error("Exception during informOfCreated", e);
-        }
-
-        logger.debug("leaving informOfDelivery");
-    }
-
-    /*
      * is this Message equal to another Message?
      */
     public boolean equals (Object obj) {
@@ -168,23 +82,18 @@ public class Message {
         }
 
         Message other = (Message) obj;
-
-        if (!(Utils.bothEqualCheckForNull(messageID, other.messageID))) {
+        if (!messageID.equals(other.messageID)) {
             return false;
-        } else if (!(Utils.bothEqualCheckForNull(statusURL, other.statusURL))) {
+        } else if (!statusURL.equals(other.statusURL)) {
             return false;
-        } else if (!Utils.bothEqualCheckForNull(deliveryURL, other.deliveryURL)) {
-            return false;
-        } else if (contents == other.contents) {
-            return true;
-        } else if ((contents == null) || (other.contents == null)) {
+        } else if (!deliveryURL.equals(other.deliveryURL)) {
             return false;
         } else {
-            return this.contentsAreEquivalent(contents, other.contents);
+            return contentsAreEquivalent(contents, other.contents);
         }
     }
 
-    public boolean contentsAreEquivalent (byte[] ba1, byte[] ba2) {
+    public static boolean contentsAreEquivalent (byte[] ba1, byte[] ba2) {
         if (ba1 == ba2) {
             return true;
         } else if ((ba1 == null) || (ba2 == null)) {
@@ -328,31 +237,18 @@ public class Message {
         Message newMessage = new Message();
 
         Scanner scanner = new Scanner(s);
-        scanner.skip ("MESSAGE ID: ");
-        newMessage.messageID = UUID.fromString(scanner.next());
-        scanner.skip ("STATUS:");
-        newMessage.statusURL = scanner.next();
-        scanner.skip("DELIVERY:");
-        newMessage.deliveryURL = scanner.next();
-        scanner.skip("LAST STATUS:");
-        newMessage.status = Integer.parseInt(scanner.next());
-        scanner.skip("CONTENTS:");
-        newMessage.contents = Utils.hexDecode(scanner.next());
-
-        return newMessage;
-    }
-
-    public static Message readShorterFormat (Scanner scanner) {
-        Message newMessage = new Message();
-        scanner.next(); // ID:
+        scanner.next();scanner.next(); // MESSAGE ID:
         newMessage.messageID = UUID.fromString(scanner.next());
         scanner.next(); // STATUS:
         newMessage.statusURL = scanner.next();
         scanner.next(); // DELIVERY:
         newMessage.deliveryURL = scanner.next();
+        scanner.next(); scanner.next(); // LAST STATUS:
+        newMessage.status = Integer.parseInt(scanner.next());
         scanner.next(); // CONTENTS:
         newMessage.contents = Utils.hexDecode(scanner.next());
 
         return newMessage;
     }
+
 }

@@ -4,20 +4,9 @@ package com.ltsllc.miranda;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.Cluster;
-import com.ltsllc.miranda.cluster.ClusterHandler;
-import com.ltsllc.miranda.cluster.Node;
+import com.ltsllc.miranda.cluster.SpecNode;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.Filter;
-import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilder;
-import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory;
-import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration;
-import org.apache.mina.core.service.IoAcceptor;
-import org.apache.mina.core.session.IoSession;
-import org.apache.mina.filter.codec.ProtocolCodecFilter;
-import org.apache.mina.filter.codec.textline.TextLineCodecFactory;
-import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
 import org.asynchttpclient.*;
 import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.Server;
@@ -28,13 +17,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-import java.util.UUID;
+import java.nio.channels.CompletionHandler;
+import java.util.*;
 
 public class Miranda {
     public static final int STATUS_SUCCESS = 200;
@@ -65,6 +49,9 @@ public class Miranda {
     public static final String PROPERTY_HOST = "host";
     public static final String PROPERTY_OTHER_MESSAGES_LOAD_LIMIT = "otherMessages.loadLimit";
     public static final String PROPERTY_DEFAULT_OTHER_MESSAGES_LOAD_LIMIT = "104856670"; // 10 MegaBytes
+    public static final String PROPERTY_CLUSTER_1 = "cluster.1.host";
+    public static final String PROPERTY_CLUSTER_RETRY = "cluster.retry";
+    public static final String PROPERTY_DEFAULT_CLUSTER_RETRY = "10000";
 
 
     protected static final Logger logger = LogManager.getLogger();
@@ -76,8 +63,27 @@ public class Miranda {
     protected List<Message> newMessageQueue = new ArrayList<>();
     protected long clusterAlarm = -1;
     protected Server server;
+    protected List<SpecNode> specNodes = new ArrayList<>();
+    protected Set<Message> inflight = new HashSet<>();
+
+    public Set<Message> getInflight() {
+        return inflight;
+    }
+
+    public void setInflight(Set<Message> infight) {
+        this.inflight = infight;
+    }
+
+    public List<SpecNode> getSpecNodes() {
+        return specNodes;
+    }
+
+    public void setSpecNodes(List<SpecNode> specNodes) {
+        this.specNodes = specNodes;
+    }
 
     public Miranda() {
+        Miranda.instance = this;
         cluster = new Cluster();
     }
 
@@ -113,16 +119,27 @@ public class Miranda {
         this.cluster = cluster;
     }
 
+    public void setNewMessageQueue(List<Message> newMessageQueue) {
+        this.newMessageQueue = newMessageQueue;
+    }
 
     public synchronized List<Message> getNewMessageQueue () {
         return newMessageQueue;
     }
 
     public synchronized Message getNewMessage () {
-        if (newMessageQueue.size() < 1)
+        if (newMessageQueue.size() < 1) {
             return null;
-        else
-            return newMessageQueue.get(0);
+        }
+        else {
+            Message message = newMessageQueue.get(0);
+            newMessageQueue.remove(message);
+            return message;
+        }
+    }
+
+    public synchronized void addNewMessage (Message message) {
+        newMessageQueue.add(message);
     }
 
     public static ImprovedProperties getProperties() {
@@ -189,14 +206,13 @@ public class Miranda {
             return;
         }
 
-        if (clusterAlarm < System.currentTimeMillis()) {
-            return;
+        //
+        // if it's time to reconnect...
+        //
+        if (System.currentTimeMillis() > clusterAlarm) {
+            clusterAlarm = -1;
+            Cluster.getInstance().reconnect();
         }
-
-        //
-        // it's time to connect
-        //
-        Cluster.getInstance().reconnect();
     }
     /*
      *
@@ -215,9 +231,12 @@ public class Miranda {
         logger.debug("loading properties");
         loadProperties();
 
+        logger.debug("Parsing nodes");
+        parseNodes();
+
         logger.debug("Starting cluster");
         cluster = Cluster.getInstance();
-        cluster.connect();
+        cluster.connect(specNodes);
 
         logger.debug("starting the message port");
         startMessagePort(properties.getIntProperty(PROPERTY_MESSAGE_PORT));
@@ -261,7 +280,6 @@ public class Miranda {
 
         // Set a simple Handler to handle requests/responses.
         server.setHandler(new MessageHandler());
-
 
 
         // Start the Server, so it starts accepting connections from clients.
@@ -381,6 +399,7 @@ public class Miranda {
         properties.setIfNull(PROPERTY_LOGGING_LEVEL, PROPERTY_DEFAULT_LOGGING_LEVEL);
         properties.setIfNull(PROPERTY_CLUSTER, PROPERTY_DEFAULT_CLUSTER);
         properties.setIfNull(PROPERTY_OTHER_MESSAGES_LOAD_LIMIT, PROPERTY_DEFAULT_OTHER_MESSAGES_LOAD_LIMIT);
+        properties.setIfNull(PROPERTY_CLUSTER_RETRY, PROPERTY_DEFAULT_CLUSTER_RETRY);
     }
 
     public void storeProperties () throws IOException {
@@ -423,15 +442,14 @@ public class Miranda {
 
     /**
      * Unbind the message port
-     *
-     * Note that this method unbinds ALL ports, not just the message port.
+     * <P>
+     *      Note that this method unbinds ALL ports bound with Mina, not just the message port.
      */
     public synchronized void releaseMessagePort () throws Exception {
         logger.debug("entering releaseMessagePort.");
         logger.debug("server = " + server);
         if (server != null) {
             server.stop();
-            //server.destroy();
         }
         logger.debug("leaving releaseMessagePort");
 
@@ -446,15 +464,19 @@ public class Miranda {
      * @param message The message to deliver
      */
     public void deliver (Message message) {
+        if (inflight.contains(message)) {
+            return;
+        }
+        inflight.add(message);
+
         AsyncHttpClient httpClient = Dsl.asyncHttpClient();
         BoundRequestBuilder boundRequestBuilder = httpClient.preparePost(message.getDeliveryURL());
 
         boundRequestBuilder.setBody(message.getContents())
-                .setBody("CREATED MESSAGE " + message.getMessageID().toString())
                         .execute(new AsyncCompletionHandler<Response>() {
                             @Override
                             public Response onCompleted(Response response) {
-                                if (response.getStatusCode() == 200) {
+                                if ((response.getStatusCode() > 199) && (response.getStatusCode() < 300)){
                                     successfulMessage(message);
                                 }
                                 // otherwise, keep trying
@@ -483,6 +505,7 @@ public class Miranda {
             logger.error ("Exception trying to remove message from the send queue",e);
         }
         notifyClientOfDelivery(message);
+        inflight.remove(message);
         logger.debug("leaving successfulMessage");
     }
 
@@ -505,4 +528,40 @@ public class Miranda {
             }
         });
     }
+
+    /**
+     * Parse out the list of other nodes
+     *
+     * <P>
+     *     Note that this method assumes that if PROPERTY_CLUSTER + "." &lt;number&gt; + ".host" is defined then the
+     *     corresponding port is also defined.
+     *
+     * @return The list of Node specifications (NodeSpecs).
+     * @see SpecNode
+     */
+    public void parseNodes () {
+        if (null != properties.getProperty(PROPERTY_CLUSTER_1)) {
+            String rootProperty = Miranda.PROPERTY_CLUSTER + ".1";
+            SpecNode specNode = new SpecNode();
+            specNode.setHost(properties.getProperty(rootProperty + ".host"));
+            specNode.setPort(properties.getIntProperty(rootProperty + ".port"));
+            List<SpecNode> list = new ArrayList<>();
+            int count = 2;
+            list.add(specNode);
+            while (specNode != null) {
+                specNode = null;
+                rootProperty = Miranda.PROPERTY_CLUSTER + "." + count;
+                if (null != properties.getProperty(rootProperty + ".host")) {
+                    specNode = new SpecNode();
+                    specNode.setHost(properties.getProperty(rootProperty + ".host"));
+                    specNode.setPort(properties.getIntProperty(rootProperty  + ".port"));
+                    list.add(specNode);
+                    count++;
+                }
+            }
+
+            specNodes = list;
+        }
+    }
+
 }

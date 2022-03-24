@@ -29,17 +29,16 @@ class ClusterTest {
 
     @Test
     public void connect () throws LtsllcException, InterruptedException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
         Cluster.getInstance().setNodes(new ArrayList<>());
         ImprovedRandom improvedRandom = new ImprovedRandom();
         Cluster.setRandomNumberGenerator(improvedRandom);
 
-        Miranda.setProperties(new ImprovedProperties());
-        Miranda miranda = new Miranda();
-        miranda.loadProperties();
 
-        Cluster.getInstance().releasePorts();
-
-        Cluster.getInstance().connect();
+        miranda.parseNodes();
+        Cluster.getInstance().connect(miranda.getSpecNodes());
     }
 
     /*
@@ -104,9 +103,10 @@ class ClusterTest {
     public void testClustered () throws Exception {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
+        miranda.parseNodes();
 
         Cluster.defineStatics();
-        Cluster.getInstance().connect();
+        Cluster.getInstance().connect(miranda.getSpecNodes());
 
         List<Node> list = Cluster.getInstance().getNodes();
         assert (list.size() > 0);

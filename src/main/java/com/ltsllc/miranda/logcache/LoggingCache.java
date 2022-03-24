@@ -404,30 +404,32 @@ public class LoggingCache {
 
     public synchronized List<Message> copyAllMessages () throws IOException {
         List<Message> list = new ArrayList<>();
-        list.addAll(uuidToMessage.values());
-
-        if (!file.exists()) {
-            return new ArrayList<>();
-        }
-
-        FileReader fileReader = null;
-        BufferedReader bufferedReader = null;
-        try {
-            fileReader = new FileReader(file);
-            bufferedReader = new BufferedReader(fileReader);
-            String line = bufferedReader.readLine();
-            while (line != null) {
-                Message message = Message.readLongFormat(line);
-                list.add(message);
-                line = bufferedReader.readLine();
-            }
-        } finally {
-            if (bufferedReader != null) {
-                bufferedReader.close();
+        if (allInMemory()) {
+            list.addAll(uuidToMessage.values());
+        } else {
+            if (!file.exists()) {
+                return new ArrayList<>();
             }
 
-            if (fileReader != null) {
-                fileReader.close();
+            FileReader fileReader = null;
+            BufferedReader bufferedReader = null;
+            try {
+                fileReader = new FileReader(file);
+                bufferedReader = new BufferedReader(fileReader);
+                String line = bufferedReader.readLine();
+                while (line != null) {
+                    Message message = Message.readLongFormat(line);
+                    list.add(message);
+                    line = bufferedReader.readLine();
+                }
+            } finally {
+                if (bufferedReader != null) {
+                    bufferedReader.close();
+                }
+
+                if (fileReader != null) {
+                    fileReader.close();
+                }
             }
         }
 
@@ -443,5 +445,9 @@ public class LoggingCache {
         uuidToLocation.remove(uuid);
         uuidToTimesReferenced.remove(uuid);
         uuidToInMemory.remove(uuid);
+    }
+
+    public boolean allInMemory () {
+        return uuidToInMemory.values().size() == uuidToLocation.values().size();
     }
 }

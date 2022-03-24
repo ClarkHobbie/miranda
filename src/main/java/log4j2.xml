@@ -6,6 +6,9 @@
             <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
         </Console>
     </Appenders>
+
+    <RegexFilter regex=".*mainLoop.*" onMatch="DENY" onMismatch="NEUTRAL"/>
+
     <Loggers>
         <Root level="debug">
             <AppenderRef ref="Console"/>

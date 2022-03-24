@@ -596,8 +596,6 @@ public class ClusterHandler implements IoHandler {
 
         Message message = Message.readLongFormat(scanner);
 
-        cache.add(message);
-
         OtherMessages.getInstance().record(message, partnerUuid);
 
         logger.debug("leaving handleNewMessage");
@@ -653,13 +651,8 @@ public class ClusterHandler implements IoHandler {
         scanner.skip(START);
         partnerID = UUID.fromString(scanner.next());
 
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(START);
-        stringBuffer.append(" ");
-        stringBuffer.append(uuid);
-        ioSession.write(stringBuffer.toString());
-
         boolean connected = true;
+        ioSession.getConfig().setUseReadOperation(true);
         node.setIoSession(ioSession);
         node.setPartnerID(partnerID);
 

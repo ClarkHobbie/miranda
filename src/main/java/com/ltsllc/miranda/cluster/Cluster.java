@@ -14,6 +14,7 @@ import org.apache.mina.core.future.WriteFuture;
 import org.apache.mina.core.service.IoAcceptor;
 import org.apache.mina.core.service.IoConnector;
 import org.apache.mina.core.session.IoSession;
+import org.apache.mina.core.session.IoSessionConfig;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.mina.filter.codec.textline.TextLineCodecFactory;
 import org.apache.mina.handler.stream.StreamIoHandler;
@@ -197,20 +198,6 @@ public class Cluster {
                 logger.error("Interrupted during wait in informOfNewMessage", e);
             }
             IoSession nodeSession = future.getSession();
-            ReadFuture readFuture = nodeSession.read();
-            try {
-                if (!readFuture.await(IONM_TIMEOUT, IONM_TIMEOUT_UNITS)) {
-                    logger.error("read timed out informing another node of message delivery");
-                }
-            } catch (InterruptedException e) {
-                logger.error("Interrupted during wait in informOfNewMessage", e);
-            }
-            String statusCodeStr = (String) readFuture.getMessage();
-            logger.debug("came back from read with " + statusCodeStr);
-
-            if (Integer.parseInt(statusCodeStr) != 200) {
-                logger.error("got back a non-200 code for inform of new message. status = " + statusCodeStr);
-            }
         }
         logger.debug("leaving informOfNewMessage");
     }
@@ -257,10 +244,10 @@ public class Cluster {
      * This method tries to connect to the other nodes of the cluster.  It sets up a listener for
      * new nodes
      */
-    public void connect() throws LtsllcException {
+    public void connect(List<SpecNode> list) throws LtsllcException {
         uuid = UUID.randomUUID();
         listen();
-        connectNodes();
+        connectNodes(list);
     }
 
     /**
@@ -303,32 +290,26 @@ public class Cluster {
      *
      * @throws LtsllcException If there is a problem with the ClusterHandler for the connection.
      */
-    public synchronized void connectNodes() throws LtsllcException {
+    public synchronized void connectNodes(List<SpecNode> list) throws LtsllcException {
         logger.debug("entering connectNodes");
 
         if (Miranda.getProperties().getProperty(Miranda.PROPERTY_CLUSTER).equals("off")) {
             return;
         }
 
-        List<Node> list = new ArrayList<>();
         ioConnector = new NioSocketConnector();
         ImprovedProperties p = Miranda.getProperties();
         Node newNode = new Node(UUID.randomUUID(), p.getProperty(Miranda.PROPERTY_HOST), p.getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
         ioConnector.setHandler(new ClusterHandler(newNode));
         ioConnector.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory()));
 
-        int count = 1;
-        while (null != p.getProperty("cluster." + count + ".host")) {
-            String host = p.getProperty("cluser." + count + ".host");
-            int port = p.getIntProperty("cluster." + count + ".port");
-            Node node = new Node(host, port);
-            list.add(node);
+        for (SpecNode specNode: list) {
+            Node node = new Node(specNode.getHost(), specNode.getPort());
+            node.setConnected(false);
+            nodes.add(node);
         }
 
-        nodes = list;
-        List<Node> list2 = new ArrayList<>();
-        list2.addAll(nodes);
-        for (Node node : list2) {
+        for (Node node : nodes) {
             if (node.isConnected()) {
                 continue;
             }
@@ -346,7 +327,7 @@ public class Cluster {
      */
     public boolean connectToNode(Node node, IoConnector ioConnector) {
         boolean returnValue = true;
-        logger.debug("entering connectToNode with node = " + node + ", and ioConnector = " + ioConnector);
+        logger.debug("entering connectToNode with node = " + node.getHost() + ":" + node.getPort() + ", and ioConnector = " + ioConnector);
         InetSocketAddress addrRemote = new InetSocketAddress(node.getHost(), node.getPort());
         ConnectFuture future = ioConnector.connect(addrRemote);
         future.awaitUninterruptibly();
@@ -363,13 +344,14 @@ public class Cluster {
                 writeFuture.await();
             } catch (InterruptedException e) {
             }
+
+            writeFuture.getSession().getConfig().setUseReadOperation(true);
             node.setIoSession(writeFuture.getSession());
-            addNode(node);
             logger.debug("wrote " + stringBuffer.toString());
         } catch (RuntimeIoException e) {
             logger.error("encountered exception", e);
             returnValue = false;
-            Miranda.getInstance().setClusterAlarm(System.currentTimeMillis() + 10);
+            Miranda.getInstance().setClusterAlarm(System.currentTimeMillis() + Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_RETRY));
         }
         logger.debug("leaving connectToNode with " + returnValue);
         return returnValue;
@@ -392,9 +374,10 @@ public class Cluster {
 
     public synchronized void removeIoSession (IoSession ioSession) {
         Node node = ioSessionToNode.get(ioSession);
-
-        nodes.remove(node);
-        ioSessionToNode.remove(ioSession);
+        if (node != null) {
+            nodes.remove(node);
+            ioSessionToNode.remove(ioSession);
+        }
     }
 
     public synchronized static void defineStatics () {
@@ -425,7 +408,7 @@ public class Cluster {
                     node.setConnected(true);
                 } else {
                     node.setConnected(false);
-                    Miranda.getInstance().setClusterAlarm(System.currentTimeMillis() + 10);
+                    Miranda.getInstance().setClusterAlarm(System.currentTimeMillis() + Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_RETRY));
                     returnValue = false;
                 }
             }
@@ -441,7 +424,7 @@ public class Cluster {
      * otherwise.
      */
     public boolean connectedToAll() {
-        boolean returnValue = true;
+        boolean returnValue = false;
 
         //
         // create a list of the other nodes we know about

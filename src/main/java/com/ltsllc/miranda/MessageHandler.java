@@ -67,11 +67,7 @@ public class MessageHandler extends AbstractHandler {
         UUID uuid = UUID.randomUUID();
         message.setMessageID(uuid);
 
-        try {
-            SendQueue.getInstance().add(message);
-        } catch (LtsllcException e) {
-            e.printStackTrace();
-        }
+        Miranda.getInstance().addNewMessage(message);
         response.setStatus(200);
         Writer writer = null;
         BufferedWriter bufferedWriter = null;
