@@ -23,7 +23,7 @@ public class LoggingSet {
      *     equivalent but not hashCode equivalent.  TreeSet uses Compareable whereas HashSet uses hashCode.
      * </P>
      */
-    protected Set<Message> set = new TreeSet<>();
+    protected Set<Message> set = new HashSet<>();
 
     public LoggingSet (ImprovedFile logfile) {
         file = logfile;

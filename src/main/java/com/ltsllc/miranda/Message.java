@@ -276,4 +276,9 @@ public class Message implements Comparable<Message> {
             return result;
         }
     }
+
+    @Override
+    public int hashCode () {
+        return (int) (messageID.getMostSignificantBits() & messageID.getLeastSignificantBits());
+    }
 }
