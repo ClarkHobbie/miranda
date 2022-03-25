@@ -2,6 +2,7 @@ package com.ltsllc.miranda;
 
 
 import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.cluster.SpecNode;
@@ -56,6 +57,7 @@ public class Miranda {
 
 
     protected static final Logger logger = LogManager.getLogger();
+    public static final Logger event = LogManager.getLogger("events");
     protected static boolean keepRunning = true;
     public static Miranda instance = new Miranda();
 
@@ -85,6 +87,8 @@ public class Miranda {
     public Miranda() {
         Miranda.instance = this;
         cluster = new Cluster();
+        ImprovedFile logfile = new ImprovedFile("inflight");
+        inflight = new LoggingSet(logfile);
     }
 
     public long getClusterAlarm() {
@@ -188,6 +192,7 @@ public class Miranda {
      *
      */
     public void startUp (String[] args) throws Exception {
+        event.info("Miranda starting up");
         logger.debug("Miranda starting up");
         logger.debug("parsing arguments");
         properties = new ImprovedProperties();

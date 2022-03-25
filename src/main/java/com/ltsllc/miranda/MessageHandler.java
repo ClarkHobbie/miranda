@@ -29,6 +29,7 @@ public class MessageHandler extends AbstractHandler {
     public static final String PARAM_STATUS_URL = "STATUS_URL";
 
     protected static final Logger logger = LogManager.getLogger(MessageHandler.class);
+    public static final Logger events = LogManager.getLogger("events");
 
     /**
      * A new message has arrived
@@ -48,7 +49,7 @@ public class MessageHandler extends AbstractHandler {
         String statusURL = jettyRequest.getParameter(PARAM_STATUS_URL);
         if ((null == destinationURL) || (null == statusURL)) {
             Map map = jettyRequest.getParameterMap();
-            logger.error("missing destination or status URL");
+            events.error("missing destination or status URL");
             return;
         }
 
@@ -75,6 +76,8 @@ public class MessageHandler extends AbstractHandler {
             logger.error ("Encountered exception when trying to add new message",e);
             throw new UncheckedLtsllcException(e);
         }
+        events.info("new message(" + message.getMessageID() + ") received to " + message.getDeliveryURL());
+
         response.setStatus(200);
         Writer writer = null;
         BufferedWriter bufferedWriter = null;

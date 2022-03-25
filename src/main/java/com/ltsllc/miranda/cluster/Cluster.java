@@ -95,6 +95,7 @@ public class Cluster {
 
     protected static ImprovedRandom randomNumberGenerator = new ImprovedRandom();
     protected static final Logger logger = LogManager.getLogger();
+    public static final Logger events = LogManager.getLogger("events");
     protected List<Node> nodes = new ArrayList<>();
     protected static Cluster instance = new Cluster();
 
@@ -292,6 +293,7 @@ public class Cluster {
      */
     public synchronized void connectNodes(List<SpecNode> list) throws LtsllcException {
         logger.debug("entering connectNodes");
+        events.info("connecting to other nodes");
 
         if (Miranda.getProperties().getProperty(Miranda.PROPERTY_CLUSTER).equals("off")) {
             return;
@@ -352,6 +354,9 @@ public class Cluster {
             logger.error("encountered exception", e);
             returnValue = false;
             Miranda.getInstance().setClusterAlarm(System.currentTimeMillis() + Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_RETRY));
+        }
+        if (returnValue) {
+            events.info ("connected to " + node.getHost() + ":" + node.getPort());
         }
         logger.debug("leaving connectToNode with " + returnValue);
         return returnValue;

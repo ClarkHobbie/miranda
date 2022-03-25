@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="DEBUG">
+
+    <RegexFilter regex=".*mainLoop.*" onMatch="DENY" onMismatch="NEUTRAL"/>
+
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+            <LevelRangeFilter minLevel="DEBUG" onMatch="ACCEPT" onMismatch="NEUTRAL"/>
+        </Console>
+        <file name="events" fileName="events.log">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+            <LevelRangeFilter minLevel="INFO" onMatch="ACCEPT" onMismatch="NEUTRAL"/>
+        </file>
+    </Appenders>
+    <Loggers>
+        <Logger name="events" additivity="false">
+            <AppenderRef ref="events"/>
+        </Logger>
+        <Logger name="main" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+    </Loggers>
+</Configuration>
+
+        <?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="DEBUG">
+
+<RegexFilter regex=".*mainLoop.*" onMatch="DENY" onMismatch="NEUTRAL"/>
+
+<Appenders>
+    <Console name="Console" target="SYSTEM_OUT">
+        <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+        <LevelRangeFilter minLevel="DEBUG" onMatch="ACCEPT" onMismatch="NEUTRAL"/>
+    </Console>
+    <file name="events" fileName="events.log">
+        <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+        <LevelRangeFilter minLevel="INFO" onMatch="ACCEPT" onMismatch="NEUTRAL"/>
+    </file>
+</Appenders>
+<Loggers>
+    <Logger name="events" additivity="false">
+        <AppenderRef ref="events"/>
+    </Logger>
+    <Logger name="main" additivity="false">
+        <AppenderRef ref="Console"/>
+    </Logger>
+</Loggers>
+</Configuration>
+
