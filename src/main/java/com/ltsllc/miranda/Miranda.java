@@ -5,6 +5,7 @@ import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.cluster.SpecNode;
+import com.ltsllc.miranda.logcache.LoggingSet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.asynchttpclient.*;
@@ -60,18 +61,17 @@ public class Miranda {
 
     protected Cluster cluster;
     protected static ImprovedProperties properties;
-    protected List<Message> newMessageQueue = new ArrayList<>();
     protected long clusterAlarm = -1;
     protected Server server;
     protected List<SpecNode> specNodes = new ArrayList<>();
-    protected Set<Message> inflight = new HashSet<>();
+    protected LoggingSet inflight = null;
 
-    public Set<Message> getInflight() {
+    public LoggingSet getInflight() {
         return inflight;
     }
 
-    public void setInflight(Set<Message> infight) {
-        this.inflight = infight;
+    public void setInflight(LoggingSet inflight) {
+        this.inflight = inflight;
     }
 
     public List<SpecNode> getSpecNodes() {
@@ -119,28 +119,7 @@ public class Miranda {
         this.cluster = cluster;
     }
 
-    public void setNewMessageQueue(List<Message> newMessageQueue) {
-        this.newMessageQueue = newMessageQueue;
-    }
 
-    public synchronized List<Message> getNewMessageQueue () {
-        return newMessageQueue;
-    }
-
-    public synchronized Message getNewMessage () {
-        if (newMessageQueue.size() < 1) {
-            return null;
-        }
-        else {
-            Message message = newMessageQueue.get(0);
-            newMessageQueue.remove(message);
-            return message;
-        }
-    }
-
-    public synchronized void addNewMessage (Message message) {
-        newMessageQueue.add(message);
-    }
 
     public static ImprovedProperties getProperties() {
         return properties;
@@ -168,20 +147,6 @@ public class Miranda {
     public void mainLoop () throws LtsllcException, IOException {
         logger.debug("starting mainLoop, with keepRunning = " + keepRunning);
         if (keepRunning) {
-            Message newMessage = getNewMessage();
-            if (newMessage != null) {
-                logger.debug("a new message has arrived message = " + newMessage);
-
-                SendQueue.getInstance().add(newMessage);
-
-                try {
-                    cluster.informOfNewMessage(newMessage);
-                } catch (LtsllcException e) {
-                    logger.error("exception telling cluster of new message");
-                }
-                logger.debug("we told the cluster of it");
-            }
-
             /*
              * Try and deliver all the messages
              */
@@ -463,7 +428,7 @@ public class Miranda {
      *
      * @param message The message to deliver
      */
-    public void deliver (Message message) {
+    public void deliver (Message message) throws IOException {
         if (inflight.contains(message)) {
             return;
         }
@@ -475,7 +440,7 @@ public class Miranda {
         boundRequestBuilder.setBody(message.getContents())
                         .execute(new AsyncCompletionHandler<Response>() {
                             @Override
-                            public Response onCompleted(Response response) {
+                            public Response onCompleted(Response response) throws IOException {
                                 if ((response.getStatusCode() > 199) && (response.getStatusCode() < 300)){
                                     successfulMessage(message);
                                 }
@@ -496,7 +461,7 @@ public class Miranda {
      *
      * @param message The message
      */
-    public void successfulMessage(Message message) {
+    public void successfulMessage(Message message) throws IOException {
         logger.debug("entering successfulMessage with: " + message);
         cluster.informOfDelivery(message);
         try {

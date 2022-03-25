@@ -8,12 +8,13 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Arrays;
 import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-public class Message {
+public class Message implements Comparable<Message> {
     protected static Logger logger = LogManager.getLogger();
 
     protected int status;
@@ -24,6 +25,14 @@ public class Message {
 
     public Message () {
         super();
+    }
+
+    public Message (Message message) {
+        status = message.status;
+        deliveryURL = message.deliveryURL;
+        statusURL = message.statusURL;
+        contents = Arrays.copyOf(message.contents, message.contents.length);
+        messageID = new UUID(message.messageID.getMostSignificantBits(), message.messageID.getLeastSignificantBits());
     }
 
     public String getDeliveryURL() {
@@ -251,4 +260,20 @@ public class Message {
         return newMessage;
     }
 
+    @Override
+    public int compareTo(Message message) {
+        //
+        // TODO: find a replacement for Long
+        //
+        Long l1 = new Long(messageID.getMostSignificantBits());
+        Long l2 = new Long(messageID.getLeastSignificantBits());
+
+        int result = l1.compareTo(message.messageID.getMostSignificantBits());
+
+        if (result == 0) {
+            return l2.compareTo(message.messageID.getLeastSignificantBits());
+        } else {
+            return result;
+        }
+    }
 }

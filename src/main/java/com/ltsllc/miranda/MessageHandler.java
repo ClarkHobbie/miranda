@@ -1,6 +1,7 @@
 package com.ltsllc.miranda;
 
 import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.commons.UncheckedLtsllcException;
 import com.ltsllc.miranda.cluster.Cluster;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -22,6 +23,7 @@ import java.util.UUID;
 /**
  * A connection to a client
  */
+// TODO: tell the cluster about new messages
 public class MessageHandler extends AbstractHandler {
     public static final String PARAM_DESTINATION_URL = "DELIVER_URL";
     public static final String PARAM_STATUS_URL = "STATUS_URL";
@@ -67,7 +69,12 @@ public class MessageHandler extends AbstractHandler {
         UUID uuid = UUID.randomUUID();
         message.setMessageID(uuid);
 
-        Miranda.getInstance().addNewMessage(message);
+        try {
+            SendQueue.getInstance().add(message);
+        } catch (LtsllcException e) {
+            logger.error ("Encountered exception when trying to add new message",e);
+            throw new UncheckedLtsllcException(e);
+        }
         response.setStatus(200);
         Writer writer = null;
         BufferedWriter bufferedWriter = null;

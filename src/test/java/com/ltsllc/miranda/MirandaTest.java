@@ -224,12 +224,10 @@ class MirandaTest extends TestSuperclass {
         Message message = createTestMessage(UUID.randomUUID());
         List<Message> list = new ArrayList<>();
         list.add(message);
-        miranda.setNewMessageQueue(list);
         Miranda.setKeepRunning(false);
 
         miranda.mainLoop();
 
-        list = miranda.getNewMessageQueue();
         assert (list.size() > 0);
     }
 
@@ -240,12 +238,10 @@ class MirandaTest extends TestSuperclass {
         Message message = createTestMessage(UUID.randomUUID());
         List<Message> list = new ArrayList<>();
         list.add(message);
-        miranda.setNewMessageQueue(list);
         Miranda.setKeepRunning(true);
 
         miranda.mainLoop();
 
-        list = miranda.getNewMessageQueue();
         assert (list.size() == 0);
     }
 
@@ -259,5 +255,10 @@ class MirandaTest extends TestSuperclass {
         miranda.mainLoop();
 
         assert (Cluster.getInstance().getNodes().size() > 0);
+    }
+
+    @Test
+    public void deliver () {
+
     }
 }
