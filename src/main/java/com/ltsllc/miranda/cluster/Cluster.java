@@ -211,28 +211,13 @@ public class Cluster {
         logger.debug("entering informOfDelivery with message = " + message);
 
         String contents = "MESSAGE DELIVERED " + message.getMessageID();
-        logger.debug("POST contents = " + contents);
+        logger.debug("session contents = " + contents);
         for (Node node : nodes) {
             WriteFuture future = node.getIoSession().write(contents);
             try {
                 future.await(IOD_TIMEOUT, IOD_TIMEOUT_UNITS);
             } catch (InterruptedException e) {
                 logger.error("Interrupted during wait for write to complete for some in informOfDelivery", e);
-            }
-            IoSession nodeSession = future.getSession();
-            ReadFuture readFuture = nodeSession.read();
-            try {
-                if (!readFuture.await(IONM_TIMEOUT, IONM_TIMEOUT_UNITS)) {
-                    logger.error("read timed out informing another node of message delivery");
-                }
-            } catch (InterruptedException e) {
-                logger.error("Interrupted during wait in informOfNewMessage", e);
-            }
-            String statusCodeStr = (String) readFuture.getMessage();
-            logger.debug("came back from read with " + statusCodeStr);
-
-            if (Integer.parseInt(statusCodeStr) != 200) {
-                logger.error("got back a non-200 code for inform of message delivery. status = " + statusCodeStr);
             }
         }
 

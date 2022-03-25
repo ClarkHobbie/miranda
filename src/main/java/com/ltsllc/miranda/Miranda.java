@@ -448,6 +448,7 @@ public class Miranda {
                             public Response onCompleted(Response response) throws IOException {
                                 if ((response.getStatusCode() > 199) && (response.getStatusCode() < 300)){
                                     successfulMessage(message);
+                                    event.info ("Delivered message (" + message.getMessageID() + ")");
                                 }
                                 // otherwise, keep trying
                                 return response;
