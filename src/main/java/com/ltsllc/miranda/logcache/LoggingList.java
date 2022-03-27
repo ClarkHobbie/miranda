@@ -102,9 +102,8 @@ public class LoggingList {
                 if (!fileMessage.equals(message)) {
                     bufferedWriter.write(line);
                     bufferedWriter.newLine();
-
-                    line = bufferedReader.readLine();
                 }
+                line = bufferedReader.readLine();
             }
         } finally {
             if (bufferedReader != null) {

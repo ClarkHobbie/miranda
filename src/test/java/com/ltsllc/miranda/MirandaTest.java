@@ -14,6 +14,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -24,6 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
+
+import static org.mockito.Mockito.*;
 
 /**
  * Test the main functions of Miranda
@@ -45,19 +48,15 @@ class MirandaTest extends TestSuperclass {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        miranda.setClusterAlarm(-1);
+        miranda.setClusterAlarm(System.currentTimeMillis());
         miranda.connectToOtherNodes();
 
-        List<Node> list = Cluster.getInstance().getNodes();
-        assert (list.size() < 1);
-
-        long now = System.currentTimeMillis();
-        miranda.setClusterAlarm(now);
+        Cluster mockCluster = Mockito.mock(Cluster.class);
+        Cluster.setInstance(mockCluster);
 
         miranda.connectToOtherNodes();
 
-        list = Cluster.getInstance().getNodes();
-        assert (list.size() > 0);
+        Mockito.verify(mockCluster, atLeastOnce()).reconnect();
     }
 
     @Test
@@ -65,8 +64,9 @@ class MirandaTest extends TestSuperclass {
         Miranda miranda = new Miranda();
         try {
             miranda.loadProperties();
+            assert (Miranda.getProperties().getProperty(Miranda.PROPERTY_OWNER_FILE) != null);
         } finally {
-            miranda.releasePorts();
+
         }
     }
 
@@ -77,7 +77,7 @@ class MirandaTest extends TestSuperclass {
             miranda.loadProperties();
             miranda.startMessagePort(1234);
         } finally {
-            miranda.releasePorts();
+            miranda.getServer().stop();
         }
     }
 
@@ -97,7 +97,6 @@ class MirandaTest extends TestSuperclass {
             assert (properties2.getProperty("R").equals("R"));
             assert (properties2.getProperty("T").equals("T"));
         } finally {
-            miranda.releasePorts();
         }
     }
 
@@ -115,7 +114,7 @@ class MirandaTest extends TestSuperclass {
             miranda.processArgument("prev", "abc", improvedProperties);
             assert (improvedProperties.getProperty("prev").equals("abc"));
         } finally {
-            miranda.releasePorts();
+
         }
    }
 
@@ -123,13 +122,23 @@ class MirandaTest extends TestSuperclass {
     @Test
     public void startUpNoFile () throws Exception {
         Miranda miranda = new Miranda();
+        ImprovedFile mirandaProperties = new ImprovedFile("mirada.properties");
+        ImprovedFile mirandaBackup = new ImprovedFile("miranda.backup");
+        ImprovedFile testProperties = new ImprovedFile("test.properties");
         try {
-            miranda.loadProperties();
-            Cluster.defineStatics();
+            Cluster mockCluster = mock(Cluster.class);
+            Cluster.setInstance(mockCluster);
+
+            mirandaProperties.copyTo(mirandaBackup);
+            testProperties.copyTo(mirandaProperties);
+
             String[] args = new String[0];
             miranda.startUp(args);
+
+            verify(mockCluster, atLeastOnce()).connect(any());
         } finally {
-            miranda.releasePorts();
+            mirandaBackup.copyTo(mirandaProperties);
+            miranda.getServer().stop();
         }
     }
 
@@ -137,37 +146,35 @@ class MirandaTest extends TestSuperclass {
      * startUp with an existing sendFile
      */
     @Test
-    public void starupExistigFile () throws Exception {
-        Message m1 = new Message();
-        UUID uuid1 = UUID.randomUUID();
-        m1.setMessageID(uuid1);
-        m1.setContents("hi there".getBytes());
-        m1.setStatusURL("http://google.com");
-        m1.setDeliveryURL("http://google.com");
-
-        List<Message> list = new ArrayList<>();
-        list.add(m1);
-
+    public void startupExistingFile () throws Exception {
         Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
+        MessageLog mockMessageLog = mock(MessageLog.class);
+        MessageLog.setInstance(mockMessageLog);
+        ImprovedProperties p = Miranda.getProperties();
+
+        ImprovedFile messages = new ImprovedFile(p.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
+        ImprovedFile ownersFile = new ImprovedFile(p.getProperty(Miranda.PROPERTY_OWNER_FILE));
+        when(mockMessageLog.performRecover(messages, p.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT),
+                ownersFile)).thenReturn(mockMessageLog);
+
+        Cluster mockCluster = mock(Cluster.class);
+        Cluster.setInstance(mockCluster);
+
+        ImprovedFile events = new ImprovedFile("events.log");
         try {
-
-
-            miranda.loadProperties();
-            miranda.releasePorts();
-
-            String sendFileName = miranda.getProperties().getProperty(Miranda.PROPERTY_SEND_FILE);
-            ImprovedFile file = new ImprovedFile(sendFileName);
-            file.touch();
+            messages.touch();
             String[] args = new String[0];
 
             miranda.startUp(args);
 
-            list = SendQueue.getInstance().copyMessages();
-            assert (list != null && list.size() > 0);
-            Message m2 = list.get(0);
-            assert (m1.equals(m2));
+            verify(mockMessageLog, atLeastOnce()).performRecover(messages,
+                    p.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT) , ownersFile);
         } finally {
-            miranda.releasePorts();
+            messages.delete();
+            events.delete();
+            miranda.getServer().stop();
         }
     }
 
@@ -212,7 +219,7 @@ class MirandaTest extends TestSuperclass {
                 }
             }
         } finally {
-            miranda.releasePorts();
+
         }
 
     }
@@ -238,11 +245,15 @@ class MirandaTest extends TestSuperclass {
         Message message = createTestMessage(UUID.randomUUID());
         List<Message> list = new ArrayList<>();
         list.add(message);
+        MessageLog mockMessageLog = Mockito.mock(MessageLog.class);
+        MessageLog.setInstance(mockMessageLog);
+
+        when(mockMessageLog.copyAllMessages()).thenReturn(list);
         Miranda.setKeepRunning(true);
 
         miranda.mainLoop();
 
-        assert (list.size() == 0);
+        assert (miranda.getInflight().contains(message));
     }
 
     @Test
@@ -250,15 +261,20 @@ class MirandaTest extends TestSuperclass {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        miranda.setClusterAlarm(System.currentTimeMillis() - 10);
+        Cluster mockCluster = mock(Cluster.class);
+        Cluster.setInstance(mockCluster);
+
+        List<Message> list = new ArrayList<>();
+
+        MessageLog mockMessageLog = mock(MessageLog.class);
+        MessageLog.setInstance(mockMessageLog);
+        when (mockMessageLog.copyAllMessages()).thenReturn(list);
+
+        miranda.setClusterAlarm(System.currentTimeMillis() - 10000);
 
         miranda.mainLoop();
 
-        assert (Cluster.getInstance().getNodes().size() > 0);
+        verify(mockCluster, atLeastOnce()).reconnect();
     }
 
-    @Test
-    public void deliver () {
-
-    }
 }

@@ -2,22 +2,32 @@ package com.ltsllc.miranda.cluster;
 
 
 import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.Message;
 import com.ltsllc.miranda.Miranda;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
+import org.apache.mina.core.filterchain.DefaultIoFilterChainBuilder;
+import org.apache.mina.core.future.ConnectFuture;
+import org.apache.mina.core.future.DefaultConnectFuture;
+import org.apache.mina.core.future.WriteFuture;
+import org.apache.mina.core.service.IoConnector;
 import org.apache.mina.core.session.IoSession;
+import org.apache.mina.core.session.IoSessionConfig;
 import org.asynchttpclient.*;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+
+import static org.mockito.Mockito.*;
 
 class ClusterTest {
 
@@ -36,6 +46,26 @@ class ClusterTest {
         ImprovedRandom improvedRandom = new ImprovedRandom();
         Cluster.setRandomNumberGenerator(improvedRandom);
 
+        IoConnector mockIoConnector = mock(IoConnector.class);
+        Cluster.getInstance().setCreatedIoConnector(mockIoConnector);
+
+        DefaultIoFilterChainBuilder mockIoFilterChainBuilder = mock(DefaultIoFilterChainBuilder.class);
+        when(mockIoConnector.getFilterChain()).thenReturn(mockIoFilterChainBuilder);
+
+        ConnectFuture mockConnectFuture = mock(ConnectFuture.class);
+
+        InetSocketAddress inetSocketAddress = new InetSocketAddress("192.168.0.12", 2020);
+        when(mockIoConnector.connect(inetSocketAddress)).thenReturn(mockConnectFuture);
+
+        IoSession mockIoSession = mock(IoSession.class);
+        when(mockConnectFuture.getSession()).thenReturn(mockIoSession);
+
+        WriteFuture mockWriteFuture = mock(WriteFuture.class);
+        when(mockIoSession.write(any())).thenReturn(mockWriteFuture);
+        when(mockWriteFuture.getSession()).thenReturn(mockIoSession);
+
+        IoSessionConfig mockIoSessionConfig = mock(IoSessionConfig.class);
+        when(mockIoSession.getConfig()).thenReturn(mockIoSessionConfig);
 
         miranda.parseNodes();
         Cluster.getInstance().connect(miranda.getSpecNodes());
@@ -103,12 +133,44 @@ class ClusterTest {
     public void testClustered () throws Exception {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
-        miranda.parseNodes();
 
-        Cluster.defineStatics();
-        Cluster.getInstance().connect(miranda.getSpecNodes());
+        ImprovedFile properties = new ImprovedFile("miranda.properties");
+        ImprovedFile backup = new ImprovedFile("miranda.backup");
+        ImprovedFile testProperties = new ImprovedFile("test02.properties");
 
-        List<Node> list = Cluster.getInstance().getNodes();
-        assert (list.size() > 0);
+        try {
+            miranda.parseNodes();
+
+            Cluster.defineStatics();
+
+            properties.copyTo(backup);
+            testProperties.copyTo(properties);
+            IoConnector mockIoConnector = mock(IoConnector.class);
+            Cluster.getInstance().setCreatedIoConnector(mockIoConnector);
+            when(mockIoConnector.getFilterChain()).thenReturn(new DefaultIoFilterChainBuilder());
+            InetSocketAddress temp = new InetSocketAddress("192.168.0.12", 2020);
+
+            ConnectFuture mockConnectFuture = mock(ConnectFuture.class);
+            when(mockIoConnector.connect(temp)).thenReturn(mockConnectFuture);
+
+            IoSession mockIoSession = mock(IoSession.class);
+            when(mockConnectFuture.getSession()).thenReturn(mockIoSession);
+
+            WriteFuture mockWriteFuture = mock(WriteFuture.class);
+            when(mockIoSession.write(any())).thenReturn(mockWriteFuture);
+            when(mockWriteFuture.getSession()).thenReturn(mockIoSession);
+
+            IoSessionConfig mockIoSessionConfig = mock(IoSessionConfig.class);
+            when(mockIoSession.getConfig()).thenReturn(mockIoSessionConfig);
+
+            Cluster.getInstance().connect(miranda.getSpecNodes());
+
+            verify(mockIoConnector, atLeastOnce()).connect(temp);
+        } finally {
+            if (backup.exists()) {
+                backup.copyTo(properties);
+                backup.delete();
+            }
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.ltsllc.miranda;
 
 import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.commons.io.ImprovedFile;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.junit.Test;
@@ -16,7 +17,10 @@ public class MirandaThreadTest {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        SendQueue.getInstance().clearAll();
+        ImprovedFile messageLog = new ImprovedFile("messages.log");
+        ImprovedFile ownersLog = new ImprovedFile("owner.log");
+
+        MessageLog.getInstance().clearAllMessages(messageLog, 104857600, ownersLog);
 
         MirandaThread mirandaThread = new MirandaThread();
         mirandaThread.setMiranda(miranda);

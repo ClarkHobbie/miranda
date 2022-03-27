@@ -70,12 +70,7 @@ public class MessageHandler extends AbstractHandler {
         UUID uuid = UUID.randomUUID();
         message.setMessageID(uuid);
 
-        try {
-            SendQueue.getInstance().add(message);
-        } catch (LtsllcException e) {
-            logger.error ("Encountered exception when trying to add new message",e);
-            throw new UncheckedLtsllcException(e);
-        }
+        MessageLog.getInstance().add(message);
         events.info("new message(" + message.getMessageID() + ") received to " + message.getDeliveryURL());
 
         response.setStatus(200);
@@ -101,7 +96,7 @@ public class MessageHandler extends AbstractHandler {
             //tell the client (again!) that we created the message
             tellClient(message.getStatusURL(), message.getMessageID());
         } catch (LtsllcException e) {
-            logger.error("Encoutered exception while telling cluster of new message",e);
+            logger.error("Encountered exception while informing the cluster or client of new message",e);
         }
     }
 

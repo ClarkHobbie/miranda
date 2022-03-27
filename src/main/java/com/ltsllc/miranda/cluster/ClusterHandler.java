@@ -5,9 +5,9 @@ import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.commons.util.Utils;
 import com.ltsllc.miranda.Message;
+import com.ltsllc.miranda.MessageLog;
 import com.ltsllc.miranda.MessageType;
 import com.ltsllc.miranda.Miranda;
-import com.ltsllc.miranda.OtherMessages;
 import com.ltsllc.miranda.logcache.LoggingCache;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -125,13 +125,12 @@ public class ClusterHandler implements IoHandler {
         this.cache = cache;
     }
 
-    public ClusterHandler (Node node) throws LtsllcException {
-        logger.debug("New instance of ClusterHandler");
+    public ClusterHandler (Node node, LoggingCache cache)
+            throws LtsllcException
+    {
+        logger.debug("entering constructor with node = " + node + ", and cache = " + cache);
         this.node = node;
-
-        ImprovedFile logfile = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_SEND_FILE));
-        int loadLimit = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
-        cache = new LoggingCache(logfile, loadLimit);
+        this.cache = cache;
     }
 
     @Override
@@ -540,7 +539,7 @@ public class ClusterHandler implements IoHandler {
             }
         }
 
-        OtherMessages.getInstance().recordOwner(messageID, owner);
+        MessageLog.getInstance().recordOwner(messageID, owner);
         logger.debug("leaving handleBid");
     }
 
@@ -596,7 +595,8 @@ public class ClusterHandler implements IoHandler {
 
         Message message = Message.readLongFormat(scanner);
 
-        OtherMessages.getInstance().record(message, partnerUuid);
+        MessageLog.getInstance().recordOwner(message.getMessageID(), partnerUuid);
+        MessageLog.getInstance().add(message);
 
         logger.debug("leaving handleNewMessage");
     }
@@ -651,7 +651,6 @@ public class ClusterHandler implements IoHandler {
         scanner.skip(START);
         partnerID = UUID.fromString(scanner.next());
 
-        boolean connected = true;
         ioSession.getConfig().setUseReadOperation(true);
         node.setIoSession(ioSession);
         node.setPartnerID(partnerID);

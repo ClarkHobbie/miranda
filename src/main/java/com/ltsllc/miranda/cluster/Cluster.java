@@ -1,10 +1,12 @@
 package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.Message;
 import com.ltsllc.miranda.Miranda;
+import com.ltsllc.miranda.logcache.LoggingCache;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.mina.core.RuntimeIoException;
@@ -102,6 +104,19 @@ public class Cluster {
     protected Map<IoSession, Node> ioSessionToNode = new HashMap<>();
     protected UUID uuid = UUID.randomUUID();
     protected IoConnector ioConnector = null;
+    protected IoConnector createdIoConnector = null;
+
+    public IoConnector getCreatedIoConnector() {
+        if (createdIoConnector == null) {
+            createdIoConnector = new NioSocketConnector();
+        }
+
+        return createdIoConnector;
+    }
+
+    public void setCreatedIoConnector(IoConnector createdIoConnector) {
+        this.createdIoConnector = createdIoConnector;
+    }
 
     public IoConnector getIoConnector() {
         return ioConnector;
@@ -251,7 +266,12 @@ public class Cluster {
         ioAcceptor.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory(Charset.forName("UTF-8"))));
         ImprovedProperties p = Miranda.getProperties();
         Node node = new Node(UUID.randomUUID(), p.getProperty(Miranda.PROPERTY_HOST), p.getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
-        ioAcceptor.setHandler(new ClusterHandler(node));
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
+
+        ioAcceptor.setHandler(clusterHandler);
 
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
 
@@ -284,10 +304,15 @@ public class Cluster {
             return;
         }
 
-        ioConnector = new NioSocketConnector();
+        ioConnector = getCreatedIoConnector();
         ImprovedProperties p = Miranda.getProperties();
         Node newNode = new Node(UUID.randomUUID(), p.getProperty(Miranda.PROPERTY_HOST), p.getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
-        ioConnector.setHandler(new ClusterHandler(newNode));
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(newNode, cache);
+
+        ioConnector.setHandler(clusterHandler);
         ioConnector.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory()));
 
         for (SpecNode specNode: list) {
@@ -316,7 +341,7 @@ public class Cluster {
         boolean returnValue = true;
         logger.debug("entering connectToNode with node = " + node.getHost() + ":" + node.getPort() + ", and ioConnector = " + ioConnector);
         InetSocketAddress addrRemote = new InetSocketAddress(node.getHost(), node.getPort());
-        ConnectFuture future = ioConnector.connect(addrRemote);
+        ConnectFuture future = getCreatedIoConnector().connect(addrRemote);
         future.awaitUninterruptibly();
         IoSession ioSession = null;
         try {

@@ -2,11 +2,12 @@ package com.ltsllc.miranda.cluster;
 
 
 import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.commons.util.Utils;
 import com.ltsllc.miranda.Message;
+import com.ltsllc.miranda.MessageLog;
 import com.ltsllc.miranda.Miranda;
-import com.ltsllc.miranda.OtherMessages;
 import com.ltsllc.miranda.logcache.LoggingCache;
 import com.ltsllc.miranda.logcache.TestSuperclass;
 import org.apache.logging.log4j.Level;
@@ -14,7 +15,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.mina.core.session.IoSession;
-import org.eclipse.jetty.util.log.Log;
+import org.apache.mina.core.session.IoSessionConfig;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -24,6 +25,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import static org.mockito.Mockito.when;
 
 class ClusterHandlerTest extends TestSuperclass {
     public static final Logger logger = LogManager.getLogger();
@@ -46,7 +49,9 @@ class ClusterHandlerTest extends TestSuperclass {
         Message message = createTestMessage(UUID.randomUUID());
         stringBuffer.append(message.longToString());
         Node node = new Node("localhost", 2020);
-        ClusterHandler clusterHandler = new ClusterHandler(node);
+        ImprovedFile cacheFile = new ImprovedFile("messages");
+        LoggingCache cache = new LoggingCache(cacheFile, 104857600); // 100 Meg
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.setState(ClusterConnectionStates.START);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
@@ -61,17 +66,23 @@ class ClusterHandlerTest extends TestSuperclass {
     public void testStartStart () throws LtsllcException, IOException {
         Node node = new Node("localhost", 2020);
         node.setUuid(UUID.randomUUID());
-        ClusterHandler clusterHandler = new ClusterHandler(node);
+
+        ImprovedFile messageLog = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messageLog, 104857600); // 100Meg
+        ClusterHandler clusterHandler = new ClusterHandler(node,cache);
         clusterHandler.setState(ClusterConnectionStates.START);
 
-        String strMessage = ClusterHandler.START;
-        strMessage += " ";
-        strMessage += UUID.randomUUID();
+        StringBuffer strMessage = new StringBuffer();
+        strMessage.append(ClusterHandler.START);
+        strMessage.append(" ");
+        strMessage.append(UUID.randomUUID());
 
+        IoSessionConfig mockIoSessionConfig = Mockito.mock(IoSessionConfig.class);
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Mockito.when(mockIoSession.write(new Any())).thenReturn(null);
+        when(mockIoSession.write(new Any())).thenReturn(null);
+        when(mockIoSession.getConfig()).thenReturn(mockIoSessionConfig);
 
-        clusterHandler.messageReceived(mockIoSession, strMessage);
+        clusterHandler.messageReceived(mockIoSession, strMessage.toString());
 
         assert (clusterHandler.getState() == ClusterConnectionStates.GENERAL);
     }
@@ -83,12 +94,19 @@ class ClusterHandlerTest extends TestSuperclass {
         strMessage += " ";
         strMessage += uuid;
 
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        ImprovedFile messageFile = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messageFile, 104857600); // 100Meg
+
+        Node node = new Node("192.168.0.12",2020);
+        node.setUuid(UUID.randomUUID());
+        node.setPartnerID(UUID.randomUUID());
+
+        ClusterHandler clusterHandler = new ClusterHandler(node,cache);
         clusterHandler.setState(ClusterConnectionStates.START);
         clusterHandler.setUuid(uuid);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Mockito.when(mockIoSession.write("NEW NODE CONFIRMED 123e4567-e89b-42d3-a456-556642440000")).thenReturn(null);
+        when(mockIoSession.write("NEW NODE CONFIRMED 123e4567-e89b-42d3-a456-556642440000")).thenReturn(null);
 
         clusterHandler.messageReceived(mockIoSession, strMessage);
 
@@ -99,10 +117,14 @@ class ClusterHandlerTest extends TestSuperclass {
     @Test
     public void testStartBid () throws LtsllcException, IOException {
         String strMessage = "BID 123e4567-e89b-42d3-a456-556642440000 123456";
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12", 2020);
+
+        ImprovedFile messageLog = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messageLog, 104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.setState(ClusterConnectionStates.MESSAGE);
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Mockito.when(mockIoSession.write("ERROR")).thenReturn(null);
+        when(mockIoSession.write("ERROR")).thenReturn(null);
 
         clusterHandler.messageReceived(mockIoSession, strMessage);
 
@@ -112,13 +134,17 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void testAuctionHeartBeat () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.setState(ClusterConnectionStates.AUCTION);
 
         String strMessage = ClusterHandler.HEART_BEAT;
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Mockito.when(mockIoSession.write(new Any())).thenReturn(null);
+        when(mockIoSession.write(new Any())).thenReturn(null);
 
         clusterHandler.messageReceived(mockIoSession, strMessage);
 
@@ -134,15 +160,19 @@ class ClusterHandlerTest extends TestSuperclass {
         strMessage += uuid;
         strMessage += " ";
         strMessage += "1234";
+        Node node = new Node("192.168.0.12",2020);
 
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
+
         clusterHandler.setState(ClusterConnectionStates.AUCTION);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Mockito.when(mockIoSession.write(new Any())).thenReturn(null);
+        when(mockIoSession.write(new Any())).thenReturn(null);
 
         ImprovedRandom mockRandom = Mockito.mock(ImprovedRandom.class);
-        Mockito.when(mockRandom.nextInt()).thenReturn(4567);
+        when(mockRandom.nextInt()).thenReturn(4567);
 
         clusterHandler.setOurRandom(mockRandom);
 
@@ -160,7 +190,10 @@ class ClusterHandlerTest extends TestSuperclass {
         UUID ourUuid = UUID.randomUUID();
         UUID theirUuid = UUID.randomUUID();
         Node node = new Node(ourUuid, "localhost",2020);
-        ClusterHandler clusterHandler = new ClusterHandler(node);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.setState(ClusterConnectionStates.AUCTION);
         clusterHandler.setUuid(ourUuid);
         clusterHandler.setPartnerID(theirUuid);
@@ -170,7 +203,7 @@ class ClusterHandlerTest extends TestSuperclass {
         UUID messageUuid = UUID.fromString("123e4567-e89b-42d3-a456-556642440000");
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Mockito.when(mockIoSession.write(new Any())).thenReturn(null);
+        when(mockIoSession.write(new Any())).thenReturn(null);
 
         String strMessage = ClusterHandler.BID;
         strMessage += " ";
@@ -178,7 +211,7 @@ class ClusterHandlerTest extends TestSuperclass {
         strMessage += " 1234";
 
         ImprovedRandom mockRandom = Mockito.mock(ImprovedRandom.class);
-        Mockito.when(mockRandom.nextInt()).thenReturn(123);
+        when(mockRandom.nextInt()).thenReturn(123);
         clusterHandler.setOurRandom(mockRandom);
 
         clusterHandler.messageReceived(mockIoSession, strMessage);
@@ -189,18 +222,22 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void testAuctionGetMessageInCache () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.setState(ClusterConnectionStates.AUCTION);
 
         LoggingCache mockCache = Mockito.mock(LoggingCache.class);
 
         UUID uuid = UUID.fromString("123e4567-e89b-42d3-a456-556642440000");
-        Mockito.when(mockCache.contains(uuid)).thenReturn(true);
+        when(mockCache.contains(uuid)).thenReturn(true);
 
         clusterHandler.setCache(mockCache);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Mockito.when(mockIoSession.write(new Any())).thenReturn(null);
+        when(mockIoSession.write(new Any())).thenReturn(null);
 
         Message message = new Message();
         message.setMessageID(uuid);
@@ -208,9 +245,9 @@ class ClusterHandlerTest extends TestSuperclass {
         message.setDeliveryURL("HTTP://GOOGLE.COM");
         byte[] contents = {1, 2, 3};
         message.setContents(contents);
-        Mockito.when(mockCache.contains(uuid)).thenReturn(true);
-        Mockito.when(mockCache.isInMemory(uuid)).thenReturn(true);
-        Mockito.when(mockCache.get(uuid)).thenReturn(message);
+        when(mockCache.contains(uuid)).thenReturn(true);
+        when(mockCache.isInMemory(uuid)).thenReturn(true);
+        when(mockCache.get(uuid)).thenReturn(message);
 
         String strMessage = ClusterHandler.GET_MESSAGE;
         strMessage +=  " ";
@@ -233,18 +270,22 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void testAuctionGetMessageCacheMiss () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.setState(ClusterConnectionStates.AUCTION);
 
         LoggingCache mockCache = Mockito.mock(LoggingCache.class);
 
         UUID uuid = UUID.fromString("123e4567-e89b-42d3-a456-556642440000");
-        Mockito.when(mockCache.contains(uuid)).thenReturn(false);
+        when(mockCache.contains(uuid)).thenReturn(false);
 
         clusterHandler.setCache(mockCache);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Mockito.when(mockIoSession.write(new Any())).thenReturn(null);
+        when(mockIoSession.write(new Any())).thenReturn(null);
 
         String strMessage = ClusterHandler.GET_MESSAGE;
         strMessage +=  " ";
@@ -258,11 +299,15 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void testAuctionAuctionOver () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.setState(ClusterConnectionStates.AUCTION);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Mockito.when(mockIoSession.write(new Any())).thenReturn(null);
+        when(mockIoSession.write(new Any())).thenReturn(null);
 
         String strMessage = ClusterHandler.AUCTION_OVER;
 
@@ -275,7 +320,11 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void testGeneralAuction () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.setState(ClusterConnectionStates.GENERAL);
 
         LoggingCache mockCache = Mockito.mock(LoggingCache.class);
@@ -285,7 +334,7 @@ class ClusterHandlerTest extends TestSuperclass {
         clusterHandler.setCache(mockCache);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Mockito.when(mockIoSession.write(ClusterHandler.AUCTION)).thenReturn(null);
+        when(mockIoSession.write(ClusterHandler.AUCTION)).thenReturn(null);
 
         String strMessage = ClusterHandler.AUCTION;
         clusterHandler.messageReceived(mockIoSession, strMessage);
@@ -296,7 +345,11 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void testGeneralDeadNode () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.setState(ClusterConnectionStates.GENERAL);
 
         LoggingCache mockCache = Mockito.mock(LoggingCache.class);
@@ -306,7 +359,7 @@ class ClusterHandlerTest extends TestSuperclass {
         clusterHandler.setCache(mockCache);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Mockito.when(mockIoSession.write(ClusterHandler.AUCTION)).thenReturn(null);
+        when(mockIoSession.write(ClusterHandler.AUCTION)).thenReturn(null);
 
         String strMessage = ClusterHandler.DEAD_NODE;
         strMessage += " ";
@@ -320,7 +373,11 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void testGeneralGetMessageCacheMiss () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.setState(ClusterConnectionStates.GENERAL);
 
         LoggingCache mockCache = Mockito.mock(LoggingCache.class);
@@ -330,7 +387,7 @@ class ClusterHandlerTest extends TestSuperclass {
         clusterHandler.setCache(mockCache);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Mockito.when(mockIoSession.write(ClusterHandler.MESSAGE_NOT_FOUND)).thenReturn(null);
+        when(mockIoSession.write(ClusterHandler.MESSAGE_NOT_FOUND)).thenReturn(null);
 
         String strMessage = ClusterHandler.GET_MESSAGE;
         strMessage += " ";
@@ -355,7 +412,11 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void testGeneralGetMessageCacheHit () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.setState(ClusterConnectionStates.GENERAL);
 
         LoggingCache mockCache = Mockito.mock(LoggingCache.class);
@@ -363,14 +424,14 @@ class ClusterHandlerTest extends TestSuperclass {
         UUID uuid = UUID.fromString("123e4567-e89b-42d3-a456-556642440000");
         Message message = createTestMessage(uuid);
 
-        Mockito.when(mockCache.contains(uuid)).thenReturn(true);
-        Mockito.when(mockCache.isInMemory(uuid)).thenReturn(true);
-        Mockito.when(mockCache.get(uuid)).thenReturn(message);
+        when(mockCache.contains(uuid)).thenReturn(true);
+        when(mockCache.isInMemory(uuid)).thenReturn(true);
+        when(mockCache.get(uuid)).thenReturn(message);
 
         clusterHandler.setCache(mockCache);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Mockito.when(mockIoSession.write(ClusterHandler.AUCTION)).thenReturn(null);
+        when(mockIoSession.write(ClusterHandler.AUCTION)).thenReturn(null);
 
         String strMessage = ClusterHandler.GET_MESSAGE;
         strMessage += " ";
@@ -384,11 +445,15 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void testGeneralHeartBeat () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.setState(ClusterConnectionStates.GENERAL);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Mockito.when(mockIoSession.write(ClusterHandler.HEART_BEAT)).thenReturn(null);
+        when(mockIoSession.write(ClusterHandler.HEART_BEAT)).thenReturn(null);
 
         clusterHandler.messageReceived(mockIoSession, ClusterHandler.HEART_BEAT);
 
@@ -398,22 +463,26 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void testGeneralMessageDelivered () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.setState(ClusterConnectionStates.GENERAL);
 
         MessageCache mockCache = Mockito.mock(MessageCache.class);
 
         UUID uuid = UUID.fromString("123e4567-e89b-42d3-a456-556642440000");
 
-        Mockito.when(mockCache.contains(uuid)).thenReturn(true);
-        Mockito.when(mockCache.isOnline(uuid)).thenReturn(true);
+        when(mockCache.contains(uuid)).thenReturn(true);
+        when(mockCache.isOnline(uuid)).thenReturn(true);
 
         String strMessage = ClusterHandler.MESSAGE_DELIVERED;
         strMessage += " ";
         strMessage += uuid;
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Mockito.when(mockIoSession.write(strMessage)).thenReturn(null);
+        when(mockIoSession.write(strMessage)).thenReturn(null);
 
         clusterHandler.messageReceived(mockIoSession, strMessage);
 
@@ -423,6 +492,9 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void testGeneralNewMessage () throws LtsllcException, IOException {
+        MessageLog mockMessageLog = Mockito.mock(MessageLog.class);
+        MessageLog.setInstance(mockMessageLog);
+
         StringBuffer strMessage = new StringBuffer();
         strMessage.append(ClusterHandler.NEW_MESSAGE);
         UUID uuid = UUID.fromString("123e4567-e89b-42d3-a456-556642440000");
@@ -430,8 +502,11 @@ class ClusterHandlerTest extends TestSuperclass {
         Message message = createTestMessage(uuid);
         strMessage.append(message.longToString());
 
-        Node node = new Node("localhost", 2020);
-        ClusterHandler clusterHandler = new ClusterHandler(node);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.setState(ClusterConnectionStates.GENERAL);
 
         UUID nodeUuid = UUID.randomUUID();
@@ -450,7 +525,7 @@ class ClusterHandlerTest extends TestSuperclass {
         clusterHandler.messageReceived(mockIoSession, strMessage.toString());
 
         assert(clusterHandler.getState() == ClusterConnectionStates.GENERAL);
-        Mockito.verify(mockMessageCache, Mockito.atLeastOnce()).add(message);
+        Mockito.verify(mockMessageLog, Mockito.atLeastOnce()).add(message);
     }
 
     @Test
@@ -461,7 +536,11 @@ class ClusterHandlerTest extends TestSuperclass {
         strMessage += uuid;
         strMessage += " 1234 ";
 
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.setState(ClusterConnectionStates.GENERAL);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
@@ -483,7 +562,11 @@ class ClusterHandlerTest extends TestSuperclass {
 
         Cluster.getInstance().setNodes(new ArrayList<>());
 
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.sessionCreated(null);
 
         List<Node> list = Cluster.getInstance().getNodes();
@@ -503,7 +586,9 @@ class ClusterHandlerTest extends TestSuperclass {
         Cluster cluster = Cluster.getInstance();
         cluster.setNodes(nodeList);
 
-        ClusterHandler clusterHandler = new ClusterHandler(node);
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.sessionClosed(mockIoSession);
 
         nodeList = Cluster.getInstance().getNodes();
@@ -512,7 +597,11 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void exceptionCaught () throws LtsllcException {
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messagesLog = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messagesLog,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
 
@@ -524,6 +613,9 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void handleBid () throws LtsllcException, IOException {
+        ImprovedFile messagesLog = new ImprovedFile("messages.log");
+        ImprovedFile owners = new ImprovedFile("owner.log");
+        MessageLog.defineStatics(messagesLog, 1000000, owners);
         UUID messageUuid = UUID.randomUUID();
         UUID ourUuid = UUID.randomUUID();
 
@@ -534,15 +626,18 @@ class ClusterHandlerTest extends TestSuperclass {
         strMessage += "123";
 
         ImprovedRandom mockImprovedRandom = Mockito.mock(ImprovedRandom.class);
-        Mockito.when(mockImprovedRandom.nextInt()).thenReturn(456);
+        when(mockImprovedRandom.nextInt()).thenReturn(456);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Mockito.when(mockIoSession.write(new Any())).thenReturn(null);
+        when(mockIoSession.write(new Any())).thenReturn(null);
 
         LoggingCache mockMessageCache = Mockito.mock(LoggingCache.class);
-        Mockito.when(mockMessageCache.contains(messageUuid)).thenReturn(true);
-        Node node = new Node("localhost", 2020);
-        ClusterHandler clusterHandler = new ClusterHandler(node);
+        when(mockMessageCache.contains(messageUuid)).thenReturn(true);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
 
         clusterHandler.setCache(mockMessageCache);
         clusterHandler.setOurRandom(mockImprovedRandom);
@@ -551,7 +646,7 @@ class ClusterHandlerTest extends TestSuperclass {
 
         clusterHandler.handleBid(strMessage, mockIoSession, UUID.randomUUID());
 
-        assert (OtherMessages.getInstance().getOwnerOf(messageUuid) == ourUuid);
+        assert (MessageLog.getInstance().getOwnerOf(messageUuid) == ourUuid);
         assert (clusterHandler.getState() == ClusterConnectionStates.AUCTION);
         Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write("BID " + messageUuid + " 456");
     }
@@ -568,10 +663,14 @@ class ClusterHandlerTest extends TestSuperclass {
         IoSession mockIoSession = Mockito.mock(IoSession.class);
 
         LoggingCache mockMessageCache = Mockito.mock(LoggingCache.class);
-        Mockito.when(mockMessageCache.contains(messageUuid)).thenReturn(true);
-        Mockito.when(mockMessageCache.get(messageUuid)).thenReturn(testMessage);
+        when(mockMessageCache.contains(messageUuid)).thenReturn(true);
+        when(mockMessageCache.get(messageUuid)).thenReturn(testMessage);
 
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
 
         clusterHandler.setCache(mockMessageCache);
 
@@ -579,7 +678,7 @@ class ClusterHandlerTest extends TestSuperclass {
 
         Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(testMessage.longToString());
 
-        Mockito.when(mockMessageCache.contains(messageUuid)).thenReturn(false);
+        when(mockMessageCache.contains(messageUuid)).thenReturn(false);
 
         clusterHandler.setCache(mockMessageCache);
 
@@ -596,7 +695,11 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void handleGetMessageAuction () throws IOException, LtsllcException {
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         UUID messageId = UUID.randomUUID();
         Message testMessage = createTestMessage(messageId);
 
@@ -605,8 +708,8 @@ class ClusterHandlerTest extends TestSuperclass {
         strMessage += messageId;
 
         LoggingCache mockMessageCache = Mockito.mock(LoggingCache.class);
-        Mockito.when(mockMessageCache.contains(messageId)).thenReturn(true);
-        Mockito.when(mockMessageCache.get(messageId)).thenReturn(testMessage);
+        when(mockMessageCache.contains(messageId)).thenReturn(true);
+        when(mockMessageCache.get(messageId)).thenReturn(testMessage);
 
         clusterHandler.setCache(mockMessageCache);
 
@@ -618,7 +721,7 @@ class ClusterHandlerTest extends TestSuperclass {
         Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(testMessage.longToString());
 
         mockMessageCache = Mockito.mock(LoggingCache.class);
-        Mockito.when(mockMessageCache.contains(messageId)).thenReturn(false);
+        when(mockMessageCache.contains(messageId)).thenReturn(false);
         clusterHandler.setCache(mockMessageCache);
 
         replyMessage = ClusterHandler.MESSAGE_NOT_FOUND;
@@ -630,7 +733,11 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void handleMessage () throws LtsllcException, IOException {
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.pushState(ClusterConnectionStates.GENERAL);
 
         Message message = createTestMessage(UUID.randomUUID());
@@ -650,9 +757,12 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void handleMessageDelivered () throws LtsllcException, IOException {
-        Node node = new Node("localhost", 2020);
+        Node node = new Node("192.168.0.12",2020);
         node.setUuid(UUID.randomUUID());
-        ClusterHandler clusterHandler = new ClusterHandler(node);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
 
         LoggingCache mockMessageCache = Mockito.mock(LoggingCache.class);
         clusterHandler.setCache(mockMessageCache);
@@ -678,7 +788,12 @@ class ClusterHandlerTest extends TestSuperclass {
         node.setPartnerID(UUID.randomUUID());
         StringBuffer stringBuffer = new StringBuffer();
 
-        ClusterHandler clusterHandler = new ClusterHandler(node);
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        ImprovedFile ownersLog = new ImprovedFile("owners.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
+
+        MessageLog.defineStatics(messages, 104857600, ownersLog);
 
         UUID partnerId = UUID.randomUUID();
 
@@ -691,18 +806,27 @@ class ClusterHandlerTest extends TestSuperclass {
         stringBuffer.append(" ");
         stringBuffer.append(message.longToString());
 
+        MessageLog mockMessageLog = Mockito.mock(MessageLog.class);
+        MessageLog.setInstance(mockMessageLog);
+
         clusterHandler.handleNewMessage(stringBuffer.toString(),partnerId);
 
-        Mockito.verify(mockMessageCache, Mockito.atLeastOnce()).add(message);
-        assert (OtherMessages.getInstance().getOwnerOf(message.getMessageID()) == partnerId);
+        Mockito.verify(mockMessageLog, Mockito.atLeastOnce()).add(message);
     }
 
     @Test
     public void handleNewNode () throws IOException, LtsllcException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
-        Node node = new Node("localhost", 2020);
-        ClusterHandler clusterHandler = new ClusterHandler(node);
+
+        ImprovedFile messageLog = new ImprovedFile("messages.log");
+        ImprovedFile ownersLog = new ImprovedFile("owners.log");
+        MessageLog.defineStatics(messageLog, 1048577600, ownersLog);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
 
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append("NEW NODE ");
@@ -725,8 +849,11 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void handleStart () throws LtsllcException {
-        Node node = new Node("localhost", 2020);
-        ClusterHandler clusterHandler = new ClusterHandler(node);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.setUuid(UUID.randomUUID());
 
         UUID partnerID = UUID.randomUUID();
@@ -737,6 +864,8 @@ class ClusterHandlerTest extends TestSuperclass {
         stringBuffer.append(partnerID);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
+        IoSessionConfig mockIoSessionConfig = Mockito.mock(IoSessionConfig.class);
+        when(mockIoSession.getConfig()).thenReturn(mockIoSessionConfig);
 
         StringBuffer reply = new StringBuffer();
         reply.append(ClusterHandler.START);
@@ -745,16 +874,20 @@ class ClusterHandlerTest extends TestSuperclass {
 
         clusterHandler.handleStart(stringBuffer.toString().toUpperCase(), mockIoSession);
 
-        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(reply.toString());
+        assert(clusterHandler.getState() == ClusterConnectionStates.GENERAL);
     }
 
     @Test
     public void inputClosed () throws LtsllcException {
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Node node = new Node(null,null,mockIoSession);
 
+        node.setIoSession(mockIoSession);
         Cluster cluster = Cluster.getInstance();
 
         clusterHandler.inputClosed(mockIoSession);
@@ -764,7 +897,11 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void popState () throws LtsllcException {
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         LtsllcException ltsllcException = null;
 
         try {
@@ -778,7 +915,11 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void sendMessage () throws LtsllcException {
-        ClusterHandler clusterHandler = new ClusterHandler(null);
+        Node node = new Node("192.168.0.12",2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        LoggingCache cache = new LoggingCache(messages,104857600);
+        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
 

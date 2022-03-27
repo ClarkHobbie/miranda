@@ -24,19 +24,20 @@ import java.util.*;
  */
 public class MessageCache {
     public static final Logger logger = LogManager.getLogger();
+    public static final Logger events = LogManager.getLogger("events");
 
     protected Map<UUID, Boolean> uuidToOnline = new HashMap<>();
     protected Map<UUID, Message> uuidToMessage = new HashMap<>();
     protected Map<UUID, Long> uuidToLocation = new HashMap<>();
-    protected ImprovedFile offLineMessages;
+    protected ImprovedFile logfile;
     protected Map<UUID, Integer> uuidToNumberOfTimesReferenced = new HashMap<>();
     protected int loadLimit;
     protected long location = 0;
 
     protected int currentLoad = 0;
 
-    public MessageCache() throws LtsllcException {
-        initialize();
+    public MessageCache(ImprovedFile logfile, int loadLimit) throws LtsllcException {
+        initialize(logfile, loadLimit);
     }
 
     public int getCurrentLoad() {
@@ -55,12 +56,12 @@ public class MessageCache {
         this.uuidToNumberOfTimesReferenced = uuidToNumberOfTimesReferenced;
     }
 
-    public ImprovedFile getOffLineMessages() {
-        return offLineMessages;
+    public ImprovedFile getLogfile() {
+        return logfile;
     }
 
-    public void setOffLineMessages(ImprovedFile offLineMessages) {
-        this.offLineMessages = offLineMessages;
+    public void setLogfile(ImprovedFile logfile) {
+        this.logfile = logfile;
     }
 
     public Map<UUID, Long> getUuidToLocation() {
@@ -79,24 +80,9 @@ public class MessageCache {
         this.uuidToMessage = uuidToMessage;
     }
 
-    public void initialize() throws LtsllcException {
-        ImprovedProperties instance = Miranda.getProperties();
-        try {
-            loadLimit = instance.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
-        } catch (Exception e) {
-            logger.error("Exception trying to get " + Miranda.PROPERTY_CACHE_LOAD_LIMIT, e);
-        } finally {
-            if (loadLimit == 0) {
-                logger.warn(Miranda.PROPERTY_CACHE_LOAD_LIMIT + " not initialized");
-            }
-        }
-
-        offLineMessages = new ImprovedFile(instance.getProperty(Miranda.PROPERTY_OFFLINE_MESSAGES));
-        if (offLineMessages.exists()) {
-            logger.error("Offline messages file (" + offLineMessages + ") exists aborting");
-            throw new LtsllcException("offline messages file (" + offLineMessages + ") exists");
-        }
-
+    public void initialize(ImprovedFile logfile, int loadLimit) throws LtsllcException {
+        this.logfile = logfile;
+        this.loadLimit = loadLimit;
         location = 0;
     }
 
@@ -169,7 +155,7 @@ public class MessageCache {
             BufferedReader bufferedReader = null;
             try {
                 long location = uuidToLocation.get(uuid);
-                fileReader = new FileReader(offLineMessages);
+                fileReader = new FileReader(logfile);
                 bufferedReader = new BufferedReader(fileReader);
                 bufferedReader.skip(location);
                 String line = bufferedReader.readLine();
@@ -236,18 +222,19 @@ public class MessageCache {
         uuidToMessage.remove(uuid);
         uuidToOnline.remove(uuid);
         uuidToLocation.remove(uuid);
+
         uuidToNumberOfTimesReferenced.remove(uuid);
 
-        if (offLineMessages.exists()) {
+        if (logfile.exists()) {
             FileReader fileReader = null;
             BufferedReader bufferedReader = null;
             FileWriter fileWriter = null;
             BufferedWriter bufferedWriter = null;
 
             try {
-                fileReader = new FileReader(offLineMessages);
+                fileReader = new FileReader(logfile);
                 bufferedReader = new BufferedReader(fileReader);
-                ImprovedFile tempfile = offLineMessages.copy();
+                ImprovedFile tempfile = logfile.copy();
                 fileWriter = new FileWriter(tempfile);
                 bufferedWriter = new BufferedWriter(fileWriter);
                 for (String line = bufferedReader.readLine(); line != null; line = bufferedReader.readLine()) {
@@ -258,21 +245,21 @@ public class MessageCache {
                     }
                 }
 
-                String tempFileName = offLineMessages.toString() + ".temp";
+                String tempFileName = logfile.toString() + ".backup";
                 ImprovedFile tempFile = new ImprovedFile(tempFileName);
                 // rename the offLineMessages to a backup file
-                if (!offLineMessages.renameTo(tempFile)) {
-                    logger.error("Could not rename " + offLineMessages + " to " + tempFile + " aborting.");
+                if (!logfile.renameTo(tempFile)) {
+                    logger.error("Could not rename " + logfile + " to " + tempFile + " aborting.");
                     tempfile.delete();
-                    throw new LtsllcException("Could not rename " + offLineMessages + " to " + tempFile);
+                    throw new LtsllcException("Could not rename " + logfile + " to " + tempFile);
                 }
 
                 // try to rename the tempfile to offLineMessages
-                if (!tempfile.renameTo(offLineMessages)) {
-                    logger.error("Could not rename " + tempfile + " to " + offLineMessages);
+                if (!tempfile.renameTo(logfile)) {
+                    logger.error("Could not rename " + tempfile + " to " + logfile);
                     logger.error("tempfile," + tempfile + ", may still be around. Aborting");
                     tempfile.delete();
-                    throw new LtsllcException("could not rename " + tempfile + " to " + offLineMessages);
+                    throw new LtsllcException("could not rename " + tempfile + " to " + logfile);
                 }
 
                 // remove tempFile
@@ -361,9 +348,9 @@ public class MessageCache {
         FileWriter fileWriter = null;
         BufferedWriter bufferedWriter = null;
         try {
-            fileWriter = new FileWriter(offLineMessages.toString(), true);
+            fileWriter = new FileWriter(logfile.toString(), true);
             bufferedWriter = new BufferedWriter(fileWriter);
-            location = offLineMessages.length();
+            location = logfile.length();
             bufferedWriter.write(message.longToString());
             bufferedWriter.newLine();
             currentLoad = currentLoad - message.getContents().length;
@@ -403,7 +390,7 @@ public class MessageCache {
         FileReader fileReader = null;
         BufferedReader bufferedReader = null;
         try {
-            fileReader = new FileReader(offLineMessages);
+            fileReader = new FileReader(logfile);
             bufferedReader = new BufferedReader(fileReader);
             bufferedReader.skip(uuidToLocation.get(uuid));
             String inline = bufferedReader.readLine();
@@ -463,14 +450,11 @@ public class MessageCache {
         return uuidToLocation.get(uuid);
     }
 
-    public static boolean shouldRecover() {
+    public static boolean shouldRecover(ImprovedFile logfile) {
         logger.debug("entering shouldRecover");
-        ImprovedProperties p = Miranda.getProperties();
-        String fileName = p.getProperty(Miranda.PROPERTY_OFFLINE_MESSAGES);
-        ImprovedFile file = new ImprovedFile(fileName);
-        logger.debug("leaving shouldRecover with " + file.exists());
+        logger.debug("leaving shouldRecover with " + logfile.exists());
 
-        return file.exists();
+        return logfile.exists();
     }
 
     /**
@@ -491,13 +475,12 @@ public class MessageCache {
         Collection<Message> onlineMessages = uuidToMessage.values();
         list.addAll(onlineMessages);
 
-        ImprovedFile file = new ImprovedFile(p.getProperty(Miranda.PROPERTY_OFFLINE_MESSAGES));
 
-        if (file.exists()) {
+        if (logfile.exists()) {
             FileReader fileReader = null;
             BufferedReader bufferedReader = null;
             try {
-                fileReader = new FileReader(file);
+                fileReader = new FileReader(logfile);
                 bufferedReader = new BufferedReader(fileReader);
 
                 for (String line = bufferedReader.readLine(); line != null; line = bufferedReader.readLine()) {
@@ -528,14 +511,11 @@ public class MessageCache {
      * tries to take it as its offline messages file.  It cannot recover those messages that were in memory when the
      * crash occurred: those are lost.
      */
-    public synchronized void recover() {
-        ImprovedProperties p = Miranda.getProperties();
-        ImprovedFile file = new ImprovedFile(p.getProperty(Miranda.PROPERTY_OFFLINE_MESSAGES));
-
-        if (!file.exists()) {
-            logger.warn("asked to recover when the file, " + p.getProperty(Miranda.PROPERTY_OFFLINE_MESSAGES) + ", does not exist");
+    public synchronized void recover(ImprovedFile logfile) {
+        if (!logfile.exists()) {
+            logger.warn("asked to recover when the file, " + logfile + ", does not exist");
         } else {
-            offLineMessages = file;
+            this.logfile = logfile;
         }
     }
 

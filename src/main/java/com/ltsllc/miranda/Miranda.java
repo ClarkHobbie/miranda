@@ -26,8 +26,6 @@ public class Miranda {
     public static final int STATUS_SUCCESS = 200;
     public static final String PROPERTY_PROPERTIES_FILE = "properties";
     public static final String PROPERTY_DEFAULT_PROPERTIES_FILE = "mirada.properties";
-    public static final String PROPERTY_SEND_FILE = "sendFile";
-    public static final String PROPERTY_DEFAULT_SEND_FILE = "sendFile.msg";
     public static final String PROPERTY_LONG_LOGGING_LEVEL = "loggingLevel";
     public static final String PROPERTY_SHORT_LOGGING_LEVEL = "l";
     public static final String PROPERTY_LOGGING_LEVEL = "loggingLevel";
@@ -40,21 +38,16 @@ public class Miranda {
     public static final String PROPERTY_DEFAULT_CLUSTER_PORT = "2020";
     public static final String PROPERTY_CACHE_LOAD_LIMIT = "cache.loadLimit";
     public static final String PROPERTY_DEFAULT_CACHE_LOAD_LIMIT = "104856700"; // 100 megabytes
-    public static final String PROPERTY_OFFLINE_MESSAGES = "offlineMessages";
-    public static final String PROPERTY_DEFAULT_OFFLINE_MESSAGES = "offlineMessages.msg";
-    public static final String PROPERTY_OTHER_MESSAGES = "otherMessages";
-    public static final String PROPERTY_DEFAULT_OTHER_MESSAGES = "otherMessage.msg";
     public static final String PROPERTY_OWNER_FILE = "ownerFile";
-    public static final String PROPERTY_DEFAULT_OWNER_FILE = "owners.msg";
+    public static final String PROPERTY_DEFAULT_OWNER_FILE = "owners";
     public static final String PROPERTY_CLUSTER = "cluster";
     public static final String PROPERTY_DEFAULT_CLUSTER = "off";
     public static final String PROPERTY_HOST = "host";
-    public static final String PROPERTY_OTHER_MESSAGES_LOAD_LIMIT = "otherMessages.loadLimit";
-    public static final String PROPERTY_DEFAULT_OTHER_MESSAGES_LOAD_LIMIT = "104856670"; // 10 MegaBytes
     public static final String PROPERTY_CLUSTER_1 = "cluster.1.host";
     public static final String PROPERTY_CLUSTER_RETRY = "cluster.retry";
     public static final String PROPERTY_DEFAULT_CLUSTER_RETRY = "10000";
-
+    public static final String PROPERTY_MESSAGE_LOG = "messageLog";
+    public static final String PROPERTY_DEFAULT_MESSAGE_LOG = "messages.log";
 
     protected static final Logger logger = LogManager.getLogger();
     public static final Logger event = LogManager.getLogger("events");
@@ -89,6 +82,14 @@ public class Miranda {
         cluster = new Cluster();
         ImprovedFile logfile = new ImprovedFile("inflight");
         inflight = new LoggingSet(logfile);
+    }
+
+    public Server getServer() {
+        return server;
+    }
+
+    public void setServer(Server server) {
+        this.server = server;
     }
 
     public long getClusterAlarm() {
@@ -154,7 +155,7 @@ public class Miranda {
             /*
              * Try and deliver all the messages
              */
-            List<Message> allMessages = SendQueue.getInstance().copyMessages();
+            List<Message> allMessages = MessageLog.getInstance().copyAllMessages();
             for (Message message : allMessages) {
                 deliver(message);
             }
@@ -211,8 +212,12 @@ public class Miranda {
         logger.debug("starting the message port");
         startMessagePort(properties.getIntProperty(PROPERTY_MESSAGE_PORT));
 
-        if (SendQueue.shouldRecover())
-            SendQueue.recover();
+        ImprovedFile logfile = new ImprovedFile(Miranda.getProperties().getProperty(PROPERTY_MESSAGE_LOG));
+        int loadLimit = Miranda.getProperties().getIntProperty(PROPERTY_CACHE_LOAD_LIMIT);
+        ImprovedFile ownersFile = new ImprovedFile(properties.getProperty(PROPERTY_OWNER_FILE));
+        if (MessageLog.shouldRecover(logfile)) {
+            MessageLog.recover(logfile, loadLimit, ownersFile);
+        }
 
         logger.debug("Leaving startup");
     }
@@ -224,15 +229,6 @@ public class Miranda {
      */
     protected void startMessagePort (int portNumber) throws Exception {
         logger.debug("entering startMessagePort with portNumber = " + portNumber);
-        /*
-        IoAcceptor ioAcceptor = new NioSocketAcceptor();
-        ioAcceptor.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory(Charset.forName("UTF-8"))));
-        ioAcceptor.setHandler(new MirandaHandler());
-
-        SocketAddress addr = new InetSocketAddress(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_MESSAGE_PORT));
-        ioAcceptor.bind (addr);
-
-        */
 
         // Create and configure a ThreadPool.
         QueuedThreadPool threadPool = new QueuedThreadPool();
@@ -244,18 +240,15 @@ public class Miranda {
         ServerConnector serverConnector = new ServerConnector(server, 3, 3, new HttpConnectionFactory());
         server.addConnector(serverConnector);
         serverConnector.setPort(properties.getIntProperty(PROPERTY_MESSAGE_PORT));
-        serverConnector.setHost("127.0.0.1");
+        serverConnector.setHost("localhost");
 
         server.addConnector(serverConnector);
 
         // Set a simple Handler to handle requests/responses.
         server.setHandler(new MessageHandler());
 
-
         // Start the Server, so it starts accepting connections from clients.
         server.start();
-
-
 
         logger.debug("leaving startMessagePort");
     }
@@ -358,18 +351,15 @@ public class Miranda {
         }
 
         properties.setIfNull(PROPERTY_MESSAGE_PORT, PROPERTY_DEFAULT_MESSAGE_PORT);
-        properties.setIfNull(PROPERTY_SEND_FILE, PROPERTY_DEFAULT_SEND_FILE);
         properties.setIfNull(PROPERTY_CLUSTER_PORT, PROPERTY_DEFAULT_CLUSTER_PORT);
         properties.setIfNull(PROPERTY_CACHE_LOAD_LIMIT, PROPERTY_DEFAULT_CACHE_LOAD_LIMIT);
         properties.setIfNull(PROPERTY_BID_TIMEOUT, PROPERTY_DEFAULT_BID_TIMEOUT);
-        properties.setIfNull(PROPERTY_OFFLINE_MESSAGES, PROPERTY_DEFAULT_OFFLINE_MESSAGES);
-        properties.setIfNull(PROPERTY_OTHER_MESSAGES, PROPERTY_DEFAULT_OTHER_MESSAGES);
         properties.setIfNull(PROPERTY_OWNER_FILE, PROPERTY_DEFAULT_OWNER_FILE);
         properties.setIfNull(PROPERTY_PROPERTIES_FILE, PROPERTY_DEFAULT_PROPERTIES_FILE);
         properties.setIfNull(PROPERTY_LOGGING_LEVEL, PROPERTY_DEFAULT_LOGGING_LEVEL);
         properties.setIfNull(PROPERTY_CLUSTER, PROPERTY_DEFAULT_CLUSTER);
-        properties.setIfNull(PROPERTY_OTHER_MESSAGES_LOAD_LIMIT, PROPERTY_DEFAULT_OTHER_MESSAGES_LOAD_LIMIT);
         properties.setIfNull(PROPERTY_CLUSTER_RETRY, PROPERTY_DEFAULT_CLUSTER_RETRY);
+        properties.setIfNull(PROPERTY_MESSAGE_LOG, PROPERTY_DEFAULT_MESSAGE_LOG);
     }
 
     public void storeProperties () throws IOException {
@@ -395,7 +385,8 @@ public class Miranda {
     // ********************************************************************************************
     //
     protected boolean shouldEnterRecovery() {
-        return SendQueue.shouldRecover() || OtherMessages.shouldRecover() ;
+        ImprovedFile messageLog = new ImprovedFile(properties.getProperty(PROPERTY_MESSAGE_LOG));
+        return MessageLog.shouldRecover(messageLog);
     }
 
     public static void stop () {
@@ -471,9 +462,10 @@ public class Miranda {
         logger.debug("entering successfulMessage with: " + message);
         cluster.informOfDelivery(message);
         try {
-            SendQueue.getInstance().remove(message);
-        } catch (LtsllcException|IOException e) {
-            logger.error ("Exception trying to remove message from the send queue",e);
+            MessageLog.getInstance().remove(message.getMessageID());
+        } catch (IOException e) {
+            logger.error ("Exception trying to remove message from the message log",e);
+            event.error("Exception trying to remove message from the message log",e);
         }
         notifyClientOfDelivery(message);
         inflight.remove(message);
