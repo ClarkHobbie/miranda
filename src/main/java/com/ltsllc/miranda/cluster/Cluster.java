@@ -99,23 +99,35 @@ public class Cluster {
     protected static final Logger logger = LogManager.getLogger();
     public static final Logger events = LogManager.getLogger("events");
     protected List<Node> nodes = new ArrayList<>();
-    protected static Cluster instance = new Cluster();
+    protected static Cluster instance = null;
 
     protected Map<IoSession, Node> ioSessionToNode = new HashMap<>();
     protected UUID uuid = UUID.randomUUID();
     protected IoConnector ioConnector = null;
-    protected IoConnector createdIoConnector = null;
+    protected IoAcceptor ioAcceptor = null;
 
-    public IoConnector getCreatedIoConnector() {
-        if (createdIoConnector == null) {
-            createdIoConnector = new NioSocketConnector();
+    public IoAcceptor getIoAcceptor() {
+        if (null == ioAcceptor) {
+            ioAcceptor = new NioSocketAcceptor();
         }
 
-        return createdIoConnector;
+        return ioAcceptor;
     }
 
-    public void setCreatedIoConnector(IoConnector createdIoConnector) {
-        this.createdIoConnector = createdIoConnector;
+    public void setIoAcceptor(IoAcceptor ioAcceptor) {
+        this.ioAcceptor = ioAcceptor;
+    }
+
+    public IoConnector getIoConnector() {
+        if (ioConnector == null) {
+            ioConnector = new NioSocketConnector();
+        }
+
+        return ioConnector;
+    }
+
+    public void setIoConnector(IoConnector ioConnector) {
+        this.ioConnector = ioConnector;
     }
 
     public UUID getUuid() {
@@ -243,7 +255,7 @@ public class Cluster {
             nodes = new ArrayList<>();
         }
 
-        IoAcceptor ioAcceptor = new NioSocketAcceptor();
+        IoAcceptor ioAcceptor = getIoAcceptor();
         ioAcceptor.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory(Charset.forName("UTF-8"))));
         ImprovedProperties p = Miranda.getProperties();
         Node node = new Node(UUID.randomUUID(), p.getProperty(Miranda.PROPERTY_HOST), p.getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
@@ -285,7 +297,7 @@ public class Cluster {
             return;
         }
 
-        ioConnector = getCreatedIoConnector();
+        ioConnector = getIoConnector();
         ImprovedProperties p = Miranda.getProperties();
         Node newNode = new Node(UUID.randomUUID(), p.getProperty(Miranda.PROPERTY_HOST), p.getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
 
@@ -318,11 +330,12 @@ public class Cluster {
      * @param ioConnector Over what to make the connection.
      * @return true if we were able to connect to the node, false otherwise.
      */
-    public boolean connectToNode(Node node, IoConnector ioConnector) {
+    public boolean connectToNode(Node node, IoConnector ioConnector) throws LtsllcException {
         boolean returnValue = true;
         logger.debug("entering connectToNode with node = " + node.getHost() + ":" + node.getPort() + ", and ioConnector = " + ioConnector);
         InetSocketAddress addrRemote = new InetSocketAddress(node.getHost(), node.getPort());
-        ConnectFuture future = getCreatedIoConnector().connect(addrRemote);
+        getIoConnector().setHandler(new SimpleIoHandler());
+        ConnectFuture future = getIoConnector().connect(addrRemote);
         future.awaitUninterruptibly();
         IoSession ioSession = null;
         try {
@@ -353,21 +366,6 @@ public class Cluster {
         return returnValue;
     }
 
-
-    /**
-     * Unbind all the ports that the cluster listens to
-     *
-     * Note that this method should unbind ALL our ports, not just those for the cluster
-     */
-    public synchronized void releasePorts() throws InterruptedException {
-        logger.debug("entering releaseMessagePort");
-        logger.debug("releasing cluster port");
-
-        IoAcceptor ioAcceptor = new NioSocketAcceptor();
-        ioAcceptor.unbind();
-        logger.debug("leaving releasePort");
-    }
-
     public synchronized void removeIoSession (IoSession ioSession) {
         Node node = ioSessionToNode.get(ioSession);
         if (node != null) {
@@ -385,7 +383,7 @@ public class Cluster {
      *
      * @return Whether we are connected to all the other nodes.
      */
-    public boolean reconnect () {
+    public boolean reconnect () throws LtsllcException {
         logger.debug("entering reconnect");
         boolean returnValue = true;
 

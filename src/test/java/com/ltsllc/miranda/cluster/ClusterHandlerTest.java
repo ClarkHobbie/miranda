@@ -984,5 +984,5 @@ class ClusterHandlerTest extends TestSuperclass {
         assert(clusterHandler.getState() == ClusterConnectionStates.START);
     }
 
-    
+
 }

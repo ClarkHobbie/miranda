@@ -7,6 +7,7 @@ import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.cluster.SpecNode;
+import com.ltsllc.miranda.logcache.LoggingCache;
 import com.ltsllc.miranda.logcache.LoggingSet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -63,6 +64,15 @@ public class Miranda {
     protected Server server;
     protected List<SpecNode> specNodes = new ArrayList<>();
     protected LoggingSet inflight = null;
+    protected LoggingCache loggingCache = null;
+
+    public LoggingCache getLoggingCache() {
+        return loggingCache;
+    }
+
+    public void setLoggingCache(LoggingCache loggingCache) {
+        this.loggingCache = loggingCache;
+    }
 
     public LoggingSet getInflight() {
         return inflight;
@@ -82,7 +92,7 @@ public class Miranda {
 
     public Miranda() {
         Miranda.instance = this;
-        cluster = new Cluster();
+        cluster = Cluster.getInstance();
         ImprovedFile logfile = new ImprovedFile("inflight");
         inflight = new LoggingSet(logfile);
     }
@@ -182,10 +192,7 @@ public class Miranda {
         //
         // if it's time to reconnect...
         //
-        if (System.currentTimeMillis() > clusterAlarm) {
-            clusterAlarm = -1;
-            Cluster.getInstance().reconnect();
-        }
+        connectToOtherNodes();
     }
     /*
      *
@@ -407,7 +414,6 @@ public class Miranda {
      * Release all the ports we are bound to
      */
     public void releasePorts () throws Exception {
-        Cluster.getInstance().releasePorts();
         releaseMessagePort();
     }
 
