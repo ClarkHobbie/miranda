@@ -16,39 +16,37 @@
 
     </properties>
     <build>
-    <plugins>
-        <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-javadoc-plugin</artifactId>
-            <version>3.3.2</version>
-        </plugin>
-        <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-dependency-plugin</artifactId>
-            <version>2.6</version>
-            <executions>
-                <execution>
-                    <id>unpack-dependencies</id>
-                    <phase>package</phase>
-                    <goals>
-                        <goal>unpack-dependencies</goal>
-                    </goals>
-                    <configuration>
-                        <excludeScope>system</excludeScope>
-                        <excludes>META-INF/*.SF,META-INF/*.DSA,META-INF/*.RSA</excludes>
-                        <excludeGroupIds>junit,org.mockito,org.hamcrest</excludeGroupIds>
-                        <outputDirectory>${project.build.directory}/classes</outputDirectory>
-                    </configuration>
-                </execution>
-            </executions>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.3.2</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>2.6</version>
+                <executions>
+                    <execution>
+                        <id>unpack-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>unpack-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <excludeScope>system</excludeScope>
+                            <excludes>META-INF/*.SF,META-INF/*.DSA,META-INF/*.RSA</excludes>
+                            <excludeGroupIds>junit,org.mockito,org.hamcrest</excludeGroupIds>
+                            <outputDirectory>${project.build.directory}/classes</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
 
-        </plugin>
-
-
+            </plugin>
 
 
-    </plugins>
-</build>
+        </plugins>
+    </build>
     <dependencies>
 
         <!-- junit -->
@@ -140,14 +138,21 @@
 
 
         <!-- apache commons-io  -->
-
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>2.11.0</version>
         </dependency>
 
+        <!-- netty -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>4.1.42.Final</version>
+        </dependency>
 
     </dependencies>
+
+
 
 </project>

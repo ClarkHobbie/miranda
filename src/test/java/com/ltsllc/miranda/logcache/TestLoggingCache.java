@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Test;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class TestLoggingCache extends TestSuperclass {
@@ -338,4 +340,56 @@ public class TestLoggingCache extends TestSuperclass {
             }
         }
     }
+
+    @Test
+    public void copyAllMessagesAllInMemory () throws LtsllcException, IOException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
+        Message message = createTestMessage(UUID.randomUUID());
+
+        ImprovedFile temp = new ImprovedFile("temp");
+
+        LoggingCache loggingCache = new LoggingCache(temp, 104857600);
+
+        loggingCache.add(message);
+
+        List<Message> list = new ArrayList<>();
+
+        list = loggingCache.copyAllMessages();
+
+        assert (list.get(0).equals(message));
+
+
+    }
+
+    @Test
+    public void copyAllMessagesSomeOnDisk () throws LtsllcException, IOException {
+        ImprovedFile temp = new ImprovedFile("temp");
+
+        try {
+            Miranda miranda = new Miranda();
+            miranda.loadProperties();
+
+            Message message = createTestMessage(UUID.randomUUID());
+            Message message2 = createTestMessage(UUID.randomUUID());
+
+            LoggingCache loggingCache = new LoggingCache(temp, 3);
+
+            loggingCache.add(message);
+            loggingCache.add(message2);
+
+            List<Message> list = new ArrayList<>();
+
+            list = loggingCache.copyAllMessages();
+
+            assert (list.get(0).equals(message));
+            assert (list.get(1).equals(message2));
+        } finally {
+            if (temp.exists()) {
+                temp.delete();
+            }
+        }
+    }
+
 }
