@@ -118,14 +118,6 @@ public class Cluster {
         this.createdIoConnector = createdIoConnector;
     }
 
-    public IoConnector getIoConnector() {
-        return ioConnector;
-    }
-
-    public void setIoConnector(IoConnector ioConnector) {
-        this.ioConnector = ioConnector;
-    }
-
     public UUID getUuid() {
         return uuid;
     }
@@ -159,17 +151,6 @@ public class Cluster {
 
     public synchronized void setNodes(List<Node> n) {
         nodes = n;
-    }
-
-    public synchronized void addNode(Node node) {
-        logger.debug("Adding new node, " + node + " to nodes");
-        nodes.add(node);
-        ioSessionToNode.put(node.getIoSession(), node);
-    }
-
-    public synchronized Node getNodeForSession(IoSession ioSession) {
-        Node node = ioSessionToNode.get(ioSession);
-        return node;
     }
 
     public static ImprovedRandom getRandomNumberGenerator() {

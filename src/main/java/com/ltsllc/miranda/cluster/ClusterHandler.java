@@ -596,7 +596,7 @@ public class ClusterHandler implements IoHandler {
         Message message = Message.readLongFormat(scanner);
 
         MessageLog.getInstance().recordOwner(message.getMessageID(), partnerUuid);
-        MessageLog.getInstance().add(message);
+        MessageLog.getInstance().add(message,partnerID);
 
         logger.debug("leaving handleNewMessage");
     }

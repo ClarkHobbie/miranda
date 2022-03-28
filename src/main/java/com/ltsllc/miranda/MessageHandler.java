@@ -31,6 +31,16 @@ public class MessageHandler extends AbstractHandler {
     protected static final Logger logger = LogManager.getLogger(MessageHandler.class);
     public static final Logger events = LogManager.getLogger("events");
 
+    protected UUID partnerID;
+
+    public UUID getPartnerID() {
+        return partnerID;
+    }
+
+    public void setPartnerID(UUID partnerID) {
+        this.partnerID = partnerID;
+    }
+
     /**
      * A new message has arrived
      *
@@ -70,7 +80,7 @@ public class MessageHandler extends AbstractHandler {
         UUID uuid = UUID.randomUUID();
         message.setMessageID(uuid);
 
-        MessageLog.getInstance().add(message);
+        MessageLog.getInstance().add(message, partnerID);
         events.info("new message(" + message.getMessageID() + ") received to " + message.getDeliveryURL());
 
         response.setStatus(200);

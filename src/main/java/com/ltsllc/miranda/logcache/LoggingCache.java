@@ -450,4 +450,13 @@ public class LoggingCache {
     public boolean allInMemory () {
         return uuidToInMemory.values().size() == uuidToLocation.values().size();
     }
+
+    public long getLocationFor (UUID message) {
+        Long l = uuidToLocation.get(message);
+        if (l == null) {
+            return -1;
+        } else {
+            return l.longValue();
+        }
+    }
 }

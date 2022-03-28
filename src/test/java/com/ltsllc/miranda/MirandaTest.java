@@ -178,7 +178,6 @@ class MirandaTest extends TestSuperclass {
         }
     }
 
-    @Test
     public void newNode () throws Exception {
         Miranda miranda = new Miranda();
 
@@ -277,4 +276,98 @@ class MirandaTest extends TestSuperclass {
         verify(mockCluster, atLeastOnce()).reconnect();
     }
 
+    @Test
+    public void deliver () throws LtsllcException, IOException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
+        Message message = createTestMessage(UUID.randomUUID());
+
+        miranda.deliver(message);
+
+        assert (miranda.getInflight().contains(message));
+    }
+
+    @Test
+    public void parseNodes () throws LtsllcException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
+        ImprovedFile properties = new ImprovedFile("miranda.properties");
+        ImprovedFile backup = new ImprovedFile("miranda.properties.backup");
+        ImprovedFile test = new ImprovedFile("test03.properties");
+        try {
+            properties.copyTo(backup);
+            properties.delete();
+            test.copyTo(properties);
+            miranda.loadProperties();
+
+            assert (miranda.specNodes.size() == 0);
+            miranda.parseNodes();
+            assert (miranda.specNodes.size() == 1);
+        } finally {
+            if (backup.exists()) {
+                properties.delete();
+                backup.renameTo(properties);
+            }
+        }
+    }
+
+    @Test
+    public void releasePorts () throws Exception {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
+        try {
+            miranda.startMessagePort(3030);
+            miranda.releasePorts();
+
+            miranda.getServer().start();
+        } finally {
+            miranda.getServer().stop();
+        }
+    }
+
+    @Test
+    public void shouldEnterRecovery () throws LtsllcException, IOException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
+        ImprovedProperties p = Miranda.getProperties();
+        ImprovedFile messages = new ImprovedFile(p.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
+        messages.touch();
+        ImprovedFile inflight = new ImprovedFile(p.getProperty(Miranda.PROPERTY_INFLIGHT));
+        ImprovedFile owners = new ImprovedFile(p.getProperty(Miranda.PROPERTY_OWNER_FILE));
+
+        assert(miranda.shouldEnterRecovery());
+
+        messages.delete();
+        inflight.touch();
+
+        assert (miranda.shouldEnterRecovery());
+
+        inflight.delete();
+        owners.touch();
+
+        assert (miranda.shouldEnterRecovery());
+    }
+
+    @Test
+    public void successfulMessage () throws LtsllcException, IOException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
+        ImprovedProperties p = Miranda.getProperties();
+        ImprovedFile messages = new ImprovedFile(p.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
+        ImprovedFile owners = new ImprovedFile(p.getProperty(Miranda.PROPERTY_OWNER_FILE));
+        MessageLog.defineStatics(messages, p.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT), owners);
+
+        Message message = createTestMessage(UUID.randomUUID());
+        MessageLog.getInstance().add(message, UUID.randomUUID());
+
+        miranda.successfulMessage(message);
+
+        assert (MessageLog.getInstance().getLocationFor(message.getMessageID()) == -1);
+
+    }
 }

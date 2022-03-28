@@ -9,7 +9,9 @@ import com.ltsllc.miranda.logcache.LoggingMap;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -20,6 +22,7 @@ public class MessageLog {
 
     protected LoggingCache cache;
     protected LoggingMap uuidToOwner;
+    protected Map<UUID, Integer> uuidToLocation = new HashMap<>();
 
     protected MessageLog (ImprovedFile logfile, int loadLimit, ImprovedFile ownersFile) {
         cache = new LoggingCache(logfile, loadLimit);
@@ -59,7 +62,7 @@ public class MessageLog {
 
             while (line != null) {
                 Message message = Message.readLongFormat(line);
-                messageLog.add(message);
+                messageLog.add(message, UUID.randomUUID());
 
                 line = bufferedReader.readLine();
             }
@@ -84,8 +87,9 @@ public class MessageLog {
         uuidToOwner.remove(message);
     }
 
-    public void add (Message message) throws IOException {
+    public void add (Message message, UUID owner) throws IOException {
         cache.add(message);
+        uuidToOwner.add(message.getMessageID(), owner);
     }
 
     public void remove (UUID uuid) throws IOException {
@@ -107,5 +111,9 @@ public class MessageLog {
     public void clearAllMessages (ImprovedFile logfile, int loadLimit, ImprovedFile ownersFile) {
         cache = new LoggingCache(logfile, loadLimit);
         uuidToOwner = new LoggingMap(ownersFile);
+    }
+
+    public long getLocationFor (UUID message) {
+        return cache.getLocationFor(message);
     }
 }

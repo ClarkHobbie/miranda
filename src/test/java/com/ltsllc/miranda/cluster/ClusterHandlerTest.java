@@ -509,6 +509,7 @@ class ClusterHandlerTest extends TestSuperclass {
         ClusterHandler clusterHandler = new ClusterHandler(node, cache);
         clusterHandler.setState(ClusterConnectionStates.GENERAL);
 
+        UUID partnerID = UUID.randomUUID();
         UUID nodeUuid = UUID.randomUUID();
         clusterHandler.setUuid(nodeUuid);
         node.setUuid(nodeUuid);
@@ -525,7 +526,7 @@ class ClusterHandlerTest extends TestSuperclass {
         clusterHandler.messageReceived(mockIoSession, strMessage.toString());
 
         assert(clusterHandler.getState() == ClusterConnectionStates.GENERAL);
-        Mockito.verify(mockMessageLog, Mockito.atLeastOnce()).add(message);
+        Mockito.verify(mockMessageLog, Mockito.atLeastOnce()).add(message, partnerID);
     }
 
     @Test
@@ -811,7 +812,7 @@ class ClusterHandlerTest extends TestSuperclass {
 
         clusterHandler.handleNewMessage(stringBuffer.toString(),partnerId);
 
-        Mockito.verify(mockMessageLog, Mockito.atLeastOnce()).add(message);
+        Mockito.verify(mockMessageLog, Mockito.atLeastOnce()).add(message, partnerId);
     }
 
     @Test

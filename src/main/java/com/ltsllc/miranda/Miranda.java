@@ -2,6 +2,7 @@ package com.ltsllc.miranda;
 
 
 import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.commons.UncheckedLtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.Cluster;
@@ -25,7 +26,7 @@ import java.util.*;
 public class Miranda {
     public static final int STATUS_SUCCESS = 200;
     public static final String PROPERTY_PROPERTIES_FILE = "properties";
-    public static final String PROPERTY_DEFAULT_PROPERTIES_FILE = "mirada.properties";
+    public static final String PROPERTY_DEFAULT_PROPERTIES_FILE = "miranda.properties";
     public static final String PROPERTY_LONG_LOGGING_LEVEL = "loggingLevel";
     public static final String PROPERTY_SHORT_LOGGING_LEVEL = "l";
     public static final String PROPERTY_LOGGING_LEVEL = "loggingLevel";
@@ -39,7 +40,7 @@ public class Miranda {
     public static final String PROPERTY_CACHE_LOAD_LIMIT = "cache.loadLimit";
     public static final String PROPERTY_DEFAULT_CACHE_LOAD_LIMIT = "104856700"; // 100 megabytes
     public static final String PROPERTY_OWNER_FILE = "ownerFile";
-    public static final String PROPERTY_DEFAULT_OWNER_FILE = "owners";
+    public static final String PROPERTY_DEFAULT_OWNER_FILE = "owners.log";
     public static final String PROPERTY_CLUSTER = "cluster";
     public static final String PROPERTY_DEFAULT_CLUSTER = "off";
     public static final String PROPERTY_HOST = "host";
@@ -48,6 +49,8 @@ public class Miranda {
     public static final String PROPERTY_DEFAULT_CLUSTER_RETRY = "10000";
     public static final String PROPERTY_MESSAGE_LOG = "messageLog";
     public static final String PROPERTY_DEFAULT_MESSAGE_LOG = "messages.log";
+    public static final String PROPERTY_INFLIGHT = "inflight";
+    public static final String PROPERTY_DEFAULT_INFLIGHT = "inflight";
 
     protected static final Logger logger = LogManager.getLogger();
     public static final Logger event = LogManager.getLogger("events");
@@ -332,12 +335,14 @@ public class Miranda {
             properties = new ImprovedProperties();
         }
         try {
-            in = new FileInputStream(PROPERTY_DEFAULT_PROPERTIES_FILE);
-            Properties temp = new Properties();
+            if (properties.getProperty(PROPERTY_PROPERTIES_FILE) != null) {
+                in = new FileInputStream(properties.getProperty(PROPERTY_PROPERTIES_FILE));
+            } else {
+                in = new FileInputStream(PROPERTY_DEFAULT_PROPERTIES_FILE);
+            }
+            ImprovedProperties temp = new ImprovedProperties();
             temp.load(in);
-            properties.setIfNull(temp);
-        } catch (FileNotFoundException e) {
-            properties = new ImprovedProperties();
+            properties = temp;
         } catch (IOException ioException) {
             throw new LtsllcException("exception loading properties file", ioException);
         } finally {
@@ -346,6 +351,7 @@ public class Miranda {
                     in.close();
                 } catch (IOException ioException) {
                     logger.error("exception closing properties file", ioException);
+                    throw new UncheckedLtsllcException(ioException);
                 }
             }
         }
@@ -360,6 +366,7 @@ public class Miranda {
         properties.setIfNull(PROPERTY_CLUSTER, PROPERTY_DEFAULT_CLUSTER);
         properties.setIfNull(PROPERTY_CLUSTER_RETRY, PROPERTY_DEFAULT_CLUSTER_RETRY);
         properties.setIfNull(PROPERTY_MESSAGE_LOG, PROPERTY_DEFAULT_MESSAGE_LOG);
+        properties.setIfNull(PROPERTY_INFLIGHT, PROPERTY_DEFAULT_INFLIGHT);
     }
 
     public void storeProperties () throws IOException {
@@ -386,7 +393,10 @@ public class Miranda {
     //
     protected boolean shouldEnterRecovery() {
         ImprovedFile messageLog = new ImprovedFile(properties.getProperty(PROPERTY_MESSAGE_LOG));
-        return MessageLog.shouldRecover(messageLog);
+        ImprovedFile owners = new ImprovedFile(properties.getProperty(PROPERTY_OWNER_FILE));
+        ImprovedFile inflight = new ImprovedFile(properties.getProperty(PROPERTY_INFLIGHT));
+        return MessageLog.shouldRecover(messageLog) || owners.exists() || inflight.exists();
+
     }
 
     public static void stop () {

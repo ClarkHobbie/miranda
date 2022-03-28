@@ -71,6 +71,9 @@ public class LoggingSet {
     }
 
     public synchronized boolean remove (Message message) throws IOException {
+        if (!file.exists()) {
+            return false;
+        }
         ImprovedFile backup = new ImprovedFile(file.getName() + ".backup");
         file.renameTo(backup);
 
