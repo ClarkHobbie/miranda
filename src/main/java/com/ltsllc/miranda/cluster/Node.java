@@ -1,6 +1,5 @@
 package com.ltsllc.miranda.cluster;
 
-import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.Message;
 import com.ltsllc.miranda.Miranda;

@@ -1,4 +1,4 @@
-package com.ltsllc.miranda.logcache;
+package com.ltsllc.miranda;
 
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.Message;
