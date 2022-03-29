@@ -6,7 +6,7 @@ import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.Message;
 import com.ltsllc.miranda.Miranda;
-import com.ltsllc.miranda.logcache.LoggingCache;
+import com.ltsllc.miranda.logging.LoggingCache;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.mina.core.RuntimeIoException;

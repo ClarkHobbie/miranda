@@ -1,4 +1,4 @@
-package com.ltsllc.miranda.logcache;
+package com.ltsllc.miranda.logging;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;

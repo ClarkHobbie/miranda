@@ -2,9 +2,8 @@ package com.ltsllc.miranda;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
-import com.ltsllc.commons.util.ImprovedProperties;
-import com.ltsllc.miranda.logcache.LoggingCache;
-import com.ltsllc.miranda.logcache.LoggingMap;
+import com.ltsllc.miranda.logging.LoggingCache;
+import com.ltsllc.miranda.logging.LoggingMap;
 
 import java.io.BufferedReader;
 import java.io.FileReader;

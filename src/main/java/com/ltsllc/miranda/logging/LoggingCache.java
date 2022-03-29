@@ -1,10 +1,8 @@
-package com.ltsllc.miranda.logcache;
+package com.ltsllc.miranda.logging;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
-import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.Message;
-import com.ltsllc.miranda.Miranda;
 
 import java.io.*;
 import java.util.*;

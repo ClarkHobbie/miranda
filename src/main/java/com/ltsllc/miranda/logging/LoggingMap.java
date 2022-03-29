@@ -1,7 +1,6 @@
-package com.ltsllc.miranda.logcache;
+package com.ltsllc.miranda.logging;
 
 import com.ltsllc.commons.io.ImprovedFile;
-import com.ltsllc.miranda.Message;
 
 import java.io.*;
 import java.util.HashMap;
