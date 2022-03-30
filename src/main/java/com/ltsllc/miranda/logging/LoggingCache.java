@@ -11,8 +11,10 @@ import java.util.*;
  * An object that records objects as they come into the class, keeps a portion of those objects in memory, and recovers
  * itself when asked.
  *
+ * <P>
  * A logging cache logs all objects that it takes ownership of to a file.  It then keeps some of those objects in memory
  * using a most frequently used algorithm.  Finally, the class can rebuild itself from a past file.
+ * </P>
  */
 public class LoggingCache {
     protected ImprovedFile file;

@@ -3,6 +3,7 @@ package com.ltsllc.miranda.logging;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.Message;
+import com.ltsllc.miranda.MessageLog;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.TestSuperclass;
 import org.apache.logging.log4j.Level;
@@ -344,24 +345,25 @@ public class TestLoggingCache extends TestSuperclass {
 
     @Test
     public void copyAllMessagesAllInMemory () throws LtsllcException, IOException {
-        Miranda miranda = new Miranda();
-        miranda.loadProperties();
-
-        Message message = createTestMessage(UUID.randomUUID());
-
         ImprovedFile temp = new ImprovedFile("temp");
+        try {
+            Miranda miranda = new Miranda();
+            miranda.loadProperties();
 
-        LoggingCache loggingCache = new LoggingCache(temp, 104857600);
+            Message message = createTestMessage(UUID.randomUUID());
 
-        loggingCache.add(message);
+            LoggingCache loggingCache = new LoggingCache(temp, 104857600);
 
-        List<Message> list = new ArrayList<>();
+            loggingCache.add(message);
 
-        list = loggingCache.copyAllMessages();
+            List<Message> list = new ArrayList<>();
 
-        assert (list.get(0).equals(message));
+            list = loggingCache.copyAllMessages();
 
-
+            assert (list.get(0).equals(message));
+        } finally {
+            temp.delete();
+        }
     }
 
     @Test

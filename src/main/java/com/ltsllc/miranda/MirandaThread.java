@@ -48,7 +48,7 @@ public class MirandaThread extends Thread {
             logger.debug("entering iteration");
             try {
                 miranda.mainLoop();
-            } catch (LtsllcException|IOException e) {
+            } catch (IOException e) {
                 logger.error("Encountered exception while running mainLoop", e);
                 e.printStackTrace();
             }

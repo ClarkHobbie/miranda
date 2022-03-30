@@ -20,7 +20,6 @@ class MessageTest extends TestSuperclass {
         Configurator.setRootLevel(Level.DEBUG);
     }
 
-
     @Test
     public void contentsAreEquivalent () {
         byte[] array1 = "hi there".getBytes();

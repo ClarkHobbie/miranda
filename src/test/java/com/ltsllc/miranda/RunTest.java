@@ -22,7 +22,10 @@ public class RunTest {
         miranda.loadProperties();
         String[] args = {};
         miranda.startUp(args);
-        while (true) {
+
+        boolean guard = false;
+        System.out.println("guard = " + guard);
+        while (guard) {
             miranda.mainLoop();
         }
     }

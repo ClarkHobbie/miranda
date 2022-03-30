@@ -102,6 +102,13 @@ public class Message implements Comparable<Message> {
         }
     }
 
+    /**
+     * Are the two byte arrays equivalent?
+     *
+     * @param ba1 The first byte array.
+     * @param ba2 The second byte array.
+     * @return True if the two arrays are equivalent.
+     */
     public static boolean contentsAreEquivalent (byte[] ba1, byte[] ba2) {
         if (ba1 == ba2) {
             return true;
@@ -188,6 +195,13 @@ public class Message implements Comparable<Message> {
         return newMessage;
     }
 
+    /**
+     * Read a message from a Scanner
+     *
+     * @param scanner The scanner to read from.
+     * @return The message.
+     * @see Scanner The scanner.
+     */
     public static Message readLongFormat (Scanner scanner) {
         logger.debug ("entering readLong with scanner = " + scanner.toString());
 
@@ -260,6 +274,17 @@ public class Message implements Comparable<Message> {
         return newMessage;
     }
 
+    /**
+     * Are two messages equivalent?
+     *
+     * <P>
+     *     The problem with this method is that it uses the deprecated class java.lang.Long  This is because the author
+     *     couldn't find an alternative class/
+     * </P>
+     *
+     * @param message The message to compare with.
+     * @return True if the message is equivalent,
+     */
     @Override
     public int compareTo(Message message) {
         //
@@ -277,6 +302,17 @@ public class Message implements Comparable<Message> {
         }
     }
 
+    /**
+     * Generate a hash code that is based on the message's ID.
+     *
+     * <P>
+     *     This is required because two objects can be equals equivalent, but, with the default algorithm, two objects
+     *     are not hashCode equivalent.  Thus classes like HashSet will return false to the contains method even when
+     *     it contains another object that is equals equivalent to the object.
+     * </P>
+     *
+     * @return The hashCode for this object.
+     */
     @Override
     public int hashCode () {
         return (int) (messageID.getMostSignificantBits() & messageID.getLeastSignificantBits());

@@ -49,6 +49,14 @@ public class LoggingSet {
         return set.contains(message);
     }
 
+    /**
+     * Log the message to the classes logfile
+     *
+     * @param message The message to be added.
+     * @return Whether the message was already in the set.  Note that a return value of true means that the logfile will
+     * contain two copies of the message.
+     * @throws IOException If there is a problem logging the message.
+     */
     public synchronized boolean add (Message message) throws IOException {
         FileWriter fileWriter = null;
         BufferedWriter bufferedWriter = null;
@@ -70,11 +78,29 @@ public class LoggingSet {
         }
     }
 
+    /**
+     * Remove a message from the set as well as the logfile
+     *
+     * <P>
+     *     In the case where a message is in the logfile more than once; ALL instances of the message are removed from
+     *     the logfile.
+     * </P>
+     * <P>
+     *     The method works by first removing the backup file.  The backup file has the same name as the logfile,
+     *     with ".backup" appended to it.  It then renames the logfile to the backup file, and then copies the contents
+     *     of the backup, minus the removed element, to the logfile.
+     * </P>
+     *
+     * @param message The message to be removed.
+     * @return true if the message was in the set, false otherwise.
+     * @throws IOException If there is a problem when removing the message from the logfile.
+     */
     public synchronized boolean remove (Message message) throws IOException {
-        if (!file.exists()) {
-            return false;
-        }
         ImprovedFile backup = new ImprovedFile(file.getName() + ".backup");
+        if (backup.exists()) {
+            backup.delete();
+        }
+
         file.renameTo(backup);
 
         FileReader fileReader = null;
@@ -122,15 +148,52 @@ public class LoggingSet {
         return set.remove(message);
     }
 
+
+    /**
+     * Is the set empty?
+     *
+     * @return true if the set is empty, false otherwise.
+     */
     public synchronized boolean isEmpty () {
         return set.isEmpty();
     }
 
+    /**
+     * Should the recover method be called?
+     *
+     * <P>
+     *     Basically, return true if the logfile or a backup exists.
+     * </P>
+     *
+     * @param logfile The logfile and the backup file that are checked.  In this case, the backup file name is just the
+     *                logfile name followed by ".backup"
+     * @return True if recover should be called, false otherwise.
+     * @see #recover(ImprovedFile)
+     */
     public static boolean shouldRecover (ImprovedFile logfile) {
         ImprovedFile backup = new ImprovedFile(logfile.getName() + ".backup");
         return logfile.exists() || backup.exists();
     }
 
+    /**
+     * Recover from a crash
+     *
+     * <P>
+     *     It is suggested but not required for the caller to have already called shouldRecover.
+     * </P>
+     *
+     * <P>
+     *     Recovery just consists of loading the set members into memory.  In the case where both exist, use the backup
+     *     file.  The logfile may be incomplete or otherwise damaged, but the backup is just the contents of the set.
+     *     The backup file is created when we are about to copy the contents of the logfile, minus the removed
+     *     message, to the logfile.
+     * </P>
+     *
+     * @param logfile The logfile and backup file to be used in a recovery.  The name of the backup file is just the
+     *                name of the logfile with ".backup" appended to it.
+     * @return
+     * @throws IOException
+     */
     public static LoggingSet recover (ImprovedFile logfile) throws IOException {
         ImprovedFile theLogfile = new ImprovedFile(logfile);
         ImprovedFile backup = new ImprovedFile(theLogfile.getName() + ".backup");
@@ -176,11 +239,21 @@ public class LoggingSet {
             //
             backup.renameTo(logfile);
             returnValue = recover(logfile);
+        } else if (logfile.exists() && backup.exists()) {
+            logfile.delete();
+            backup.renameTo(logfile);
+            returnValue = recover(logfile);
         }
 
         return returnValue;
     }
 
+    /**
+     * Add all the elements of a colletion
+     *
+     * @param collection The collection to add.
+     * @throws IOException If a problem is encounted while adding an element.
+     */
     public synchronized void addAll (Collection<Message> collection) throws IOException {
         Iterator<Message> iterator = collection.iterator();
         while (iterator.hasNext()) {

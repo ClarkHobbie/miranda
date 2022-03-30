@@ -225,7 +225,7 @@ class MirandaTest extends TestSuperclass {
         Message message = createTestMessage(UUID.randomUUID());
         List<Message> list = new ArrayList<>();
         list.add(message);
-        Miranda.setKeepRunning(false);
+        Miranda.getInstance().setKeepRunning(false);
 
         miranda.mainLoop();
 
@@ -243,7 +243,7 @@ class MirandaTest extends TestSuperclass {
         MessageLog.setInstance(mockMessageLog);
 
         when(mockMessageLog.copyAllMessages()).thenReturn(list);
-        Miranda.setKeepRunning(true);
+        Miranda.getInstance().setKeepRunning(true);
 
         miranda.mainLoop();
 
@@ -331,17 +331,14 @@ class MirandaTest extends TestSuperclass {
         ImprovedProperties p = Miranda.getProperties();
         ImprovedFile messages = new ImprovedFile(p.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
         messages.touch();
-        ImprovedFile inflight = new ImprovedFile(p.getProperty(Miranda.PROPERTY_INFLIGHT));
         ImprovedFile owners = new ImprovedFile(p.getProperty(Miranda.PROPERTY_OWNER_FILE));
 
         assert(miranda.shouldEnterRecovery());
 
         messages.delete();
-        inflight.touch();
 
         assert (miranda.shouldEnterRecovery());
 
-        inflight.delete();
         owners.touch();
 
         assert (miranda.shouldEnterRecovery());

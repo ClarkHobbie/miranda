@@ -19,22 +19,51 @@ import java.util.*;
 /**
  * A cache of messages
  *
+ * <P>
  * This class contains both in core Messages and Messages on disk.  It provides a single interface to get both online
  * and offline Messages.
+ * </P>
  */
 public class MessageCache {
     public static final Logger logger = LogManager.getLogger();
     public static final Logger events = LogManager.getLogger("events");
 
+    /**
+     * A map from message UUID to whether the memory or not.  A value of true indicates that the message is in memory.
+     */
     protected Map<UUID, Boolean> uuidToOnline = new HashMap<>();
-    protected Map<UUID, Message> uuidToMessage = new HashMap<>();
-    protected Map<UUID, Long> uuidToLocation = new HashMap<>();
-    protected ImprovedFile logfile;
-    protected Map<UUID, Integer> uuidToNumberOfTimesReferenced = new HashMap<>();
-    protected int loadLimit;
-    protected long location = 0;
 
+    /**
+     * A map from message UUID to the message that has that uuid
+     */
+    protected Map<UUID, Message> uuidToMessage = new HashMap<>();
+
+    /**
+     * A map from message UUID to the message's offset in the message log
+     */
+    protected Map<UUID, Long> uuidToLocation = new HashMap<>();
+
+    /**
+     * The logfile where messages are stored
+     */
+    protected ImprovedFile logfile;
+
+    /**
+     * A map from message UUID to an integer that contains the number of times that message has been looked up.
+     */
+    protected Map<UUID, Integer> uuidToNumberOfTimesReferenced = new HashMap<>();
+
+    /**
+     * The number of bytes of all the messages in memory before it sheds the excess to the message log
+     */
+    protected int loadLimit;
+
+     /**
+      * The sum of all the message's contents that are in memory (i.e. in uuidToMessage).
+      */
     protected int currentLoad = 0;
+
+
 
     public MessageCache(ImprovedFile logfile, int loadLimit) throws LtsllcException {
         initialize(logfile, loadLimit);
@@ -83,7 +112,6 @@ public class MessageCache {
     public void initialize(ImprovedFile logfile, int loadLimit) throws LtsllcException {
         this.logfile = logfile;
         this.loadLimit = loadLimit;
-        location = 0;
     }
 
     public int getLoadLimit() {
@@ -350,7 +378,7 @@ public class MessageCache {
         try {
             fileWriter = new FileWriter(logfile.toString(), true);
             bufferedWriter = new BufferedWriter(fileWriter);
-            location = logfile.length();
+            long location = logfile.length();
             bufferedWriter.write(message.longToString());
             bufferedWriter.newLine();
             currentLoad = currentLoad - message.getContents().length;

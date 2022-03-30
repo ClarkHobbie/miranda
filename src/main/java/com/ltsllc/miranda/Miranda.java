@@ -20,67 +20,206 @@ import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-
+import java.util.*;
 
 
 public class Miranda {
     public static final int STATUS_SUCCESS = 200;
+    /**
+     * The property for specifying what port number to use for cluster connections
+     */
+    public static final String PROPERTY_CLUSTER_PORT = "ports.cluster";
+
+    /**
+     * The port number to use if it's not set.  The default is 2020
+     */
+    public static final String PROPERTY_DEFAULT_CLUSTER_PORT = "2020";
     public static final String PROPERTY_PROPERTIES_FILE = "properties";
+
+    /**
+     * The default properties file.  It's miranda.properties
+     */
     public static final String PROPERTY_DEFAULT_PROPERTIES_FILE = "miranda.properties";
+
     public static final String PROPERTY_LONG_LOGGING_LEVEL = "loggingLevel";
     public static final String PROPERTY_SHORT_LOGGING_LEVEL = "l";
-    public static final String PROPERTY_LOGGING_LEVEL = "loggingLevel";
-    public static final String PROPERTY_DEFAULT_LOGGING_LEVEL = "error";
-    public static final String PROPERTY_BID_TIMEOUT = "timeouts.bid";
-    public static final String PROPERTY_DEFAULT_BID_TIMEOUT = "500";
-    public static final String PROPERTY_MESSAGE_PORT = "messagePort";
-    public static final String PROPERTY_DEFAULT_MESSAGE_PORT = "3030";
-    public static final String PROPERTY_CLUSTER_PORT = "clusterPort";
-    public static final String PROPERTY_DEFAULT_CLUSTER_PORT = "2020";
-    public static final String PROPERTY_CACHE_LOAD_LIMIT = "cache.loadLimit";
-    public static final String PROPERTY_DEFAULT_CACHE_LOAD_LIMIT = "104856700"; // 100 megabytes
-    public static final String PROPERTY_OWNER_FILE = "ownerFile";
-    public static final String PROPERTY_DEFAULT_OWNER_FILE = "owners.log";
-    public static final String PROPERTY_CLUSTER = "cluster";
-    public static final String PROPERTY_DEFAULT_CLUSTER = "off";
-    public static final String PROPERTY_HOST = "host";
-    public static final String PROPERTY_CLUSTER_1 = "cluster.1.host";
-    public static final String PROPERTY_CLUSTER_RETRY = "cluster.retry";
-    public static final String PROPERTY_DEFAULT_CLUSTER_RETRY = "10000";
-    public static final String PROPERTY_MESSAGE_LOG = "messageLog";
-    public static final String PROPERTY_DEFAULT_MESSAGE_LOG = "messages.log";
-    public static final String PROPERTY_INFLIGHT = "inflight";
-    public static final String PROPERTY_DEFAULT_INFLIGHT = "inflight";
 
+    /**
+     * The logging level to use.
+     */
+    public static final String PROPERTY_LOGGING_LEVEL = "loggingLevel";
+
+    /**
+     * The default Logging level to use if the user doesn't specify one.  The default is ERROR.
+     */
+    public static final String PROPERTY_DEFAULT_LOGGING_LEVEL = "error";
+
+    /**
+     * How long the system, in milliseconds, will wait for another node to make a bid
+     */
+    public static final String PROPERTY_BID_TIMEOUT = "timeouts.bid";
+
+    /**
+     * The default bid timeout to use if the user doesn't specify one.  The default is 500msecs.
+     */
+    public static final String PROPERTY_DEFAULT_BID_TIMEOUT = "500";
+
+    /**
+     * The TCP port at which the system will listen for messages from a client
+     */
+    public static final String PROPERTY_MESSAGE_PORT = "messagePort";
+
+    /**
+     * The default TCP port to listen to if the user doesn't specify one.  The default is 3030
+     */
+    public static final String PROPERTY_DEFAULT_MESSAGE_PORT = "3030";
+
+    /**
+     * The value that is used for the message cache.
+     *
+     * <P>
+     *     This is the size, in two character bytes, for the message cache.
+     * </P>
+     */
+    public static final String PROPERTY_CACHE_LOAD_LIMIT = "cache.loadLimit";
+
+    /**
+     * The default size of the message cache.   The default is 100Megabytes.
+     */
+    public static final String PROPERTY_DEFAULT_CACHE_LOAD_LIMIT = "104856700"; // 100 megabytes
+
+    /**
+     * The name of the owner file
+     */
+    public static final String PROPERTY_OWNER_FILE = "ownerFile";
+
+    /**
+     * The default name to use for the owner file.  The default is "owners.log."
+     */
+    public static final String PROPERTY_DEFAULT_OWNER_FILE = "owners.log";
+
+    /**
+     * Whether clustering is on or not.
+     */
+    public static final String PROPERTY_CLUSTER = "cluster";
+
+    /**
+     * Whether clustering is on by default.  The default is "off."
+     */
+    public static final String PROPERTY_DEFAULT_CLUSTER = "off";
+
+    /**
+     * ?!
+     */
+    public static final String PROPERTY_HOST = "host";
+
+    /**
+     * The name of the property to look at to decide if clustering is on or off.  If the user doesn't supply an
+     * alternative value then the system assumes that clustering is off.
+     */
+    public static final String PROPERTY_CLUSTER_1 = "cluster.1.host";
+
+    /**
+     * The amount of time, in milliseconds that the system waits after an attempt to contact another node
+     */
+    public static final String PROPERTY_CLUSTER_RETRY = "cluster.retry";
+
+    /**
+     * The default time to wait between calls to another node to see if it's up.  The default is 10,000 milliseconds (10
+     * seconds).
+     */
+    public static final String PROPERTY_DEFAULT_CLUSTER_RETRY = "10000";
+
+    /**
+     * The name of the file that the node will log new messages to.
+     */
+    public static final String PROPERTY_MESSAGE_LOG = "messageLog";
+
+    /**
+     * The default logfile name to use.  The default is "messages.log."
+     */
+    public static final String PROPERTY_DEFAULT_MESSAGE_LOG = "messages.log";
+
+    /**
+     * The universally unique identifier (UUID) of this node.
+     *
+     * <P>
+     *     Note that there is no default value for this property the user MUST supply one to avoid system shutdown.
+     * </P>
+     */
+    public static final String PROPERTY_UUID = "UUID";
+
+    /**
+     * The logger to use
+     */
     protected static final Logger logger = LogManager.getLogger();
+
+    /**
+     * The logger to use for system events like system startup, shutdown, message creation, delivery, etc.
+     */
     public static final Logger event = LogManager.getLogger("events");
-    protected static boolean keepRunning = true;
+
+    /**
+     * The one instance of miranda that exists.
+     */
     public static Miranda instance = new Miranda();
 
-    protected Cluster cluster;
+    /**
+     * Should miranda keep running?
+     */
+    protected boolean keepRunning = true;
+
+    /**
+     * The system properties
+     */
     protected static ImprovedProperties properties;
+
+    /**
+     * The time, after which the system should try to reconnect to the other nodes of the cluster
+     */
     protected long clusterAlarm = -1;
+
+    /**
+     * The jetty server that receives new messages
+     */
     protected Server server;
+
+    /**
+     * A list of node specifications that make up the cluster
+     */
     protected List<SpecNode> specNodes = new ArrayList<>();
-    protected LoggingSet inflight = null;
-    protected LoggingCache loggingCache = null;
 
-    public LoggingCache getLoggingCache() {
-        return loggingCache;
+    /**
+     * The set of messages that we have sent out, but haven't heard back from
+     */
+    protected Set<Message> inflight = new HashSet<>();
+
+    /**
+     * The UUID of this node
+     */
+    protected UUID myUuid = null;
+
+    public UUID getMyUuid() {
+        return myUuid;
     }
 
-    public void setLoggingCache(LoggingCache loggingCache) {
-        this.loggingCache = loggingCache;
+    public void setMyUuid(UUID myUuid) {
+        this.myUuid = myUuid;
     }
 
-    public LoggingSet getInflight() {
+    public boolean isKeepRunning() {
+        return keepRunning;
+    }
+
+    public void setKeepRunning(boolean keepRunning) {
+        this.keepRunning = keepRunning;
+    }
+
+    public Set<Message> getInflight() {
         return inflight;
     }
 
-    public void setInflight(LoggingSet inflight) {
+    public void setInflight(Set<Message> inflight) {
         this.inflight = inflight;
     }
 
@@ -94,9 +233,19 @@ public class Miranda {
 
     public Miranda() {
         Miranda.instance = this;
-        cluster = Cluster.getInstance();
-        ImprovedFile logfile = new ImprovedFile("inflight");
-        inflight = new LoggingSet(logfile);
+
+        try {
+            loadProperties();
+        } catch (LtsllcException e) {
+            throw new UncheckedLtsllcException(e);
+        }
+        if (null == properties.getProperty(PROPERTY_UUID)) {
+            String msg = "Please specify a UUID for this node by setting the " + PROPERTY_UUID + " property";
+            logger.error(msg);
+            event.error(msg);
+        } else {
+            myUuid = UUID.fromString(properties.getProperty(PROPERTY_UUID));
+        }
     }
 
     public Server getServer() {
@@ -123,24 +272,6 @@ public class Miranda {
         Miranda.instance = instance;
     }
 
-    public static boolean getKeepRunning() {
-        return keepRunning;
-    }
-
-    public static void setKeepRunning(boolean keepRunning) {
-        Miranda.keepRunning = keepRunning;
-    }
-
-    public Cluster getCluster() {
-        return cluster;
-    }
-
-    public void setCluster(Cluster cluster) {
-        this.cluster = cluster;
-    }
-
-
-
     public static ImprovedProperties getProperties() {
         return properties;
     }
@@ -149,22 +280,21 @@ public class Miranda {
         Miranda.properties = properties;
     }
 
-    /*
+    /**
      * Miranda's main loop
      *
-     * Each call to this method is one iteration of Miranda's main loop. Each iteration consists
-     * of:
-     *     checking for new messages
-     *     if there is a new message
-     *         create a message for it
-     *         tell the cluster about it
-     *         tell the sender of the message that we created it
-     *     taking the first message off the send queue
-     *     attempting to deliver that message
-     *     if the delivery was successful
-     *         tell the cluster that we delivered it
+     * <P><PRE>
+     *     copy all the messages we are responsible for delivering
+     *     foreach of those messages
+     *         try and deliver the message
+     *     check if we need to try and connect to other nodes
+     * </PRE></P>
+     * <P>
+     *     Note that this is only used if keepRunning is true.
+     * </P>
+     * @exception IOException If there is a problem copying the messages
      */
-    public void mainLoop () throws LtsllcException, IOException {
+    public void mainLoop () throws IOException  {
         logger.debug("starting mainLoop, with keepRunning = " + keepRunning);
         if (keepRunning) {
             /*
@@ -196,20 +326,33 @@ public class Miranda {
         //
         connectToOtherNodes();
     }
-    /*
-     *
+
+    /**
      * start up miranda
-     *
-     * When Miranda starts up, check for the existence of a sendQueue.  If it exists then copy the
-     * file and enter the bidding mode.
-     *
+     * <P>
+     *     When Miranda starts up, check for the existence of a sendQueue.  If it exists then copy the file and enter
+     *     the bidding mode.
+     * </P>
      */
     public void startUp (String[] args) throws Exception {
         event.info("Miranda starting up");
         logger.debug("Miranda starting up");
+        logger.debug("Checking to see if we should recover");
+        ImprovedFile messageLogfile = new ImprovedFile(properties.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
+        int messageLoadLimit = properties.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
+        ImprovedFile ownersFile = new ImprovedFile(properties.getProperty(Miranda.PROPERTY_OWNER_FILE));
+        if (MessageLog.shouldRecover(messageLogfile)) {
+            if (messageLogfile.exists()) {
+                MessageLog.recover(messageLogfile, messageLoadLimit, ownersFile);
+            }
+        }
+
         logger.debug("parsing arguments");
         properties = new ImprovedProperties();
         processArguments(args);
+
+        logger.debug("initializing MessageLog");
+        MessageLog.defineStatics(messageLogfile, messageLoadLimit, ownersFile);
 
         logger.debug("loading properties");
         loadProperties();
@@ -218,18 +361,11 @@ public class Miranda {
         parseNodes();
 
         logger.debug("Starting cluster");
-        cluster = Cluster.getInstance();
-        cluster.connect(specNodes);
+        Cluster.defineStatics(myUuid);
+        Cluster.getInstance().connect(specNodes);
 
         logger.debug("starting the message port");
         startMessagePort(properties.getIntProperty(PROPERTY_MESSAGE_PORT));
-
-        ImprovedFile logfile = new ImprovedFile(Miranda.getProperties().getProperty(PROPERTY_MESSAGE_LOG));
-        int loadLimit = Miranda.getProperties().getIntProperty(PROPERTY_CACHE_LOAD_LIMIT);
-        ImprovedFile ownersFile = new ImprovedFile(properties.getProperty(PROPERTY_OWNER_FILE));
-        if (MessageLog.shouldRecover(logfile)) {
-            MessageLog.recover(logfile, loadLimit, ownersFile);
-        }
 
         logger.debug("Leaving startup");
     }
@@ -257,7 +393,8 @@ public class Miranda {
         server.addConnector(serverConnector);
 
         // Set a simple Handler to handle requests/responses.
-        server.setHandler(new MessageHandler());
+
+        server.setHandler(new MessageHandler(myUuid));
 
         // Start the Server, so it starts accepting connections from clients.
         server.start();
@@ -333,10 +470,12 @@ public class Miranda {
         logger.debug("leaving processArgument with map = " + map);
     }
 
-     /*
+    /**
      * reload the system properties
-     *
-     * This simply tells the system to reload the system properties
+     * <P>
+     *     This simply tells the system to reload the system properties, but it also defines default values for most
+     *     properties.
+     * </P>
      */
     public void loadProperties() throws LtsllcException {
         FileInputStream in = null;
@@ -366,7 +505,6 @@ public class Miranda {
         }
 
         properties.setIfNull(PROPERTY_MESSAGE_PORT, PROPERTY_DEFAULT_MESSAGE_PORT);
-        properties.setIfNull(PROPERTY_CLUSTER_PORT, PROPERTY_DEFAULT_CLUSTER_PORT);
         properties.setIfNull(PROPERTY_CACHE_LOAD_LIMIT, PROPERTY_DEFAULT_CACHE_LOAD_LIMIT);
         properties.setIfNull(PROPERTY_BID_TIMEOUT, PROPERTY_DEFAULT_BID_TIMEOUT);
         properties.setIfNull(PROPERTY_OWNER_FILE, PROPERTY_DEFAULT_OWNER_FILE);
@@ -375,7 +513,7 @@ public class Miranda {
         properties.setIfNull(PROPERTY_CLUSTER, PROPERTY_DEFAULT_CLUSTER);
         properties.setIfNull(PROPERTY_CLUSTER_RETRY, PROPERTY_DEFAULT_CLUSTER_RETRY);
         properties.setIfNull(PROPERTY_MESSAGE_LOG, PROPERTY_DEFAULT_MESSAGE_LOG);
-        properties.setIfNull(PROPERTY_INFLIGHT, PROPERTY_DEFAULT_INFLIGHT);
+        properties.setIfNull(PROPERTY_CLUSTER_PORT, PROPERTY_DEFAULT_CLUSTER_PORT);
     }
 
     public void storeProperties () throws IOException {
@@ -391,29 +529,26 @@ public class Miranda {
         }
     }
 
-    //
-    // ********************************************************************************************
-    //
-    // Check to see if we should enter recovery mode
-    //
-    // We should enter recovery mode if the queue is not empty.
-    //
-    // ********************************************************************************************
-    //
+    /**
+     * Check to see if we should enter recovery mode
+     *
+     * We should enter recovery mode if the queue is not empty.
+     */
     protected boolean shouldEnterRecovery() {
         ImprovedFile messageLog = new ImprovedFile(properties.getProperty(PROPERTY_MESSAGE_LOG));
         ImprovedFile owners = new ImprovedFile(properties.getProperty(PROPERTY_OWNER_FILE));
-        ImprovedFile inflight = new ImprovedFile(properties.getProperty(PROPERTY_INFLIGHT));
-        return MessageLog.shouldRecover(messageLog) || owners.exists() || inflight.exists();
+        return MessageLog.shouldRecover(messageLog) || owners.exists();
 
     }
 
-    public static void stop () {
+    public void stop () {
         keepRunning = false;
     }
 
     /**
      * Release all the ports we are bound to
+     *
+     * @exception Exception If there is a problem stopping Jetty.
      */
     public void releasePorts () throws Exception {
         releaseMessagePort();
@@ -421,8 +556,8 @@ public class Miranda {
 
     /**
      * Unbind the message port
-     * <P>
-     *      Note that this method unbinds ALL ports bound with Mina, not just the message port.
+     *
+     * @exception Exception If there is a problem stopping Jetty
      */
     public synchronized void releaseMessagePort () throws Exception {
         logger.debug("entering releaseMessagePort.");
@@ -440,9 +575,13 @@ public class Miranda {
      * This method tries to deliver a message asynchronously.  On success it calls successfulMessage to signal that this
      * is so.
      *
-     * @param message The message to deliver
+     * @param message The message to
+     * @exception IOException If there is a problem with the manipulation of the logfiles
      */
     public void deliver (Message message) throws IOException {
+        //
+        // don't send if we haven't gotten a reply from the message we already sent
+        //
         if (inflight.contains(message)) {
             return;
         }
@@ -452,17 +591,30 @@ public class Miranda {
         BoundRequestBuilder boundRequestBuilder = httpClient.preparePost(message.getDeliveryURL());
 
         boundRequestBuilder.setBody(message.getContents())
-                        .execute(new AsyncCompletionHandler<Response>() {
-                            @Override
-                            public Response onCompleted(Response response) throws IOException {
-                                if ((response.getStatusCode() > 199) && (response.getStatusCode() < 300)){
-                                    successfulMessage(message);
-                                    event.info ("Delivered message (" + message.getMessageID() + ")");
-                                }
-                                // otherwise, keep trying
-                                return response;
-                            }
-                        });
+                .execute(new AsyncCompletionHandler<Response>() {
+                    @Override
+                    public Response onCompleted(Response response) throws IOException {
+                        //
+                        // we should check for an exception, for example when the destination is not listening, but
+                        // response doesn't offer one
+                        //
+                        if ((response.getStatusCode() > 199) && (response.getStatusCode() < 300)) {
+                            //
+                            // if we successfully delivered the message then tell everyone and remove the
+                            // message from the set of messages we are trying to deliver
+                            //
+                            successfulMessage(message);
+                            event.info("Delivered message (" + message.getMessageID() + ")");
+                        } else {
+                            //
+                            // otherwise note the status and try again
+                            //
+                            message.setStatus(response.getStatusCode());
+                        }
+                        // otherwise, keep trying
+                        return response;
+                    }
+                });
 
 
     }
@@ -470,15 +622,16 @@ public class Miranda {
     /**
      * Called when a message has been successfully delivered
      *
-     * This method calls cluster.informOfDelivery to signal to the cluster that the message has been delivered,
-     * removes the message from the send queue and takes care of notifying the client that we have delivered the
-     * message.
+     * <P>
+     *     This method calls cluster.informOfDelivery to signal to the cluster that the message has been delivered,
+     *     removes the message from the send queue and notifying the client that we have delivered the message.
+     * </P>
      *
      * @param message The message
      */
     public void successfulMessage(Message message) throws IOException {
         logger.debug("entering successfulMessage with: " + message);
-        cluster.informOfDelivery(message);
+        Cluster.getInstance().informOfDelivery(message);
         try {
             MessageLog.getInstance().remove(message.getMessageID());
         } catch (IOException e) {

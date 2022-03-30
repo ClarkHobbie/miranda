@@ -176,15 +176,18 @@ class ClusterTest extends TestSuperclass {
         ImprovedFile testProperties = new ImprovedFile("test02.properties");
 
         try {
+            miranda.loadProperties();
             miranda.parseNodes();
 
-            Cluster.defineStatics();
+            Cluster.defineStatics(UUID.fromString(Miranda.getProperties().getProperty(Miranda.PROPERTY_UUID)));
 
             properties.copyTo(backup);
             testProperties.copyTo(properties);
+
             IoConnector mockIoConnector = mock(IoConnector.class);
             Cluster.getInstance().setIoConnector(mockIoConnector);
             when(mockIoConnector.getFilterChain()).thenReturn(new DefaultIoFilterChainBuilder());
+
             InetSocketAddress temp = new InetSocketAddress("192.168.0.12", 2020);
 
             ConnectFuture mockConnectFuture = mock(ConnectFuture.class);
@@ -200,7 +203,8 @@ class ClusterTest extends TestSuperclass {
             IoSessionConfig mockIoSessionConfig = mock(IoSessionConfig.class);
             when(mockIoSession.getConfig()).thenReturn(mockIoSessionConfig);
 
-            Cluster.getInstance().connect(miranda.getSpecNodes());
+            List<SpecNode> list = miranda.getSpecNodes();
+            Cluster.getInstance().connect(list);
 
             verify(mockIoConnector, atLeastOnce()).connect(temp);
         } finally {
@@ -221,7 +225,7 @@ class ClusterTest extends TestSuperclass {
 
             IoAcceptor mockIoAcceptor = mock(IoAcceptor.class);
 
-            Cluster.defineStatics();
+            Cluster.defineStatics(UUID.fromString(Miranda.getProperties().getProperty(Miranda.PROPERTY_UUID)));
             Cluster.getInstance().setIoAcceptor(mockIoAcceptor);
 
             DefaultIoFilterChainBuilder mockDefaultFilterChainBuilder = mock(DefaultIoFilterChainBuilder.class);
@@ -250,14 +254,30 @@ class ClusterTest extends TestSuperclass {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        Cluster.defineStatics();
+        Cluster.defineStatics(UUID.fromString(Miranda.getProperties().getProperty(Miranda.PROPERTY_UUID)));
 
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
         Node node = new Node("192.168.0.12", port);
         node.setConnected(false);
 
-        IoConnector mockIoConnector = mock(IoConnector.class);
         InetSocketAddress addr = new InetSocketAddress("192.168.0.12", port);
+
+        IoConnector mockIoConnector = mock(IoConnector.class);
+        Cluster.getInstance().setIoConnector(mockIoConnector);
+
+
+        ConnectFuture mockConnectionFuture = mock(ConnectFuture.class);
+        IoSession mockIoSession = mock(IoSession.class);
+        when(mockConnectionFuture.getSession()).thenReturn(mockIoSession);
+
+        WriteFuture mockWriteFuture = mock(WriteFuture.class);
+        when(mockIoSession.write(any())).thenReturn(mockWriteFuture);
+
+        IoSessionConfig mockIoSessionConfig = mock(IoSessionConfig.class);
+        when(mockIoSession.getConfig()).thenReturn(mockIoSessionConfig);
+        when(mockIoConnector.connect(addr)).thenReturn(mockConnectionFuture);
+
+        when(mockWriteFuture.getSession()).thenReturn(mockIoSession);
 
         Cluster.getInstance().connectToNode(node, mockIoConnector);
 
@@ -269,7 +289,7 @@ class ClusterTest extends TestSuperclass {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        Cluster.defineStatics();
+        Cluster.defineStatics(UUID.fromString(Miranda.getProperties().getProperty(Miranda.PROPERTY_UUID)));
 
         List<Node> list = new ArrayList<>();
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
@@ -308,7 +328,7 @@ class ClusterTest extends TestSuperclass {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        Cluster.defineStatics();
+        Cluster.defineStatics(UUID.fromString(Miranda.getProperties().getProperty(Miranda.PROPERTY_UUID)));
 
         List<Node> list = new ArrayList<>();
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);

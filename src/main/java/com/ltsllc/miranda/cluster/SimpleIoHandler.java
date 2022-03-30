@@ -5,6 +5,9 @@ import org.apache.mina.core.session.IdleStatus;
 import org.apache.mina.core.session.IoSession;
 import org.apache.mina.filter.FilterEvent;
 
+/**
+ * A very simple IoHandler that does nothing
+ */
 public class SimpleIoHandler implements IoHandler {
     @Override
     public void sessionCreated(IoSession session) throws Exception {

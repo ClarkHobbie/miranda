@@ -90,15 +90,32 @@ public class Cluster {
     public static final long IONM_TIMEOUT = 1000;
     public static final TimeUnit IONM_TIMEOUT_UNITS = TimeUnit.MILLISECONDS;
 
+    /**
+     * The random number generator.  Usually swapped out when you want to win (or lose) a bid.
+     */
     protected static ImprovedRandom randomNumberGenerator = new ImprovedRandom();
     protected static final Logger logger = LogManager.getLogger();
     public static final Logger events = LogManager.getLogger("events");
-    protected List<Node> nodes = new ArrayList<>();
     protected static Cluster instance = null;
 
-    protected Map<IoSession, Node> ioSessionToNode = new HashMap<>();
-    protected UUID uuid = UUID.randomUUID();
+    /**
+     * A list of the other nodes in the cluster
+     */
+    protected List<Node> nodes = new ArrayList<>();
+
+    /**
+     * This node's UUID
+     */
+    protected UUID uuid = null;
+
+    /**
+     * The IoConnector to use when trying to connect to other nodes
+     */
     protected IoConnector ioConnector = null;
+
+    /**
+     * The IoAcceptor to use when other nodes try and connect to us.
+     */
     protected IoAcceptor ioAcceptor = null;
 
     public IoAcceptor getIoAcceptor() {
@@ -133,14 +150,6 @@ public class Cluster {
         this.uuid = uuid;
     }
 
-    public Map<IoSession, Node> getIoSessionToNode() {
-        return ioSessionToNode;
-    }
-
-    public void setIoSessionToNode(Map<IoSession, Node> ioSessionToNode) {
-        this.ioSessionToNode = ioSessionToNode;
-    }
-
     public static Cluster getInstance() {
         return instance;
     }
@@ -164,30 +173,37 @@ public class Cluster {
         return randomNumberGenerator;
     }
 
-    /*
+    /**
      * Set the random number generator that this node uses
      *
-     * The random number generator is used mostly in bidding
+     * <P>
+     *     The random number generator is used mostly in bidding
+     * </P>
      */
     public static void setRandomNumberGenerator(ImprovedRandom randomNumberGenerator) {
         Cluster.randomNumberGenerator = randomNumberGenerator;
     }
 
-    /*
+    /**
      * remove a node from the cluster
-     *
-     * This method does so synchronously, so it is thread safe.
+     * <P>
+     *     This method does so synchronously, so it is thread safe.
+     * </P>
      */
     public synchronized void removeNode(Node node) {
         logger.debug("removing node, " + node + " from nodes");
         nodes.remove(node);
-        ioSessionToNode.remove(node.getIoSession());
     }
 
     /*
-     * inform the cluster of this node receiving a new message
+    */
+
+    /**
+     * Inform the cluster of this node receiving a new message
+     *
+     * @param message The message we received.
      */
-    public void informOfNewMessage(Message message) throws LtsllcException {
+    public void informOfNewMessage(Message message) {
         logger.debug("entering informOfNewMessage with message = " + message);
         String contents = "MESSAGE CREATED " + message.longToString();
 
@@ -201,14 +217,18 @@ public class Cluster {
             } catch (InterruptedException e) {
                 logger.error("Interrupted during wait in informOfNewMessage", e);
             }
-            IoSession nodeSession = future.getSession();
         }
         logger.debug("leaving informOfNewMessage");
     }
 
 
-    /*
+    /**
      * Tell the cluster that we delivered a message
+     * <P>
+     *     When another node is told of a message delivery, it can free up memory it was using to record the message.
+     * </P>
+     *
+     * @param message The message that we delivered.
      */
     public void informOfDelivery(Message message) {
         logger.debug("entering informOfDelivery with message = " + message);
@@ -227,11 +247,13 @@ public class Cluster {
         logger.debug("leaving informOfDelivery");
     }
 
-    /*
-     * connect to the cluster
+    /**
+     * Connect to the other nodes in the cluster
      *
-     * This method tries to connect to the other nodes of the cluster.  It sets up a listener for
-     * new nodes
+     * @param list A list of nodes that make up the cluster.
+     * @throws LtsllcException Both listen and connectNode, which this method calls, throw this exception.
+     * @see #listen()
+     * @see #connectNodes(List)
      */
     public void connect(List<SpecNode> list) throws LtsllcException {
         uuid = UUID.randomUUID();
@@ -282,11 +304,12 @@ public class Cluster {
     /**
      * Connect to the other nodes in the cluster
      *
+     * @param list The list of nodes to connect to.
      * @throws LtsllcException If there is a problem with the ClusterHandler for the connection.
      */
     public synchronized void connectNodes(List<SpecNode> list) throws LtsllcException {
         logger.debug("entering connectNodes");
-        events.info("connecting to other nodes");
+        events.info("Trying to connect to other nodes");
 
         if (Miranda.getProperties().getProperty(Miranda.PROPERTY_CLUSTER).equals("off")) {
             return;
@@ -296,8 +319,9 @@ public class Cluster {
         ImprovedProperties p = Miranda.getProperties();
         Node newNode = new Node(UUID.randomUUID(), p.getProperty(Miranda.PROPERTY_HOST), p.getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
 
-        ImprovedFile messages = new ImprovedFile("messages.log");
-        LoggingCache cache = new LoggingCache(messages,104857600);
+        ImprovedFile messages = new ImprovedFile(Miranda.PROPERTY_MESSAGE_LOG);
+        int loadLimit = p.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
+        LoggingCache cache = new LoggingCache(messages,loadLimit);
         ClusterHandler clusterHandler = new ClusterHandler(newNode, cache);
 
         ioConnector.setHandler(clusterHandler);
@@ -321,6 +345,9 @@ public class Cluster {
     /**
      * Try to connect to a Node
      *
+     * <P>
+     *     This method updates the node's connected attribute to reflect whether it is connected.
+     * </P>
      * @param node The node to try and connect to.
      * @param ioConnector Over what to make the connection.
      * @return true if we were able to connect to the node, false otherwise.
@@ -348,6 +375,7 @@ public class Cluster {
 
             writeFuture.getSession().getConfig().setUseReadOperation(true);
             node.setIoSession(writeFuture.getSession());
+            node.setConnected(true);
             logger.debug("wrote " + stringBuffer.toString());
         } catch (RuntimeIoException e) {
             logger.error("encountered exception", e);
@@ -361,16 +389,9 @@ public class Cluster {
         return returnValue;
     }
 
-    public synchronized void removeIoSession (IoSession ioSession) {
-        Node node = ioSessionToNode.get(ioSession);
-        if (node != null) {
-            nodes.remove(node);
-            ioSessionToNode.remove(ioSession);
-        }
-    }
-
-    public synchronized static void defineStatics () {
+    public synchronized static void defineStatics (UUID myID) {
         instance = new Cluster();
+        instance.setUuid(myID);
     }
 
     /**

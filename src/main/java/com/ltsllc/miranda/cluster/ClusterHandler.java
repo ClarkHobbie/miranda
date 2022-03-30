@@ -20,7 +20,9 @@ import java.util.*;
 /**
  * A connection to another node in the cluster
  *
+ * <P>
  * This class implements the Cluster protocol (see the package documentation).
+ * </P>
  */
 public class ClusterHandler implements IoHandler {
     public static final Logger logger = LogManager.getLogger();
@@ -51,11 +53,36 @@ public class ClusterHandler implements IoHandler {
      * The connection state.  The connection starts in the start state.
      */
     protected ClusterConnectionStates state = ClusterConnectionStates.START;
+
+    /**
+     * A message cache
+     * <P>
+     *     Other nodes could ask for a message we have.
+     * </P>
+     */
     protected LoggingCache cache = null;
+
+    /**
+     * A stack that contains the state to goto once we are done looking up a message
+     * <P>
+     *     If we are currently not looking up a message, then this stack should be empty.
+     * </P>
+     */
     protected Stack<ClusterConnectionStates> stateStack = new Stack<>();
+
+    /**
+     * The uuid of this node
+     */
     protected UUID uuid = UUID.randomUUID(); // our UUID
+
+    /**
+     * The uuid of the node we are connected to, or null if we don't know
+     */
     protected UUID partnerID;
-    protected Map<IoSession, Node> ioSessionToNode = new HashMap<>();
+
+    /**
+     * The node that represents the other part of this connection
+     */
     protected Node node = null;
 
     public Node getNode() {
@@ -64,14 +91,6 @@ public class ClusterHandler implements IoHandler {
 
     public void setNode(Node node) {
         this.node = node;
-    }
-
-    public Map<IoSession, Node> getIoSessionToNode() {
-        return ioSessionToNode;
-    }
-
-    public void setIoSessionToNode(Map<IoSession, Node> ioSessionToNode) {
-        this.ioSessionToNode = ioSessionToNode;
     }
 
     public static ImprovedRandom getOurRandom () {
@@ -353,9 +372,7 @@ public class ClusterHandler implements IoHandler {
      * @param ioSession The node that closed the session
      */
     @Override
-    public void inputClosed(IoSession ioSession)  {
-        Cluster.getInstance().removeIoSession(ioSession);
-    }
+    public void inputClosed(IoSession ioSession)  {}
 
     @Override
     public void event(IoSession session, FilterEvent event)  {}
@@ -425,11 +442,12 @@ public class ClusterHandler implements IoHandler {
 
     /**
      * Pop a state off the state stack.
-     *
-     * NOTE: this method assumes that the stateStack is not empty.
-     *
-     * This method does not set the state.
-     *
+     * <P>
+     *     NOTE: this method assumes that the stateStack is not empty.
+     * </P>
+     * <P>
+     *     This method does not set the state.
+     * </P>
      * @return A state
      * @throws LtsllcException This method throws this exception if the stateStack is empty.
      */
@@ -444,9 +462,9 @@ public class ClusterHandler implements IoHandler {
 
     /**
      * Send a Message over an IoSession
-     *
-     * This method sends a com.ltsllc.miranda.Message over an IoSession.
-     *
+     * <P>
+     *     This method sends a com.ltsllc.miranda.Message over an IoSession.
+     * </P>
      * @param uuid The Message to send.  NOTE: the uuid must exist in the message cache.
      * @param ioSession The IoSession over which to send it.
      */
@@ -537,7 +555,7 @@ public class ClusterHandler implements IoHandler {
             }
         }
 
-        MessageLog.getInstance().recordOwner(messageID, owner);
+        MessageLog.getInstance().setOwner(messageID, owner);
         logger.debug("leaving handleBid");
     }
 
@@ -593,7 +611,7 @@ public class ClusterHandler implements IoHandler {
 
         Message message = Message.readLongFormat(scanner);
 
-        MessageLog.getInstance().recordOwner(message.getMessageID(), partnerUuid);
+        MessageLog.getInstance().setOwner(message.getMessageID(), partnerUuid);
         MessageLog.getInstance().add(message,partnerID);
 
         logger.debug("leaving handleNewMessage");
@@ -721,6 +739,9 @@ public class ClusterHandler implements IoHandler {
     /**
      * Handle an error by sending a start message
      *
+     * <P>
+     *     This method first sends an error, and then a start message.
+     * </P>
      * @param s The error message (unused).
      * @param ioSession The session we should send the start over.
      */

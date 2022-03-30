@@ -20,9 +20,8 @@ import java.util.UUID;
 
 
 /**
- * A connection to a client
+ * A handler for incoming messages
  */
-// TODO: tell the cluster about new messages
 public class MessageHandler extends AbstractHandler {
     public static final String PARAM_DESTINATION_URL = "DELIVER_URL";
     public static final String PARAM_STATUS_URL = "STATUS_URL";
@@ -30,30 +29,34 @@ public class MessageHandler extends AbstractHandler {
     protected static final Logger logger = LogManager.getLogger(MessageHandler.class);
     public static final Logger events = LogManager.getLogger("events");
 
-    protected UUID partnerID;
+    protected UUID uuid;
 
-    public UUID getPartnerID() {
-        return partnerID;
+    public MessageHandler(UUID uuid) {
+        this.uuid = uuid;
     }
 
-    public void setPartnerID(UUID partnerID) {
-        this.partnerID = partnerID;
+    public UUID getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(UUID uuid) {
+        this.uuid = uuid;
     }
 
     /**
      * A new message has arrived
-     *
+     * <p>
      * This method takes care of all the record-keeping that is associated with a new message.  This consists of
      * creating a new message and adding it to the send queue, informing the cluster of the new message and telling
      * the client that we created a new message.
      *
-     * @param target The "target" of the request, ignored.
+     * @param target       The "target" of the request, ignored.
      * @param jettyRequest This contains the request that came in on jetty, used.
-     * @param request The servlet request, ignored.
+     * @param request      The servlet request, ignored.
      * @param response
      */
     @Override
-    public void handle (String target, Request jettyRequest, HttpServletRequest request, HttpServletResponse response) throws IOException {
+    public void handle(String target, Request jettyRequest, HttpServletRequest request, HttpServletResponse response) throws IOException {
         String destinationURL = jettyRequest.getParameter(PARAM_DESTINATION_URL);
         String statusURL = jettyRequest.getParameter(PARAM_STATUS_URL);
         if ((null == destinationURL) || (null == statusURL)) {
@@ -79,7 +82,7 @@ public class MessageHandler extends AbstractHandler {
         UUID uuid = UUID.randomUUID();
         message.setMessageID(uuid);
 
-        MessageLog.getInstance().add(message, partnerID);
+        MessageLog.getInstance().add(message, this.uuid);
         events.info("new message(" + message.getMessageID() + ") received to " + message.getDeliveryURL());
 
         response.setStatus(200);
@@ -100,29 +103,31 @@ public class MessageHandler extends AbstractHandler {
             }
         }
 
-        try {
-            Cluster.getInstance().informOfNewMessage(message);
-            //tell the client (again!) that we created the message
-            tellClient(message.getStatusURL(), message.getMessageID());
-        } catch (LtsllcException e) {
-            logger.error("Encountered exception while informing the cluster or client of new message",e);
-        }
+        Cluster.getInstance().informOfNewMessage(message);
+        //tell the client (again!) that we created the message
+        tellClient(message.getStatusURL(), message.getMessageID());
     }
 
-    public void tellClient (String url, UUID uuid) {
+    /**
+     * Tell the clients about a new UUID
+     *
+     * @param url  The status URL of a client.
+     * @param uuid The UUID to tell the client about.
+     */
+    public void tellClient(String url, UUID uuid) {
         AsyncHttpClient httpClient = Dsl.asyncHttpClient();
         BoundRequestBuilder brb = httpClient.preparePost(url);
 
         brb.setBody("CREATED " + uuid.toString())
-           .execute(new AsyncCompletionHandler<Response>() {
-               @Override
-               public Response onCompleted (Response response) {
-                   if (response.getStatusCode() != 200) {
-                       logger.error("Client returned non-200 (" + response.getStatusCode() + ") when we tried to use URL (" + url + ")");
-                   } // otherwise they accepted it
+                .execute(new AsyncCompletionHandler<Response>() {
+                    @Override
+                    public Response onCompleted(Response response) {
+                        if (response.getStatusCode() != 200) {
+                            logger.error("Client returned non-200 (" + response.getStatusCode() + ") when we tried to use URL (" + url + ")");
+                        } // otherwise they accepted it
 
-                   return response;
-                }
-           });
+                        return response;
+                    }
+                });
     }
 }

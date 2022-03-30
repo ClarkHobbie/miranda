@@ -2,12 +2,14 @@ package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.Message;
+import com.ltsllc.miranda.MessageLog;
 import com.ltsllc.miranda.Miranda;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.mina.core.future.ReadFuture;
 import org.apache.mina.core.session.IoSession;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
@@ -19,7 +21,6 @@ import java.util.concurrent.TimeUnit;
  */
 public class Node {
     public static final Logger logger = LogManager.getLogger();
-
 
     public Node (UUID myUUID, UUID partnerID, IoSession ioSession){
         this.ioSession = ioSession;
@@ -53,9 +54,9 @@ public class Node {
     }
 
     /**
-     * The IoSession for the node
+     * The IoSession that we talk to our partner with or null if we are not currently connected
      */
-    protected IoSession ioSession;
+    protected IoSession ioSession = null;
 
     public IoSession getIoSession() {
         return ioSession;
@@ -105,30 +106,17 @@ public class Node {
     }
 
     /**
-     * Map of owners
-     */
-    protected static Map<UUID, UUID> uuidToOwner = new HashMap ();
-
-    public static Map<UUID, UUID> getUuidToOwner() {
-        return uuidToOwner;
-    }
-
-    public static void setUuidToOwner(Map<UUID, UUID> uuidToOwner) {
-        Node.uuidToOwner = uuidToOwner;
-    }
-
-    /**
      * Are we connected?
      */
     protected boolean connected = false;
 
     /**
-     * The IP address host of the node
+     * The hostname or IP address of our partner node
      */
     protected String host = null;
 
     /**
-     * The port portion of the IP address
+     * The port number that our partner is waiting for connections on
      */
     protected int port = -1;
 
@@ -155,16 +143,6 @@ public class Node {
 
     public void setConnected(boolean connected) {
         this.connected = connected;
-    }
-
-    public static UUID getOwnerFor (UUID messageID) {
-        UUID returnValue = null;
-        returnValue = uuidToOwner.get(messageID);
-        return returnValue;
-    }
-
-    public static void setOwnerFor (UUID messageID, UUID owner) {
-        uuidToOwner.put(messageID, owner);
     }
 
     /**
@@ -214,7 +192,7 @@ public class Node {
      * @param message The message to be auctioned.
      * @return True if we "won" the auction false otherwise
      */
-    public synchronized boolean auctionMessage (Message message) throws InterruptedException {
+    public synchronized boolean auctionMessage (Message message) throws InterruptedException, IOException {
         logger.debug("entering auctionMessage with " + message);
 
         boolean returnValue = true;
@@ -239,7 +217,7 @@ public class Node {
             logger.debug("timed out waiting for reply, keeping the message, sending timeout and setting the state to start");
             ioSession.write(ClusterHandler.TIMEOUT);
             clusterHandler.state = ClusterConnectionStates.START;
-            uuidToOwner.put(message.getMessageID(), uuid);
+            MessageLog.getInstance().setOwner(message.getMessageID(), uuid);
             returnValue = true;
         } else {
             reply = (String) readFuture.getMessage();
@@ -252,7 +230,7 @@ public class Node {
             logger.debug("myBid = " + myBid + " theirBid = " + theirBid);
             if (myBid > theirBid) {
                 logger.debug("won the bid, assigning the message to us");
-                uuidToOwner.put (uuidOfMessage, uuid);
+                MessageLog.getInstance().setOwner (uuidOfMessage, uuid);
                 returnValue = true;
             } else if (myBid == theirBid) {
                 logger.debug("a tie, reissuing bid");
@@ -261,7 +239,7 @@ public class Node {
                 returnValue = false;
                 logger.debug("lost bid, turning over message to the other node");
                 clusterHandler.undefineMessage(message,partnerID);
-                uuidToOwner.put(uuidOfMessage, partnerID);
+                MessageLog.getInstance().setOwner(uuidOfMessage, partnerID);
             }
         }
 
@@ -283,9 +261,7 @@ public class Node {
         stringBuffer.append(message.internalsToString());
 
         ioSession.write(stringBuffer.toString());
-
-        setOwnerFor(message.getMessageID(), uuid);
-    }
+   }
 
     /**
      * Inform the partner node that we delivered this message
@@ -301,9 +277,6 @@ public class Node {
         stringBuffer.append(message.getMessageID());
 
         ioSession.write(stringBuffer.toString());
-
-        setOwnerFor(message.getMessageID(), null);
-
     }
 
 }
