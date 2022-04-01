@@ -324,7 +324,7 @@ class MirandaTest extends TestSuperclass {
     }
 
     @Test
-    public void shouldEnterRecovery () throws LtsllcException, IOException {
+    public void shouldRecover () throws LtsllcException, IOException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
@@ -333,15 +333,15 @@ class MirandaTest extends TestSuperclass {
         messages.touch();
         ImprovedFile owners = new ImprovedFile(p.getProperty(Miranda.PROPERTY_OWNER_FILE));
 
-        assert(miranda.shouldEnterRecovery());
+        assert(Miranda.shouldRecover());
 
         messages.delete();
 
-        assert (miranda.shouldEnterRecovery());
+        assert (Miranda.shouldRecover());
 
         owners.touch();
 
-        assert (miranda.shouldEnterRecovery());
+        assert (Miranda.shouldRecover());
     }
 
     @Test
@@ -360,6 +360,10 @@ class MirandaTest extends TestSuperclass {
         miranda.successfulMessage(message);
 
         assert (MessageLog.getInstance().getLocationFor(message.getMessageID()) == -1);
+    }
+
+    @Test
+    public void recover () {
 
     }
-}
+ }

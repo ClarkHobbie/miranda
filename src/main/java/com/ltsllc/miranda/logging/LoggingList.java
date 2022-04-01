@@ -130,7 +130,7 @@ public class LoggingList {
      * Get an element from the list
      *
      * <P>
-     *     The method throws IndexOutOfBoundsException if the index is outside the range 0..<=size
+     *     The method throws IndexOutOfBoundsException if the index is outside the range 0..&lt;=size
      * </P>
      * @param index The index of the element to get.
      * @return The element at that location.

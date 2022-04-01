@@ -465,4 +465,13 @@ public class LoggingCache {
             return l.longValue();
         }
     }
+
+    /**
+     * Return a collection of all the messages in the object
+     *
+     * @return A collection of all the messages in the object
+     */
+    public synchronized Collection<Message> getAllMessages () {
+        return uuidToMessage.values();
+    }
 }

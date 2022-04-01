@@ -195,6 +195,19 @@ public class Miranda {
     protected Set<Message> inflight = new HashSet<>();
 
     /**
+     * The getOwnerFlag signifies that we need to get owner and message information from our peers
+     */
+    protected boolean getOwnerFlag = false;
+
+    public boolean isGetOwnerFlag() {
+        return getOwnerFlag;
+    }
+
+    public void setGetOwnerFlag(boolean getOwnerFlag) {
+        this.getOwnerFlag = getOwnerFlag;
+    }
+
+    /**
      * The UUID of this node
      */
     protected UUID myUuid = null;
@@ -283,12 +296,14 @@ public class Miranda {
     /**
      * Miranda's main loop
      *
-     * <P><PRE>
+     * <P>
+     *     <PRE>
      *     copy all the messages we are responsible for delivering
      *     foreach of those messages
      *         try and deliver the message
      *     check if we need to try and connect to other nodes
-     * </PRE></P>
+     *     </PRE>
+     *
      * <P>
      *     Note that this is only used if keepRunning is true.
      * </P>
@@ -341,11 +356,10 @@ public class Miranda {
         ImprovedFile messageLogfile = new ImprovedFile(properties.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
         int messageLoadLimit = properties.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
         ImprovedFile ownersFile = new ImprovedFile(properties.getProperty(Miranda.PROPERTY_OWNER_FILE));
-        if (MessageLog.shouldRecover(messageLogfile)) {
-            if (messageLogfile.exists()) {
-                MessageLog.recover(messageLogfile, messageLoadLimit, ownersFile);
-            }
+        if (shouldRecover()) {
+            recover();
         }
+
 
         logger.debug("parsing arguments");
         properties = new ImprovedProperties();
@@ -529,18 +543,6 @@ public class Miranda {
         }
     }
 
-    /**
-     * Check to see if we should enter recovery mode
-     *
-     * We should enter recovery mode if the queue is not empty.
-     */
-    protected boolean shouldEnterRecovery() {
-        ImprovedFile messageLog = new ImprovedFile(properties.getProperty(PROPERTY_MESSAGE_LOG));
-        ImprovedFile owners = new ImprovedFile(properties.getProperty(PROPERTY_OWNER_FILE));
-        return MessageLog.shouldRecover(messageLog) || owners.exists();
-
-    }
-
     public void stop () {
         keepRunning = false;
     }
@@ -670,7 +672,6 @@ public class Miranda {
      *     Note that this method assumes that if PROPERTY_CLUSTER + "." &lt;number&gt; + ".host" is defined then the
      *     corresponding port is also defined.
      *
-     * @return The list of Node specifications (NodeSpecs).
      * @see SpecNode
      */
     public void parseNodes () {
@@ -698,4 +699,44 @@ public class Miranda {
         }
     }
 
+    /**
+     * Should the message log attempt to recover?
+     * <P>
+     *     This method is essentially a call to MessageLog.shouldRecover
+     * </P>
+     * @return Whether the system should recover.
+     */
+    public static boolean shouldRecover () {
+        ImprovedProperties p = getProperties();
+        ImprovedFile messageFile = new ImprovedFile(p.getProperty(PROPERTY_MESSAGE_LOG));
+        ImprovedFile ownersFile = new ImprovedFile(p.getProperty(PROPERTY_OWNER_FILE));
+        return MessageLog.shouldRecover(messageFile, ownersFile);
+    }
+
+    /**
+     * Attempt to recover from a crash
+     *
+     * <P>
+     *     This method attempts to recover from a crash by restoring the message and ownership information that the
+     *     system had when it crashed.
+     * </P>
+     * @throws IOException If there is a problem reading the files
+     * @throws LtsllcException
+     */
+    public void recover () throws IOException, LtsllcException {
+        ImprovedProperties p = properties;
+        ImprovedFile messageFile = new ImprovedFile(p.getProperty(PROPERTY_MESSAGE_LOG));
+        int loadLimit = p.getIntProperty(PROPERTY_CACHE_LOAD_LIMIT);
+        ImprovedFile ownerFile = new ImprovedFile(p.getProperty(PROPERTY_OWNER_FILE));
+
+        boolean isClustering = !p.getProperty(Miranda.PROPERTY_CLUSTER).equalsIgnoreCase("off");
+        if (isClustering) {
+            messageFile.backup(".backup");
+            ownerFile.backup(".backup");
+            setGetOwnerFlag(true);
+        } else {
+            MessageLog.defineStatics(messageFile, loadLimit, ownerFile);
+            MessageLog.recover(messageFile, loadLimit, ownerFile);
+        }
+    }
 }

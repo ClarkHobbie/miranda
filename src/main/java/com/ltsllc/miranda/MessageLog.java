@@ -4,14 +4,14 @@ import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.logging.LoggingCache;
 import com.ltsllc.miranda.logging.LoggingMap;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * A central location for all messages
@@ -28,10 +28,30 @@ import java.util.UUID;
  * </P>
  */
 public class MessageLog {
+    public static final Logger logger = LogManager.getLogger();
+    public static final Logger events = LogManager.getLogger("events");
+
     protected static MessageLog instance;
 
     protected LoggingCache cache;
+
+    public LoggingCache getCache() {
+        return cache;
+    }
+
+    public void setCache(LoggingCache cache) {
+        this.cache = cache;
+    }
+
     protected LoggingMap uuidToOwner;
+
+    public LoggingMap getUuidToOwner() {
+        return uuidToOwner;
+    }
+
+    public void setUuidToOwner(LoggingMap uuidToOwner) {
+        this.uuidToOwner = uuidToOwner;
+    }
 
     /**
      * Create a new instance
@@ -81,11 +101,12 @@ public class MessageLog {
      * </P>
      *
      * @param logfile The logfile to check for.
+     * @param ownerFile The owners file to check for.
      * @return True if the logfile exists, false otherwise.
      * @see #recover(ImprovedFile, int, ImprovedFile)
      */
-    public static boolean shouldRecover (ImprovedFile logfile) {
-        return logfile.exists();
+    public static boolean shouldRecover (ImprovedFile logfile, ImprovedFile ownerFile) {
+        return logfile.exists() || ownerFile.exists();
     }
 
     /**
@@ -106,7 +127,7 @@ public class MessageLog {
      * @return A new instance, based on the parameters passed to the method.
      * @throws IOException If there are problems reading the various input logfiles.
      */
-    public static MessageLog recover(ImprovedFile logfile, int loadLimit, ImprovedFile ownersFile) throws IOException {
+    public static MessageLog recover(ImprovedFile logfile, int loadLimit, ImprovedFile ownersFile) throws IOException, LtsllcException {
         return getInstance().performRecover(logfile, loadLimit, ownersFile);
     }
 
@@ -114,39 +135,114 @@ public class MessageLog {
      * Recover from a crash
      *
      * <P>
-     *     It is suggested, but not required, that the caller called the shouldRecover (and that shouldRecover returned
+     *     It is suggested, but not required, that the caller called shouldRecover (and that shouldRecover returned
      *     true) before calling this method.
      * </P>
-     *
      * <P>
-     *     This method is just a wrapper for the performRecover method.
+     *     The method first attempts to copy the files to backups, then it attempts to read in the message and owners
+     *     information.
      * </P>
      *
-     * @param logfile Where the class stores messages that are added to it.
+     * @param logfile Where the class stores the messages that were added to it.
      * @param loadLimit The max aggregate size of all the message's contents.  Any additional message are left on disk.
-     * @param ownersFile The owners file that the class should use.
+     * @param ownersFile The owners file that contains the ownership information.
      * @return A new instance, based on the parameters passed to the method.
      * @throws IOException If there are problems reading the various input logfiles.
+     * @throws LtsllcException If backup files already exist.
      */
-    public MessageLog performRecover (ImprovedFile logfile, int loadLimit, ImprovedFile  ownersFile) throws IOException {
+    public MessageLog performRecover (ImprovedFile logfile, int loadLimit, ImprovedFile  ownersFile) throws IOException, LtsllcException {
+        ImprovedFile messageBackup = new ImprovedFile(logfile.getName() + ".backup");
+        ImprovedFile ownersBackup = new ImprovedFile(ownersFile.getName() + ".backup");
+
+        if (messageBackup.exists()) {
+            logger.error("Backup file, " + messageBackup + ", already exists");
+            throw new LtsllcException("backup file already exists " + messageBackup);
+        }
+
+        if (ownersBackup.exists()) {
+            logger.error("Backup file, " + ownersBackup + ", already exists");
+            throw new LtsllcException("backup file already exists " + ownersBackup);
+        }
+
+        logfile.renameTo(messageBackup);
+        ownersFile.renameTo(ownersBackup);
+        cache = new LoggingCache(logfile, loadLimit);
+        uuidToOwner = new LoggingMap(ownersFile);
+
+        restoreOwnersFile(ownersBackup);
+        restoreMessages(messageBackup);
+
+        return this;
+    }
+
+    /**
+     * Restore the owners information
+     *
+     * <P>
+     *     This method attempts to restore ownership information by reading in a file containing that information.
+     * </P>
+     *
+     * @param file The file to restore from.
+     * @throws IOException If there is a problem reading the file
+     */
+    public void restoreOwnersFile (ImprovedFile file) throws IOException {
         FileReader fileReader = null;
         BufferedReader bufferedReader = null;
 
         try {
-            MessageLog messageLog = new MessageLog(logfile, loadLimit, ownersFile);
-            fileReader = new FileReader(logfile);
+
+            fileReader = new FileReader(file);
+            bufferedReader = new BufferedReader(fileReader);
+
+            String line = bufferedReader.readLine();
+
+            while (line != null) {
+                Scanner scanner = new Scanner(line);
+                UUID messageUuid = UUID.fromString(scanner.next());
+                UUID ownerUuid = UUID.fromString(scanner.next());
+
+                uuidToOwner.add(messageUuid, ownerUuid);
+
+                line = bufferedReader.readLine();
+            }
+        } finally {
+            if (bufferedReader != null) {
+                bufferedReader.close();
+            }
+
+            if (fileReader != null) {
+                fileReader.close();
+            }
+        }
+    }
+
+    /**
+     * Restore the message cache
+     * <P>
+     *     This method attempts to recover from a crash by restoring the message information that the system had when it
+     *     crashed.  It does this by reading an old messages file into the cache.
+     * </P>
+     *
+     * @param file  The old message logfile.
+     * @throws IOException If there is a problem reading in the old message file.
+     */
+    public void restoreMessages (ImprovedFile file) throws IOException {
+
+        FileReader fileReader = null;
+        BufferedReader bufferedReader = null;
+
+        try {
+            fileReader = new FileReader(file);
             bufferedReader = new BufferedReader(fileReader);
 
             String line = bufferedReader.readLine();
 
             while (line != null) {
                 Message message = Message.readLongFormat(line);
-                messageLog.add(message, UUID.randomUUID());
+                cache.add(message);
 
                 line = bufferedReader.readLine();
             }
-
-            return messageLog;
         } finally {
             if (bufferedReader != null) {
                 bufferedReader.close();
@@ -170,12 +266,18 @@ public class MessageLog {
      * Add the message to the logfile and record the ownership of the message
      *
      * @param message The message to be added.
-     * @param owner The UUID of the owner of the message
+     * @param owner The UUID of the owner of the message.  If this parameter is null, then it is assumed that the
+     *              ownership information was previously entered, and only the message will be added.
      * @throws IOException If a problem is encountered while reading or writing the logfiles
      */
     public void add (Message message, UUID owner) throws IOException {
-        cache.add(message);
-        uuidToOwner.add(message.getMessageID(), owner);
+        logger.debug("entering add with messag");
+        if (null == owner) {
+            cache.add(message);
+        } else {
+            cache.add(message);
+            uuidToOwner.add(message.getMessageID(), owner);
+        }
     }
 
     /**
@@ -212,5 +314,23 @@ public class MessageLog {
 
     public long getLocationFor (UUID message) {
         return cache.getLocationFor(message);
+    }
+
+    /**
+     * Return the collection of all owner keys (message UUIDs) in the object
+     *
+     * @return The collection of all keys (message UUIDs) of all the ownership data in the object
+     */
+    public Collection<UUID> getAllOwnerKeys () {
+        return uuidToOwner.getAllKeys();
+    }
+
+    /**
+     * Return the collection of all messages in the object
+     *
+     * @return The collection of all message in the object
+     */
+    public Collection<Message> getAllMessages () {
+        return cache.getAllMessages();
     }
 }

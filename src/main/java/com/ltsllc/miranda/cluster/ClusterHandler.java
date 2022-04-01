@@ -6,6 +6,7 @@ import com.ltsllc.commons.util.Utils;
 import com.ltsllc.miranda.Message;
 import com.ltsllc.miranda.MessageLog;
 import com.ltsllc.miranda.MessageType;
+import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.logging.LoggingCache;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -16,6 +17,8 @@ import org.apache.mina.filter.FilterEvent;
 
 import java.io.IOException;
 import java.util.*;
+
+import static com.ltsllc.miranda.cluster.ClusterConnectionStates.*;
 
 /**
  * A connection to another node in the cluster
@@ -38,12 +41,17 @@ public class ClusterHandler implements IoHandler {
     public static final String GET_MESSAGE = "GET MESSAGE";
     public static final String HEART_BEAT = "HEART BEAT";
     public static final String MESSAGE = "MESSAGE";
+    public static final String MESSAGES = "MESSAGES";
+    public static final String MESSAGES_END = "MESSAGES END";
     public static final String MESSAGE_DELIVERED = "MESSAGE DELIVERED";
     public static final String MESSAGE_NOT_FOUND = "MESSAGE NOT FOUND";
     public static final String NEW_MESSAGE = "MESSAGE CREATED";
     public static final String NEW_NODE = "NEW NODE";
     public static final String NEW_NODE_CONFIRMED = "NEW NODE CONFIRMED";
     public static final String NEW_NODE_OVER = "NEW NODE OVER";
+    public static final String OWNER = "OWNER";
+    public static final String OWNERS = "OWNERS";
+    public static final String OWNERS_END = "OWNERS END";
     public static final String START = "START";
     public static final String TIMEOUT = "TIMEOUT";
 
@@ -156,6 +164,11 @@ public class ClusterHandler implements IoHandler {
 
     @Override
     public void sessionOpened(IoSession ioSession) throws Exception {
+        if (Miranda.getInstance().isGetOwnerFlag()) {
+            Miranda.getInstance().setGetOwnerFlag(false);
+            node.setIoSession(ioSession);
+            sendOwners();
+        }
     }
 
     @Override
@@ -211,9 +224,31 @@ public class ClusterHandler implements IoHandler {
                         break;
                     }
 
-                    case NEW_NODE: {
-                        handleNewNode(s, ioSession);
-                        state =  ClusterConnectionStates.NEW_NODE;
+                    case OWNERS: {
+                        handleSendOwners(ioSession);
+                        break;
+                    }
+
+                    case OWNER: {
+                        handleReceiveOwner(s);
+                        break;
+                    }
+
+                    case OWNERS_END: {
+                        break;
+                    }
+
+                    case MESSAGES : {
+                        handleSendMessages(ioSession);
+                        break;
+                    }
+
+                    case MESSAGE: {
+                        handleReceiveMessage(s);
+                        break;
+                    }
+
+                    case MESSAGES_END: {
                         break;
                     }
 
@@ -282,31 +317,6 @@ public class ClusterHandler implements IoHandler {
                 break;
             }
 
-            case NEW_NODE: {
-                switch (messageType) {
-                    case MESSAGE: {
-                        Message message = Message.readLongFormat(s);
-                        if (message == null) {
-                            logger.debug("lost bid for message, staying in auction state");
-                        } else {
-                            logger.debug("won bid for message, adding message to send queue and staying in auction state");
-                            cache.add(message);
-                        }
-                        break;
-                    }
-
-                    case NEW_NODE_OVER:
-                        state = ClusterConnectionStates.START;
-                        break;
-
-                    default:
-                        ioSession.write(ERROR);
-                        logger.error("Protocol error while in the new node state, sending error and returning to start state");
-                        state = ClusterConnectionStates.START;
-                        break;
-                }
-                break;
-            }
 
             case GENERAL : {
                 switch (messageType) {
@@ -418,6 +428,10 @@ public class ClusterHandler implements IoHandler {
             messageType = MessageType.NEW_NODE_OVER;
         } else if (s.startsWith(NEW_NODE)) {
             messageType = MessageType.NEW_NODE;
+        } else if (s.startsWith(OWNERS)) {
+            messageType = MessageType.OWNERS;
+        } else if (s.startsWith(OWNER)) {
+            messageType = MessageType.OWNER;
         } else if (s.startsWith(START)) {
             messageType = MessageType.START;
         } else if (s.startsWith(TIMEOUT)) {
@@ -753,4 +767,88 @@ public class ClusterHandler implements IoHandler {
         logger.debug("wrote " + ClusterHandler.ERROR);
         logger.debug("leaving handleError");
     }
+
+    /**
+     * Send the owners message to our peer
+     */
+    public void sendOwners () {
+        logger.debug("entering sendOwner");
+        node.getIoSession().write(OWNERS);
+        logger.debug("Sent " + OWNERS);
+        logger.debug("leaving sendOwners");
+    }
+
+    /**
+     * Receive some owner information
+     * <P>
+     *     The owner information is expected to be in the form "OWNER &lt;message UUID&gt; &lt;owner UUID&gt;."
+     * </P>
+     * @param input
+     * @throws IOException
+     */
+    public void handleReceiveOwner (String input) throws IOException {
+        logger.debug("entering handleOwner");
+        Scanner scanner = new Scanner(input);
+        scanner.next(); // OWNER
+        UUID message = UUID.fromString(scanner.next()); // message UUID
+        UUID owner = UUID.fromString(scanner.next()); // owner UUID
+        MessageLog.getInstance().setOwner(message, owner);
+        logger.debug("leaving handelOwner");
+    }
+
+    /**
+     * Send all the owner information in the system
+     * <P>
+     *     This information is written as OWNER &lt;message UUID&gt; &lt;owner UUID&gt; to the ioChannel.
+     * </P>
+     * @param ioSession The ioSession to write the owner information to.
+     */
+    public void handleSendOwners (IoSession ioSession) {
+        logger.debug("entering handleSendOwners");
+        Collection<UUID> ownerKeys = MessageLog.getInstance().getAllOwnerKeys();
+        Iterator<UUID> iterator = ownerKeys.iterator();
+        while (iterator.hasNext()) {
+            UUID message = iterator.next();
+            UUID owner = MessageLog.getInstance().getOwnerOf(message);
+
+            StringBuffer stringBuffer = new StringBuffer();
+            stringBuffer.append(OWNER);
+            stringBuffer.append(" ");
+            stringBuffer.append(message);
+            stringBuffer.append(" ");
+            stringBuffer.append(owner);
+            stringBuffer.append(" ");
+
+            ioSession.write(stringBuffer.toString());
+        }
+        ioSession.write(OWNERS_END);
+        logger.debug("leaving handleSendOwners");
+    }
+
+    /**
+     * Send all the messages that we have
+     * <P>
+     *     The message information is in the form "MESSAGE ID: &lt;message UUID&gt; STATUS: &lt;message status URL&gt;
+     *     DELIVERY: &lt;message delivery URL&gt; CONTENT: &lt;message content as a hexadecimal string&gt;
+     * </P>
+     */
+    public void handleSendMessages (IoSession ioSession) throws IOException {
+        logger.debug("entering handleSendMessages");
+        Collection<Message> messages = MessageLog.getInstance().copyAllMessages();
+        Iterator<Message> iterator = messages.iterator();
+        while (iterator.hasNext()) {
+            ioSession.write(iterator.next().longToString() + " ");
+        }
+        ioSession.write(MESSAGES_END);
+        logger.debug("leaving handleSendMessages");
+    }
+
+    /**
+     * Receive a message
+     */
+    public void handleReceiveMessage (String input) throws IOException {
+        Message message = Message.readLongFormat(input);
+        MessageLog.getInstance().add(message, null);
+    }
+
 }

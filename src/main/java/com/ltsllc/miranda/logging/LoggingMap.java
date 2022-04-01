@@ -3,10 +3,7 @@ package com.ltsllc.miranda.logging;
 import com.ltsllc.commons.io.ImprovedFile;
 
 import java.io.*;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Scanner;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * A map that logs all its items to a file
@@ -200,5 +197,14 @@ public class LoggingMap {
                 fileReader.close();
             }
         }
+    }
+
+    /**
+     * Return the collection of all keys to the map
+     *
+     * @return The collection of all keys
+     */
+    public synchronized Collection<UUID> getAllKeys () {
+        return uuidToUuid.keySet();
     }
 }

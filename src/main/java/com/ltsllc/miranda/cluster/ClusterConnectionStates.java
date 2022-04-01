@@ -10,7 +10,8 @@ package com.ltsllc.miranda.cluster;
 public enum ClusterConnectionStates {
     AUCTION,
     GENERAL,
+    GET_OWNERS,
+    GET_MESSAGES,
     MESSAGE,
-    NEW_NODE,
     START
 }

@@ -16,10 +16,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.logging.log4j.core.layout.MessageLayout;
+import org.apache.mina.core.future.ReadFuture;
 import org.apache.mina.core.session.IoSession;
 import org.apache.mina.core.session.IoSessionConfig;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mockito;
 import org.mockito.internal.matchers.Any;
 
@@ -47,21 +50,35 @@ class ClusterHandlerTest extends TestSuperclass {
 
     @Test
     public void testStartMessage () throws LtsllcException, IOException {
-        StringBuffer stringBuffer = new StringBuffer();
-        Message message = createTestMessage(UUID.randomUUID());
-        stringBuffer.append(message.longToString());
-        Node node = new Node("localhost", 2020);
-        ImprovedFile cacheFile = new ImprovedFile("messages");
-        LoggingCache cache = new LoggingCache(cacheFile, 104857600); // 100 Meg
-        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
-        clusterHandler.setState(ClusterConnectionStates.START);
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        ImprovedFile owners = new ImprovedFile("owners.log");
 
-        IoSession mockIoSession = mock(IoSession.class);
+        try {
+            StringBuffer stringBuffer = new StringBuffer();
+            Message message = createTestMessage(UUID.randomUUID());
+            stringBuffer.append(message.longToString());
 
-        clusterHandler.messageReceived(mockIoSession, stringBuffer.toString());
+            MessageLog.defineStatics(messages, 1000000, owners);
 
-        assert (clusterHandler.getState() == ClusterConnectionStates.START);
-        Mockito.verify(mockIoSession).write("ERROR");
+            Node node = new Node("localhost", 2020);
+
+            ClusterHandler clusterHandler = new ClusterHandler(node, MessageLog.getInstance().getCache());
+            clusterHandler.setState(ClusterConnectionStates.START);
+
+            IoSession mockIoSession = mock(IoSession.class);
+
+            clusterHandler.messageReceived(mockIoSession, stringBuffer.toString());
+
+            assert (clusterHandler.getState() == ClusterConnectionStates.START);
+        } finally {
+            if (messages.exists()) {
+                messages.delete();
+            }
+
+            if (owners.exists()) {
+                owners.delete();
+            }
+        }
     }
 
     @Test
@@ -87,33 +104,6 @@ class ClusterHandlerTest extends TestSuperclass {
         clusterHandler.messageReceived(mockIoSession, strMessage.toString());
 
         assert (clusterHandler.getState() == ClusterConnectionStates.GENERAL);
-    }
-
-    @Test
-    public void testStartNewNodeConfirmed () throws LtsllcException, IOException {
-        String strMessage = ClusterHandler.NEW_NODE;
-        UUID uuid = UUID.fromString("123e4567-e89b-42d3-a456-556642440000");
-        strMessage += " ";
-        strMessage += uuid;
-
-        ImprovedFile messageFile = new ImprovedFile("messages.log");
-        LoggingCache cache = new LoggingCache(messageFile, 104857600); // 100Meg
-
-        Node node = new Node("192.168.0.12",2020);
-        node.setUuid(UUID.randomUUID());
-        node.setPartnerID(UUID.randomUUID());
-
-        ClusterHandler clusterHandler = new ClusterHandler(node,cache);
-        clusterHandler.setState(ClusterConnectionStates.START);
-        clusterHandler.setUuid(uuid);
-
-        IoSession mockIoSession = mock(IoSession.class);
-        when(mockIoSession.write("NEW NODE CONFIRMED 123e4567-e89b-42d3-a456-556642440000")).thenReturn(null);
-
-        clusterHandler.messageReceived(mockIoSession, strMessage);
-
-        assert (clusterHandler.getState() == ClusterConnectionStates.NEW_NODE);
-        Mockito.verify(mockIoSession).write("NEW NODE CONFIRMED 123e4567-e89b-42d3-a456-556642440000");
     }
 
     @Test
@@ -1000,5 +990,147 @@ class ClusterHandlerTest extends TestSuperclass {
         assert(clusterHandler.getState() == ClusterConnectionStates.START);
     }
 
+    @Captor ArgumentCaptor<String> valueCaptor;
 
+    @Test
+    public void handleSendOwners () throws LtsllcException, IOException {
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        ImprovedFile owners = new ImprovedFile("owners.log");
+
+        try {
+            Miranda miranda = new Miranda();
+            miranda.loadProperties();
+
+            MessageLog.defineStatics(messages, 1000000, owners);
+
+            String strUuid1 = "00000000-0000-0000-0000-000000000001";
+            String strUuid2 = "00000000-0000-0000-0000-000000000002";
+            String strUuid3 = "00000000-0000-0000-0000-000000000001";
+            UUID message1 = UUID.fromString(strUuid1);
+            UUID message2 = UUID.fromString(strUuid2);
+            UUID owner1 = UUID.fromString(strUuid3);
+            MessageLog.getInstance().setOwner(message1, owner1);
+            MessageLog.getInstance().setOwner(message2, owner1);
+
+            IoSession mockIoSession = mock(IoSession.class);
+
+            Node node = new Node("localhost", 2020);
+            node.setConnected(true);
+            node.setIoSession(mockIoSession);
+
+            ClusterHandler clusterHandler = new ClusterHandler(node, MessageLog.getInstance().getCache());
+            clusterHandler.handleSendOwners(mockIoSession);
+
+            ArgumentCaptor<String> valueCaptor = ArgumentCaptor.forClass(String.class);
+
+            verify(mockIoSession, times(3)).write(valueCaptor.capture());
+
+            List<String> list = valueCaptor.getAllValues();
+            assert ("OWNER 00000000-0000-0000-0000-000000000001 00000000-0000-0000-0000-000000000001 ".equals(list.get(0)));
+            assert ("OWNER 00000000-0000-0000-0000-000000000002 00000000-0000-0000-0000-000000000001 ".equals(list.get(1)));
+            assert (ClusterHandler.OWNERS_END.equals(list.get(2)));
+        } finally {
+            if (messages.exists()) {
+                messages.delete();
+            }
+
+            if (owners.exists()) {
+                owners.delete();
+            }
+        }
+    }
+
+    @Test
+    public void handleSendMessages () throws LtsllcException, IOException {
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        ImprovedFile owners = new ImprovedFile("owners.log");
+
+        try {
+            String string1 = "MESSAGE ID: 00000000-0000-0000-0000-000000000001 STATUS: http://localhost:8080 DELIVERY: " +
+                    "http://localhost:8080 CONTENTS: 010203 ";
+            String string2 = "MESSAGE ID: 00000000-0000-0000-0000-000000000002 STATUS: http://localhost:8080 DELIVERY: " +
+                    "http://localhost:8080 CONTENTS: 010203 ";
+            String string3 = ClusterHandler.MESSAGES_END;
+
+            Miranda miranda = new Miranda();
+            miranda.loadProperties();
+
+            MessageLog.defineStatics(messages, 1000000, owners);
+
+            UUID uuid1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
+            UUID uuid2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
+
+            byte[] contents1 = {1, 2, 3};
+            byte[] contents2 = {1, 2, 3};
+
+            Message message1 = new Message();
+            message1.setMessageID(uuid1);
+            message1.setStatusURL("http://localhost:8080");
+            message1.setDeliveryURL("http://localhost:8080");
+            message1.setContents(contents1);
+            MessageLog.getInstance().add(message1, null);
+
+            Message message2 = new Message();
+            message2.setMessageID(uuid2);
+            message2.setStatusURL("http://localhost:8080");
+            message2.setDeliveryURL("http://localhost:8080");
+            message2.setContents(contents2);
+            MessageLog.getInstance().add(message2, null);
+
+            Node node = new Node("localhost", 2020);
+
+            IoSession mockIoSession = mock(IoSession.class);
+
+            ArgumentCaptor<String> valueCaptor = ArgumentCaptor.forClass(String.class);
+
+            ClusterHandler clusterHandler = new ClusterHandler(node, MessageLog.getInstance().getCache());
+            clusterHandler.handleSendMessages(mockIoSession);
+
+            verify(mockIoSession, times(3)).write(valueCaptor.capture());
+
+            List<String> list = valueCaptor.getAllValues();
+            assert (list.get(0).equals(string1));
+            assert (list.get(1).equals(string2));
+            assert (list.get(2).equals(string3));
+            assert (MessageLog.getInstance().get(uuid1).equals(message1));
+            assert (MessageLog.getInstance().get(uuid2).equals(message2));
+        } finally {
+            if (messages.exists()) {
+                messages.delete();
+            }
+
+            if (owners.exists()) {
+                owners.delete();
+            }
+        }
+    }
+
+    @Test
+    public void handleReceiveMessage () throws LtsllcException, IOException {
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        ImprovedFile owners = new ImprovedFile("owners.log");
+
+        try {
+            UUID uuid = UUID.randomUUID();
+            String string1 = createTestMessage(uuid).longToString();
+            Message message = Message.readLongFormat(string1);
+
+            MessageLog.defineStatics(messages, 1000000, owners);
+
+            Node node = new Node("localhost", 2020);
+
+            ClusterHandler clusterHandler = new ClusterHandler(node, MessageLog.getInstance().getCache());
+            clusterHandler.handleReceiveMessage(string1);
+
+            assert (MessageLog.getInstance().get(uuid).equals(message));
+        } finally {
+            if (messages.exists()) {
+                messages.delete();
+            }
+
+            if (owners.exists()) {
+                owners.delete();
+            }
+        }
+    }
 }
