@@ -984,7 +984,7 @@ class ClusterHandlerTest extends TestSuperclass {
         LoggingCache loggingCache = new LoggingCache(messages, loadLimit);
 
         ClusterHandler clusterHandler = new ClusterHandler(node, loggingCache);
-        clusterHandler.handleError(message.toString(), mockIoSession);
+        clusterHandler.handleError(mockIoSession);
 
         verify(mockIoSession, atLeastOnce()).write(message.toString());
         assert(clusterHandler.getState() == ClusterConnectionStates.START);

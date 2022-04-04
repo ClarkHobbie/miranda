@@ -92,7 +92,7 @@ public class LoggingCache {
      * @param message The message to take ownership of.
      * @throws IOException If there is a problem adding the message.
      */
-    public void add (Message message) throws IOException {
+    public synchronized void add (Message message) throws IOException {
         //
         // first add the message to the file
         //

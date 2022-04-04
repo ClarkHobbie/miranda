@@ -5,6 +5,7 @@ import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.Message;
+import com.ltsllc.miranda.MessageLog;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.logging.LoggingCache;
 import org.apache.logging.log4j.LogManager;
@@ -94,9 +95,23 @@ public class Cluster {
      * The random number generator.  Usually swapped out when you want to win (or lose) a bid.
      */
     protected static ImprovedRandom randomNumberGenerator = new ImprovedRandom();
+
     protected static final Logger logger = LogManager.getLogger();
     public static final Logger events = LogManager.getLogger("events");
     protected static Cluster instance = null;
+
+    /**
+     * Did all the nodes fail to connect?
+     */
+    protected boolean allNodesFailed = false;
+
+    public boolean getAllNodesFailed() {
+        return allNodesFailed;
+    }
+
+    public void setAllNodesFailed(boolean allNodesFailed) {
+        this.allNodesFailed = allNodesFailed;
+    }
 
     /**
      * A list of the other nodes in the cluster
@@ -236,6 +251,9 @@ public class Cluster {
         String contents = "MESSAGE DELIVERED " + message.getMessageID();
         logger.debug("session contents = " + contents);
         for (Node node : nodes) {
+            if (!node.isConnected()) {
+                continue;
+            }
             WriteFuture future = node.getIoSession().write(contents);
             try {
                 future.await(IOD_TIMEOUT, IOD_TIMEOUT_UNITS);
@@ -319,7 +337,7 @@ public class Cluster {
         ImprovedProperties p = Miranda.getProperties();
         Node newNode = new Node(UUID.randomUUID(), p.getProperty(Miranda.PROPERTY_HOST), p.getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
 
-        ImprovedFile messages = new ImprovedFile(Miranda.PROPERTY_MESSAGE_LOG);
+        ImprovedFile messages = new ImprovedFile(p.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
         int loadLimit = p.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
         LoggingCache cache = new LoggingCache(messages,loadLimit);
         ClusterHandler clusterHandler = new ClusterHandler(newNode, cache);
@@ -340,6 +358,15 @@ public class Cluster {
 
             node.setConnected(connectToNode(node,ioConnector));
         }
+
+        boolean tempAllNodesFailed = false;
+        for (Node node : nodes) {
+            tempAllNodesFailed = !node.isConnected();
+        }
+
+        if (tempAllNodesFailed) {
+            allNodesFailed = true;
+        }
     }
 
     /**
@@ -356,27 +383,15 @@ public class Cluster {
         boolean returnValue = true;
         logger.debug("entering connectToNode with node = " + node.getHost() + ":" + node.getPort() + ", and ioConnector = " + ioConnector);
         InetSocketAddress addrRemote = new InetSocketAddress(node.getHost(), node.getPort());
-        getIoConnector().setHandler(new SimpleIoHandler());
+        getIoConnector().setHandler(new ClusterHandler(node, MessageLog.getInstance().getCache()));
         ConnectFuture future = getIoConnector().connect(addrRemote);
         future.awaitUninterruptibly();
         IoSession ioSession = null;
         try {
             ioSession = future.getSession();
-            StringBuffer stringBuffer = new StringBuffer();
-            stringBuffer.append(ClusterHandler.START);
-            stringBuffer.append(" ");
-            stringBuffer.append(uuid);
-
-            WriteFuture writeFuture = ioSession.write(stringBuffer.toString());
-            try {
-                writeFuture.await();
-            } catch (InterruptedException e) {
-            }
-
-            writeFuture.getSession().getConfig().setUseReadOperation(true);
-            node.setIoSession(writeFuture.getSession());
+            ioSession.getConfig().setUseReadOperation(true);
+            node.setIoSession(ioSession);
             node.setConnected(true);
-            logger.debug("wrote " + stringBuffer.toString());
         } catch (RuntimeIoException e) {
             logger.error("encountered exception", e);
             returnValue = false;

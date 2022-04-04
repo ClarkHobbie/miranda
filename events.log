@@ -1,100 +1,93 @@
-04:53:44.998 [main] INFO  events - Miranda starting up
-04:53:45.048 [main] INFO  events - Trying to connect to other nodes
-04:54:53.714 [main] INFO  events - Miranda starting up
-04:55:02.181 [main] INFO  events - Miranda starting up
-04:55:02.229 [main] INFO  events - Trying to connect to other nodes
-04:56:33.897 [main] INFO  events - Miranda starting up
-04:56:45.268 [main] INFO  events - Miranda starting up
-04:56:45.321 [main] INFO  events - Trying to connect to other nodes
-04:58:52.101 [main] INFO  events - Miranda starting up
-04:58:58.912 [main] INFO  events - Miranda starting up
-04:58:58.961 [main] INFO  events - Trying to connect to other nodes
-05:00:42.079 [main] INFO  events - Miranda starting up
-05:01:06.616 [main] INFO  events - Miranda starting up
-05:01:06.671 [main] INFO  events - Trying to connect to other nodes
-05:01:43.796 [main] INFO  events - Miranda starting up
-05:01:55.741 [main] INFO  events - Miranda starting up
-05:01:55.787 [main] INFO  events - Trying to connect to other nodes
-05:03:55.959 [main] INFO  events - Miranda starting up
-05:04:06.112 [main] INFO  events - Miranda starting up
-05:04:06.159 [main] INFO  events - Trying to connect to other nodes
-05:04:34.261 [main] INFO  events - Miranda starting up
-05:05:01.218 [main] INFO  events - Miranda starting up
-05:05:01.265 [main] INFO  events - Trying to connect to other nodes
-05:05:32.276 [main] INFO  events - Miranda starting up
-05:05:55.843 [main] INFO  events - Miranda starting up
-05:05:55.893 [main] INFO  events - Trying to connect to other nodes
-05:07:14.513 [main] INFO  events - Miranda starting up
-05:14:47.641 [main] INFO  events - Miranda starting up
-05:14:47.691 [main] INFO  events - Trying to connect to other nodes
-05:14:48.027 [main] INFO  events - Miranda starting up
-06:29:32.777 [main] INFO  events - Miranda starting up
-06:29:32.825 [main] INFO  events - Trying to connect to other nodes
-06:29:33.066 [main] INFO  events - Miranda starting up
-06:29:37.939 [main] INFO  events - connected to 192.168.0.3:2020
-06:30:57.886 [main] INFO  events - connected to 192.168.0.3:2020
-06:31:19.174 [main] INFO  events - Trying to connect to other nodes
-06:31:19.210 [main] INFO  events - Trying to connect to other nodes
-12:48:34.489 [main] INFO  events - connected to 192.168.0.12:2020
-12:48:46.736 [main] INFO  events - connected to 192.168.0.3:2020
-12:48:46.742 [main] INFO  events - connected to 192.168.0.12:2020
-12:48:46.885 [main] INFO  events - Trying to connect to other nodes
-12:48:46.959 [main] INFO  events - Trying to connect to other nodes
-12:53:53.435 [main] INFO  events - Trying to connect to other nodes
-12:56:52.387 [main] INFO  events - Trying to connect to other nodes
-12:58:01.807 [main] INFO  events - Trying to connect to other nodes
-12:59:46.999 [main] INFO  events - Trying to connect to other nodes
-13:03:13.844 [main] ERROR events - Please specify a UUID for this node by setting the UUID property
-13:03:24.524 [main] ERROR events - Please specify a UUID for this node by setting the UUID property
-13:04:01.436 [main] ERROR events - Please specify a UUID for this node by setting the UUID property
-13:04:56.480 [main] ERROR events - Please specify a UUID for this node by setting the UUID property
-13:05:12.919 [main] ERROR events - Please specify a UUID for this node by setting the UUID property
-13:07:09.833 [main] ERROR events - Please specify a UUID for this node by setting the UUID property
-13:08:52.317 [main] ERROR events - Please specify a UUID for this node by setting the UUID property
-13:10:02.986 [main] ERROR events - Please specify a UUID for this node by setting the UUID property
-13:13:02.256 [main] ERROR events - Please specify a UUID for this node by setting the UUID property
-13:24:57.618 [main] ERROR events - Please specify a UUID for this node by setting the UUID property
-13:24:59.510 [main] ERROR events - Please specify a UUID for this node by setting the UUID property
-13:24:59.513 [main] ERROR events - Please specify a UUID for this node by setting the UUID property
-13:27:04.428 [main] INFO  events - Trying to connect to other nodes
-13:27:46.616 [main] INFO  events - connected to 192.168.0.3:2020
-13:27:46.622 [main] INFO  events - connected to 192.168.0.12:2020
-13:27:46.754 [main] INFO  events - Trying to connect to other nodes
-13:27:46.820 [main] INFO  events - Trying to connect to other nodes
-13:29:08.957 [main] INFO  events - Trying to connect to other nodes
-13:33:24.108 [main] INFO  events - Trying to connect to other nodes
-13:34:00.116 [main] INFO  events - Trying to connect to other nodes
-13:35:13.068 [main] INFO  events - Trying to connect to other nodes
-13:38:01.234 [main] INFO  events - Trying to connect to other nodes
-13:41:54.657 [main] ERROR events - Please specify a UUID for this node by setting the UUID property
-13:41:54.659 [main] ERROR events - Please specify a UUID for this node by setting the UUID property
-13:59:15.523 [main] INFO  events - Trying to connect to other nodes
-13:59:34.880 [main] INFO  events - connected to 192.168.0.12:2020
-14:26:23.141 [main] INFO  events - connected to 192.168.0.3:2020
-14:26:23.147 [main] INFO  events - connected to 192.168.0.12:2020
-14:26:36.036 [main] INFO  events - Trying to connect to other nodes
-14:26:36.038 [main] INFO  events - connected to 192.168.0.12:2020
-14:26:36.113 [main] INFO  events - Trying to connect to other nodes
-14:26:36.114 [main] INFO  events - connected to 192.168.0.12:2020
-14:27:03.701 [main] INFO  events - Miranda starting up
-14:27:03.748 [main] INFO  events - Trying to connect to other nodes
-14:27:25.058 [main] INFO  events - Miranda starting up
-14:27:53.513 [main] INFO  events - connected to 192.168.0.3:2020
-14:27:53.519 [main] INFO  events - connected to 192.168.0.12:2020
-14:27:53.660 [main] INFO  events - Trying to connect to other nodes
-14:27:53.661 [main] INFO  events - connected to 192.168.0.12:2020
-14:27:53.736 [main] INFO  events - Trying to connect to other nodes
-14:27:53.737 [main] INFO  events - connected to 192.168.0.12:2020
-15:01:52.738 [main] INFO  events - Miranda starting up
-15:01:52.788 [main] INFO  events - Trying to connect to other nodes
-15:02:14.097 [main] INFO  events - Miranda starting up
-15:02:35.856 [main] INFO  events - Miranda starting up
-15:02:35.906 [main] INFO  events - Trying to connect to other nodes
-15:02:50.218 [main] INFO  events - connected to 192.168.0.3:2020
-15:02:50.224 [main] INFO  events - connected to 192.168.0.12:2020
-15:02:50.361 [main] INFO  events - Trying to connect to other nodes
-15:02:50.362 [main] INFO  events - connected to 192.168.0.12:2020
-15:02:50.437 [main] INFO  events - Trying to connect to other nodes
-15:02:50.438 [main] INFO  events - connected to 192.168.0.12:2020
-15:03:57.648 [main] INFO  events - Miranda starting up
-15:03:57.697 [main] INFO  events - Trying to connect to other nodes
+20:43:07.323 [main] INFO  events - Miranda starting up
+20:43:07.325 [main] INFO  events - message log, messages.log, exists
+20:43:07.325 [main] INFO  events - Recovering
+20:43:57.417 [main] INFO  events - Miranda starting up
+20:43:57.419 [main] INFO  events - message log, messages.log, exists
+20:43:57.419 [main] INFO  events - Recovering
+20:43:57.576 [main] INFO  events - Trying to connect to other nodes
+20:44:55.506 [main] INFO  events - Miranda starting up
+20:44:55.668 [main] INFO  events - Trying to connect to other nodes
+10:33:51.989 [main] INFO  events - Miranda starting up
+10:33:52.149 [main] INFO  events - Trying to connect to other nodes
+10:33:52.188 [main] INFO  events - connected to 192.168.0.12:2020
+10:34:06.610 [server-29] INFO  events - new message(10dac899-57f3-4b68-9404-59e5ad45a566) received to http://localhost:8080
+10:34:06.980 [server-29] INFO  events - new message(9c0871b5-1974-493b-a5fa-2ac46386b2a8) received to http://localhost:8080
+10:34:07.033 [server-29] INFO  events - new message(9d41fcc3-ab9d-4edc-810a-9ef00297e09b) received to http://localhost:8080
+10:34:07.086 [server-29] INFO  events - new message(366b3ec5-b1b1-4a1b-8678-acce321a1c82) received to http://localhost:8080
+10:34:07.134 [server-29] INFO  events - new message(a612e75a-e478-4739-b7f9-ea4b54b094b1) received to http://localhost:8080
+10:34:07.187 [server-29] INFO  events - new message(c50a609a-05d2-408c-ab34-d56572ca4de8) received to http://localhost:8080
+10:34:07.233 [server-29] INFO  events - new message(e497104c-2082-45dc-a374-71f17bf0b47f) received to http://localhost:8080
+10:34:07.285 [server-29] INFO  events - new message(bc27959c-9dae-4987-bea6-9b187110365e) received to http://localhost:8080
+10:34:07.338 [server-29] INFO  events - new message(cd190d6c-beb5-4811-9807-78ee6bb27ae2) received to http://localhost:8080
+10:34:07.384 [server-29] INFO  events - new message(60d80fd4-6694-44a8-bb49-cec48ef7cf21) received to http://localhost:8080
+10:34:07.427 [server-29] INFO  events - new message(ca1d0485-7ecc-4a54-8b67-a9fdc556184c) received to http://localhost:8080
+10:34:07.472 [server-29] INFO  events - new message(a0bfbebf-b3ef-4965-a38b-0752b9d38321) received to http://localhost:8080
+10:34:07.516 [server-29] INFO  events - new message(b1636a6d-5642-43e0-a89f-24f92c8a994f) received to http://localhost:8080
+10:34:07.558 [server-29] INFO  events - new message(0939f068-4477-4cbf-a433-fa2a5b29d530) received to http://localhost:8080
+10:34:07.600 [server-29] INFO  events - new message(e38309ad-8697-4a12-aed5-dc9f531aacce) received to http://localhost:8080
+10:34:07.646 [server-29] INFO  events - new message(abbbe415-c06f-4662-8038-d6cd1d9dce35) received to http://localhost:8080
+10:34:07.689 [server-29] INFO  events - new message(234c4100-532e-4f3d-8ea1-a3937504346f) received to http://localhost:8080
+10:34:07.733 [server-29] INFO  events - new message(636c1f16-849c-4991-94e5-08597e9d93eb) received to http://localhost:8080
+10:34:07.779 [server-29] INFO  events - new message(4a178bc8-0ba1-4ed6-8fe6-a899b59ee1d7) received to http://localhost:8080
+10:34:07.819 [server-29] INFO  events - new message(e1d635a6-4489-47d2-9d50-8a2844e6f4be) received to http://localhost:8080
+10:34:07.861 [server-29] INFO  events - new message(3492d17e-f593-47da-8891-b9d0e8976743) received to http://localhost:8080
+10:34:07.903 [server-29] INFO  events - new message(897b1285-7e6e-4bfd-920d-e5984422b3e6) received to http://localhost:8080
+10:34:07.955 [server-29] INFO  events - new message(ec03cb9a-787e-42dd-bdf8-1820374f815a) received to http://localhost:8080
+10:34:07.996 [server-29] INFO  events - new message(998e1636-5d2a-49c2-987b-be4326386a2c) received to http://localhost:8080
+10:34:08.037 [server-29] INFO  events - new message(553b8790-00e9-4f87-8138-dccd22cc97e5) received to http://localhost:8080
+10:34:08.079 [server-29] INFO  events - new message(7127bbb5-cb7d-45db-84f1-e2469c35272a) received to http://localhost:8080
+10:34:08.120 [server-29] INFO  events - new message(baf171c0-4e84-442c-aa64-41774b98571f) received to http://localhost:8080
+10:34:08.162 [server-29] INFO  events - new message(34fcece8-dfb0-4182-a03f-e286b7d0df5d) received to http://localhost:8080
+10:34:08.204 [server-29] INFO  events - new message(5b02154d-4d44-4bd5-acd9-ace9b53ca7ac) received to http://localhost:8080
+10:34:32.732 [main] INFO  events - Miranda starting up
+10:34:32.734 [main] INFO  events - message log, messages.log, exists
+10:34:32.734 [main] INFO  events - Recovering
+10:34:32.894 [main] INFO  events - Trying to connect to other nodes
+10:34:32.933 [main] INFO  events - connected to 192.168.0.12:2020
+10:38:50.430 [main] INFO  events - Miranda starting up
+10:38:50.614 [main] INFO  events - Trying to connect to other nodes
+10:38:50.652 [main] INFO  events - connected to 192.168.0.12:2020
+10:39:57.799 [main] INFO  events - Miranda starting up
+10:39:57.801 [main] INFO  events - message log, messages.log, exists
+10:39:57.802 [main] INFO  events - Recovering
+10:39:57.963 [main] INFO  events - Trying to connect to other nodes
+10:39:58.027 [main] INFO  events - connected to 192.168.0.12:2020
+10:41:45.927 [main] INFO  events - Miranda starting up
+10:41:45.929 [main] INFO  events - message log, messages.log, exists
+10:41:45.929 [main] INFO  events - Recovering
+10:42:41.223 [main] INFO  events - Miranda starting up
+10:42:41.225 [main] INFO  events - message log, messages.log, exists
+10:42:41.226 [main] INFO  events - Recovering
+10:42:41.390 [main] INFO  events - Trying to connect to other nodes
+10:42:41.477 [main] INFO  events - connected to 192.168.0.12:2020
+10:45:05.388 [main] INFO  events - Miranda starting up
+10:45:05.392 [main] INFO  events - message log, messages.log, exists
+10:45:05.393 [main] INFO  events - Recovering
+10:45:41.016 [main] INFO  events - Miranda starting up
+10:45:41.019 [main] INFO  events - owner log, owners.log, exists
+10:45:41.019 [main] INFO  events - Recovering
+10:46:50.538 [main] INFO  events - Miranda starting up
+10:46:50.540 [main] INFO  events - message log, messages.log, exists
+10:46:50.540 [main] INFO  events - Recovering
+10:48:11.039 [main] INFO  events - Trying to connect to other nodes
+10:48:43.601 [main] INFO  events - connected to 192.168.0.12:2020
+10:49:26.880 [main] INFO  events - Miranda starting up
+10:49:26.883 [main] INFO  events - message log, messages.log, exists
+10:49:26.883 [main] INFO  events - Recovering
+10:49:38.120 [main] INFO  events - Trying to connect to other nodes
+10:51:13.656 [main] INFO  events - connected to 192.168.0.12:2020
+10:52:06.281 [main] INFO  events - Miranda starting up
+10:52:06.283 [main] INFO  events - message log, messages.log, exists
+10:52:06.283 [main] INFO  events - Recovering
+10:52:19.399 [main] INFO  events - Trying to connect to other nodes
+10:53:05.798 [main] INFO  events - connected to 192.168.0.12:2020
+10:53:52.968 [main] INFO  events - Miranda starting up
+10:53:52.970 [main] INFO  events - message log, messages.log, exists
+10:53:52.970 [main] INFO  events - Recovering
+10:54:05.863 [main] INFO  events - Trying to connect to other nodes
+10:54:17.134 [main] INFO  events - connected to 192.168.0.12:2020
+11:00:38.376 [main] INFO  events - Miranda starting up
+11:00:38.378 [main] INFO  events - message log, messages.log, exists
+11:00:38.379 [main] INFO  events - Recovering
+11:00:54.580 [main] INFO  events - Trying to connect to other nodes
+11:00:54.622 [main] INFO  events - connected to 192.168.0.12:2020

@@ -7,8 +7,6 @@ import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.cluster.SpecNode;
-import com.ltsllc.miranda.logging.LoggingCache;
-import com.ltsllc.miranda.logging.LoggingSet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.asynchttpclient.*;
@@ -150,6 +148,16 @@ public class Miranda {
     public static final String PROPERTY_UUID = "UUID";
 
     /**
+     * When to do the next compaction; using milliseconds
+     */
+    public static final String PROPERTY_COMPACTION_TIME = "compaction.time";
+
+    /**
+     * The default value for PROPERTY_COMPACTION_TIME is 10 seconds
+     */
+    public static final String PROPERTY_DEFAULT_COMPACTION_TIME = "10000";
+
+    /**
      * The logger to use
      */
     protected static final Logger logger = LogManager.getLogger();
@@ -197,20 +205,33 @@ public class Miranda {
     /**
      * The getOwnerFlag signifies that we need to get owner and message information from our peers
      */
-    protected boolean getOwnerFlag = false;
+    protected boolean synchronizationFlag = false;
 
-    public boolean isGetOwnerFlag() {
-        return getOwnerFlag;
+    public boolean getSynchronizationFlag() {
+        return synchronizationFlag;
     }
 
-    public void setGetOwnerFlag(boolean getOwnerFlag) {
-        this.getOwnerFlag = getOwnerFlag;
+    public void setSynchronizationFlag(boolean synchronizationFlag) {
+        this.synchronizationFlag = synchronizationFlag;
     }
 
     /**
      * The UUID of this node
      */
     protected UUID myUuid = null;
+
+    /**
+     * Do we need to do a compaction?
+     */
+    protected long compactionTime = -1;
+
+    public long getCompactionTime() {
+        return compactionTime;
+    }
+
+    public void setCompactionTime(long compactionTime) {
+        this.compactionTime = compactionTime;
+    }
 
     public UUID getMyUuid() {
         return myUuid;
@@ -309,7 +330,7 @@ public class Miranda {
      * </P>
      * @exception IOException If there is a problem copying the messages
      */
-    public void mainLoop () throws IOException  {
+    public synchronized void mainLoop () throws IOException, LtsllcException {
         logger.debug("starting mainLoop, with keepRunning = " + keepRunning);
         if (keepRunning) {
             /*
@@ -320,6 +341,16 @@ public class Miranda {
                 deliver(message);
             }
 
+            if (Cluster.getInstance().getAllNodesFailed() && synchronizationFlag) {
+                logger.debug("getAllNodesFailed and synchronizationFlag set, entering recovery");
+                recoverLocally();
+            }
+
+            /*
+             * do we need to do a compaction?
+             */
+            compactIfTime();
+
             /*
              * See if it is time to connect to other nodes in the cluster
              */
@@ -328,7 +359,7 @@ public class Miranda {
         logger.debug("leaving mainLoop");
     }
 
-    public void connectToOtherNodes () {
+    public void connectToOtherNodes () throws LtsllcException {
         //
         // first see if it is time to connect
         //
@@ -336,10 +367,12 @@ public class Miranda {
             return;
         }
 
+        clusterAlarm = -1;
+
         //
         // if it's time to reconnect...
         //
-        connectToOtherNodes();
+        Cluster.getInstance().reconnect();
     }
 
     /**
@@ -528,6 +561,7 @@ public class Miranda {
         properties.setIfNull(PROPERTY_CLUSTER_RETRY, PROPERTY_DEFAULT_CLUSTER_RETRY);
         properties.setIfNull(PROPERTY_MESSAGE_LOG, PROPERTY_DEFAULT_MESSAGE_LOG);
         properties.setIfNull(PROPERTY_CLUSTER_PORT, PROPERTY_DEFAULT_CLUSTER_PORT);
+        properties.setIfNull(PROPERTY_COMPACTION_TIME, PROPERTY_DEFAULT_COMPACTION_TIME);
     }
 
     public void storeProperties () throws IOException {
@@ -581,6 +615,10 @@ public class Miranda {
      * @exception IOException If there is a problem with the manipulation of the logfiles
      */
     public void deliver (Message message) throws IOException {
+        if (null == message) {
+            return;
+        }
+
         //
         // don't send if we haven't gotten a reply from the message we already sent
         //
@@ -592,7 +630,12 @@ public class Miranda {
         AsyncHttpClient httpClient = Dsl.asyncHttpClient();
         BoundRequestBuilder boundRequestBuilder = httpClient.preparePost(message.getDeliveryURL());
 
-        boundRequestBuilder.setBody(message.getContents())
+        Request request =  httpClient.preparePost(message.getDeliveryURL())
+                        .setBody(message.getContents())
+                                .build();
+
+
+        boundRequestBuilder
                 .execute(new AsyncCompletionHandler<Response>() {
                     @Override
                     public Response onCompleted(Response response) throws IOException {
@@ -613,6 +656,8 @@ public class Miranda {
                             //
                             message.setStatus(response.getStatusCode());
                         }
+
+                        httpClient.close();
                         // otherwise, keep trying
                         return response;
                     }
@@ -633,13 +678,22 @@ public class Miranda {
      */
     public void successfulMessage(Message message) throws IOException {
         logger.debug("entering successfulMessage with: " + message);
+        if (compactionTime == -1) {
+            compactionTime = System.currentTimeMillis() + properties.getLongProperty(PROPERTY_COMPACTION_TIME);
+        }
+/*
         Cluster.getInstance().informOfDelivery(message);
+
         try {
-            MessageLog.getInstance().remove(message.getMessageID());
+
+             MessageLog.getInstance().remove(message.getMessageID());
+
         } catch (IOException e) {
             logger.error ("Exception trying to remove message from the message log",e);
             event.error("Exception trying to remove message from the message log",e);
         }
+
+         */
         notifyClientOfDelivery(message);
         inflight.remove(message);
         logger.debug("leaving successfulMessage");
@@ -653,6 +707,8 @@ public class Miranda {
      * @param message The message that was delivered
      */
     public void notifyClientOfDelivery(Message message) {
+        logger.debug("entering notifyClientOfDelivery");
+        event.info("delivered " + message.getMessageID());
         AsyncHttpClient httpClient = Dsl.asyncHttpClient();
         BoundRequestBuilder
                 rb = httpClient.preparePost(message.getDeliveryURL());
@@ -663,6 +719,7 @@ public class Miranda {
                 return response;
             }
         });
+        logger.debug("leaving notifyClientOfDelivery");
     }
 
     /**
@@ -724,6 +781,8 @@ public class Miranda {
      * @throws LtsllcException
      */
     public void recover () throws IOException, LtsllcException {
+        logger.debug("entering recovery");
+        event.info("Recovering");
         ImprovedProperties p = properties;
         ImprovedFile messageFile = new ImprovedFile(p.getProperty(PROPERTY_MESSAGE_LOG));
         int loadLimit = p.getIntProperty(PROPERTY_CACHE_LOAD_LIMIT);
@@ -733,10 +792,66 @@ public class Miranda {
         if (isClustering) {
             messageFile.backup(".backup");
             ownerFile.backup(".backup");
-            setGetOwnerFlag(true);
+            setSynchronizationFlag(true);
         } else {
             MessageLog.defineStatics(messageFile, loadLimit, ownerFile);
             MessageLog.recover(messageFile, loadLimit, ownerFile);
         }
+
+        logger.debug("leaving recovery");
+    }
+
+    /**
+     * Recover as if we were not clustering
+     */
+    public synchronized void recoverLocally() throws LtsllcException, IOException {
+        logger.debug("entering recoverLocally");
+        event.warn("The other nodes in the cluster are not responding, recovering locally.");
+
+        if (!synchronizationFlag && !Cluster.getInstance().getAllNodesFailed()) {
+            logger.debug("synchronizationFlag and getAllNodesFailed flags are not set, aborting recovery");
+            return;
+        }
+        setSynchronizationFlag(false);
+        Cluster.getInstance().setAllNodesFailed(false);
+
+        ImprovedProperties p = properties;
+        ImprovedFile messages = new ImprovedFile(p.getProperty(PROPERTY_MESSAGE_LOG));
+        ImprovedFile messagesBackup = new ImprovedFile(p.getProperty(PROPERTY_MESSAGE_LOG) + ".backup");
+        ImprovedFile owners = new ImprovedFile(p.getProperty(PROPERTY_OWNER_FILE));
+        ImprovedFile ownersBackup = new ImprovedFile(p.getProperty(PROPERTY_OWNER_FILE) + ".backup");
+        int loadLimit = p.getIntProperty(PROPERTY_CACHE_LOAD_LIMIT);
+
+        if (!messagesBackup.exists()) {
+            throw new LtsllcException("backup file, " + messagesBackup + ", does not exist");
+        }
+
+        if (!messagesBackup.renameTo(messages)) {
+            throw new LtsllcException("failed to rename " + messagesBackup + " to " + messages);
+        }
+
+        if (!ownersBackup.exists()) {
+            throw new LtsllcException("backup file, " + ownersBackup + ", does not exist");
+        }
+
+        if (!ownersBackup.renameTo(owners)) {
+            throw new LtsllcException("failed to rename " + ownersBackup + " to " + owners);
+        }
+
+        MessageLog.recover(messages, loadLimit, owners);
+        logger.debug("leaving recoverLocally");
+    }
+
+    public void compactIfTime () throws IOException {
+        if (compactionTime == -1) {
+            return;
+        }
+
+        if (System.currentTimeMillis() < compactionTime) {
+            return;
+        }
+
+        compactionTime = -1;
+        MessageLog.getInstance().compact();
     }
 }

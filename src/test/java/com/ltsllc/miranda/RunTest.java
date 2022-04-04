@@ -23,8 +23,7 @@ public class RunTest {
         String[] args = {};
         miranda.startUp(args);
 
-        boolean guard = false;
-        System.out.println("guard = " + guard);
+        boolean guard = true;
         while (guard) {
             miranda.mainLoop();
         }

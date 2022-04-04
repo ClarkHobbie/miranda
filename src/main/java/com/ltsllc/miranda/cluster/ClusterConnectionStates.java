@@ -13,5 +13,6 @@ public enum ClusterConnectionStates {
     GET_OWNERS,
     GET_MESSAGES,
     MESSAGE,
-    START
+    START,
+    SYNCHRONIZING
 }

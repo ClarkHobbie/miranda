@@ -26,6 +26,8 @@ public enum MessageType {
     MESSAGES,
     MESSAGES_END,
     START,
+    SYNCHRONIZE,
+    SYNCHRONIZE_START,
     TIMEOUT,
     UNKNOWN
 }

@@ -106,7 +106,22 @@ public class MessageLog {
      * @see #recover(ImprovedFile, int, ImprovedFile)
      */
     public static boolean shouldRecover (ImprovedFile logfile, ImprovedFile ownerFile) {
-        return logfile.exists() || ownerFile.exists();
+        logger.debug("entering shouldRecover");
+        boolean returnValue = logfile.exists();
+        if (returnValue) {
+            logger.debug("message log, " + logfile + ", exists");
+            events.info ("message log, " + logfile + ", exists");
+        } else {
+            returnValue = ownerFile.exists();
+
+            if (returnValue) {
+                logger.debug ("owner log, " + ownerFile + ", exists");
+                events.info("owner log, " + ownerFile + ", exists");
+            }
+        }
+
+        logger.debug("leaving shouldRecover with " + returnValue);
+        return returnValue;
     }
 
     /**
@@ -271,7 +286,7 @@ public class MessageLog {
      * @throws IOException If a problem is encountered while reading or writing the logfiles
      */
     public void add (Message message, UUID owner) throws IOException {
-        logger.debug("entering add with messag");
+        logger.debug("entering add with message");
         if (null == owner) {
             cache.add(message);
         } else {
@@ -332,5 +347,13 @@ public class MessageLog {
      */
     public Collection<Message> getAllMessages () {
         return cache.getAllMessages();
+    }
+
+    /**
+     * Compact the various log files
+     */
+    public void compact () throws IOException {
+        cache.compact();
+        uuidToOwner.compact();
     }
 }
