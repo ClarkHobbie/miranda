@@ -9,7 +9,14 @@ import java.util.*;
  * A map that logs all its items to a file
  */
 public class LoggingMap {
+    /**
+     * The file where the UUIDs are logged
+     */
     protected ImprovedFile file;
+
+    /**
+     * A map from message ID to the UUID of the owner of that message
+     */
     protected Map<UUID, UUID> uuidToUuid = new HashMap<>();
 
     public Map<UUID, UUID> getUuidToUuid() {
@@ -32,6 +39,13 @@ public class LoggingMap {
         file = new ImprovedFile(filename);
     }
 
+    /**
+     * Construct a new instance of the class
+     * <P>
+     *     The method makes no check to see if the file already exists.
+     * </P>
+     * @param file The file where the UUIDs will be logged.
+     */
     public LoggingMap (File file) {
         this.file = new ImprovedFile(file);
     }

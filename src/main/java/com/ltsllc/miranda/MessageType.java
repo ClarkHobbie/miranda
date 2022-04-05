@@ -12,6 +12,7 @@ public enum MessageType {
     DEAD_NODE,
     ERROR,
     GET_MESSAGE,
+    HEART_BEAT_START,
     HEART_BEAT,
     MESSAGE,
     MESSAGE_NOT_FOUND,

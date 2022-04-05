@@ -17,14 +17,50 @@ import java.util.*;
  * </P>
  */
 public class LoggingCache {
+    /**
+     * The file where it logs to
+     */
     protected ImprovedFile file;
+
+    /**
+     * A message's UUID to the message itself the "main" part of the cache
+     */
     protected Map<UUID, Message> uuidToMessage = new HashMap<>();
+
+    /**
+     * A map from a message's UUID to the location in the file where it can be found
+     */
     protected Map<UUID, Long> uuidToLocation = new HashMap<>();
+
+    /**
+     * A map from a message's UUID to whether or not it is in memory.  If a message's UUID is not in the map then the
+     * cache doesn't know anything about it.
+     */
     protected Map<UUID, Boolean> uuidToInMemory = new HashMap<>();
+
+    /**
+     * A map from a message's UUID to the number of times it has been referenced
+     */
     protected Map<UUID, Integer> uuidToTimesReferenced = new HashMap<>();
+
+    /**
+     * The maximum number of contents bytes that the cache may hold.  If the cache tries to store more than this then the
+     * cache will start leaving least referenced message on disk rather than in memory.
+     */
     protected int loadLimit = -1;
+
+    /**
+     * How many bytes of contents the cache currently has loaded
+     */
     protected int currentLoad = 0;
 
+    /**
+     * Construct a new instance of the class
+     *
+     * @param logfile The file where new messages are logged.
+     * @param loadLimit The total number of bytes of contents the instance can hold.  Attempts to go beyond this limit
+     *                  will result in the lesser accessed messages being taken our of memory.
+     */
     public LoggingCache (ImprovedFile logfile, int loadLimit) {
         file = logfile;
         this.loadLimit = loadLimit;
@@ -402,6 +438,20 @@ public class LoggingCache {
         return (null != uuidToLocation.get(uuid));
     }
 
+    /**
+     * Make a copy of all the messages the class "knows about."
+     *
+     * <P>
+     *     This method makes a copy of all the messages, in memory or on disk, that the object "knows about."  That is,
+     *     all the messages that have been passed via add.
+     * </P>
+     * <P>
+     *     This method makes no check to see that all the messages can fit into memory, so care must be taken when
+     *     calling it.
+     * </P>
+     * @return A list of all the messages.
+     * @throws IOException If there is a problem relating to any on-disk messages.
+     */
     public synchronized List<Message> copyAllMessages () throws IOException {
         List<Message> list = new ArrayList<>();
         if (allInMemory()) {
@@ -440,6 +490,16 @@ public class LoggingCache {
         return uuidToInMemory.get(uuid);
     }
 
+    /**
+     * Remove a message from the cache
+     * <P>
+     *     Thereafter, the object will not "know" about the message.
+     * </P>
+     * <P>
+     *     This method does not check to see that it contains the message.
+     * </P>
+     * @param uuid The UUID of the message to be removed.
+     */
     public synchronized void undefine (UUID uuid) {
         uuidToMessage.remove(uuid);
         uuidToLocation.remove(uuid);
@@ -447,6 +507,11 @@ public class LoggingCache {
         uuidToInMemory.remove(uuid);
     }
 
+    /**
+     * Are all of the messages in memory?
+     *
+     * @return Whether all of the messages are in memory.
+     */
     public boolean allInMemory () {
         for (Boolean b : uuidToInMemory.values()) {
             if (!b) {
@@ -467,9 +532,9 @@ public class LoggingCache {
     }
 
     /**
-     * Return a collection of all the messages in the object
+     * Return a collection of all the message UUIDs in the object
      *
-     * @return A collection of all the messages in the object
+     * @return A collection of all the message UUIDs in the object
      */
     public synchronized Collection<Message> getAllMessages () {
         return uuidToMessage.values();

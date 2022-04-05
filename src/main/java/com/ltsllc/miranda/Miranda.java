@@ -158,6 +158,15 @@ public class Miranda {
     public static final String PROPERTY_DEFAULT_COMPACTION_TIME = "10000";
 
     /**
+     * The amount of time to wait in between heart beat start messages
+     */
+    public static final String PROPERTY_HEART_BEAT_INTERVAL = "heartBeatInterval";
+
+    /**
+     * The default period to wait between heart beat start messages is 5 sec
+     */
+    public static final String PROPERTY_DEFAULT_PROPERTY_HEART_BEAT_INTERVAL = "5000";
+    /**
      * The logger to use
      */
     protected static final Logger logger = LogManager.getLogger();
@@ -206,6 +215,19 @@ public class Miranda {
      * The getOwnerFlag signifies that we need to get owner and message information from our peers
      */
     protected boolean synchronizationFlag = false;
+
+    /**
+     * The time after which we should send out heart beat start messages
+     */
+    protected long heartBeatAlarm = -1;
+
+    public long getHeartBeatAlarm() {
+        return heartBeatAlarm;
+    }
+
+    public void setHeartBeatAlarm(long heartBeatAlarm) {
+        this.heartBeatAlarm = heartBeatAlarm;
+    }
 
     public boolean getSynchronizationFlag() {
         return synchronizationFlag;
@@ -350,6 +372,11 @@ public class Miranda {
              * do we need to do a compaction?
              */
             compactIfTime();
+
+            //
+            // send out heart beat start messages, if it's time to
+            //
+            heartBeatStartIfTime();
 
             /*
              * See if it is time to connect to other nodes in the cluster
@@ -562,6 +589,7 @@ public class Miranda {
         properties.setIfNull(PROPERTY_MESSAGE_LOG, PROPERTY_DEFAULT_MESSAGE_LOG);
         properties.setIfNull(PROPERTY_CLUSTER_PORT, PROPERTY_DEFAULT_CLUSTER_PORT);
         properties.setIfNull(PROPERTY_COMPACTION_TIME, PROPERTY_DEFAULT_COMPACTION_TIME);
+        properties.setIfNull(PROPERTY_HEART_BEAT_INTERVAL, PROPERTY_DEFAULT_PROPERTY_HEART_BEAT_INTERVAL);
     }
 
     public void storeProperties () throws IOException {
@@ -853,5 +881,17 @@ public class Miranda {
 
         compactionTime = -1;
         MessageLog.getInstance().compact();
+    }
+
+    public void heartBeatStartIfTime () {
+        long now = System.currentTimeMillis();
+        if (heartBeatAlarm == -1) {
+            heartBeatAlarm = now + properties.getLongProperty(PROPERTY_HEART_BEAT_INTERVAL);
+        } else if (now > heartBeatAlarm) {
+            Cluster.getInstance().sendHeartBeat();
+            heartBeatAlarm = now + properties.getLongProperty(PROPERTY_HEART_BEAT_INTERVAL);
+        } else {
+            return;
+        }
     }
 }

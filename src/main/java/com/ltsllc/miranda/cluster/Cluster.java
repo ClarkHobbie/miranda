@@ -461,4 +461,15 @@ public class Cluster {
         }
         return returnValue;
     }
- }
+
+    /**
+     * Send out a heartbeat message to all nodes
+     */
+    public synchronized void sendHeartBeat () {
+        for (Node node : nodes) {
+            if (node.isConnected()) {
+                node.sendHeartBeatStart();
+            }
+        }
+    }
+}

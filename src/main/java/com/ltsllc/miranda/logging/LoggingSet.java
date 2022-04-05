@@ -17,14 +17,16 @@ public class LoggingSet {
 
     /**
      * The actual set
-     *
-     * <P>
-     *     Note that a TreeSet is used instead of a HashSet.  This is because you can have two objects be equals
-     *     equivalent but not hashCode equivalent.  TreeSet uses Compareable whereas HashSet uses hashCode.
-     * </P>
      */
     protected Set<Message> set = new HashSet<>();
 
+    /**
+     * Construct a new instance of the class
+     * <P>
+     *     Note that no check is made to ensure that the does not already exist.
+     * </P>
+     * @param logfile Where the messages will be stored.
+     */
     public LoggingSet (ImprovedFile logfile) {
         file = logfile;
     }
@@ -50,7 +52,7 @@ public class LoggingSet {
     }
 
     /**
-     * Log the message to the classes logfile
+     * Log the message to the classes logfile and add it to the set
      *
      * @param message The message to be added.
      * @return Whether the message was already in the set.  Note that a return value of true means that the logfile will
@@ -191,8 +193,7 @@ public class LoggingSet {
      *
      * @param logfile The logfile and backup file to be used in a recovery.  The name of the backup file is just the
      *                name of the logfile with ".backup" appended to it.
-     * @return
-     * @throws IOException
+     * @throws IOException If there is a problem accessing the logfile.
      */
     public static LoggingSet recover (ImprovedFile logfile) throws IOException {
         ImprovedFile theLogfile = new ImprovedFile(logfile);
@@ -249,10 +250,10 @@ public class LoggingSet {
     }
 
     /**
-     * Add all the elements of a colletion
+     * Add all the elements of a collection
      *
      * @param collection The collection to add.
-     * @throws IOException If a problem is encounted while adding an element.
+     * @throws IOException If a problem is encountered with the logfile while adding an element.
      */
     public synchronized void addAll (Collection<Message> collection) throws IOException {
         Iterator<Message> iterator = collection.iterator();

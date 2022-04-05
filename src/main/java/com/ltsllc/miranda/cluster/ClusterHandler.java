@@ -42,6 +42,7 @@ public class ClusterHandler implements IoHandler {
     public static final String DEAD_NODE = "DEAD NODE";
     public static final String ERROR = "ERROR";
     public static final String GET_MESSAGE = "GET MESSAGE";
+    public static final String HEART_BEAT_START = "HEART BEAT START";
     public static final String HEART_BEAT = "HEART BEAT";
     public static final String MESSAGE = "MESSAGE";
     public static final String MESSAGES = "MESSAGES";
@@ -320,8 +321,12 @@ public class ClusterHandler implements IoHandler {
                         break;
                     }
 
+                    case HEART_BEAT_START: {
+                        ioSession.write(ClusterHandler.HEART_BEAT);
+                        break;
+                    }
+
                     case HEART_BEAT: {
-                        ioSession.write(s);
                         break;
                     }
 
