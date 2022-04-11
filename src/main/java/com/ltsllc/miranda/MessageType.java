@@ -11,6 +11,7 @@ public enum MessageType {
     BID,
     DEAD_NODE,
     ERROR,
+    ERROR_START,
     GET_MESSAGE,
     HEART_BEAT_START,
     HEART_BEAT,

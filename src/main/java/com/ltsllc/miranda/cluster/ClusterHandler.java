@@ -41,6 +41,7 @@ public class ClusterHandler implements IoHandler {
     public static final String BID = "BID";
     public static final String DEAD_NODE = "DEAD NODE";
     public static final String ERROR = "ERROR";
+    public static final String ERROR_START = "ERROR_START";
     public static final String GET_MESSAGE = "GET MESSAGE";
     public static final String HEART_BEAT_START = "HEART BEAT START";
     public static final String HEART_BEAT = "HEART BEAT";
@@ -111,9 +112,54 @@ public class ClusterHandler implements IoHandler {
         return ourRandom;
     }
 
+    /**
+     * When do we send the next heart beat? A value of -1 means the time of the next heart beat has not been set.
+     */
+    long timeOfNextHeartBeat = -1;
+
+    public long getTimeOfNextHeartBeat() {
+        return timeOfNextHeartBeat;
+    }
+
+    public void setTimeOfNextHeartBeat(long timeOfNextHeartBeat) {
+        this.timeOfNextHeartBeat = timeOfNextHeartBeat;
+    }
+
+    /**
+     * The time when we last received a message.  A value of -1 means that we have never received a message.
+     */
+    long timeOfLastMessage = -1;
+
+    public long getTimeOfLastMessage() {
+        return timeOfLastMessage;
+    }
+
+    public void setTimeOfLastMessage(long timeOfLastMessage) {
+        this.timeOfLastMessage = timeOfLastMessage;
+    }
+
+    protected Timer timer = new Timer();
+
+    public Timer getTimer() {
+        return timer;
+    }
+
+    public void setTimer(Timer timer) {
+        this.timer = timer;
+    }
 
     public UUID getPartnerID() {
         return partnerID;
+    }
+
+    protected long timeOfLastActivity = -1;
+
+    public long getTimeOfLastActivity() {
+        return timeOfLastActivity;
+    }
+
+    public void setTimeOfLastActivity(long timeOfLastActivity) {
+        this.timeOfLastActivity = timeOfLastActivity;
     }
 
     public void setPartnerID(UUID partnerID) {
@@ -161,6 +207,7 @@ public class ClusterHandler implements IoHandler {
         logger.debug("entering constructor with node = " + node + ", and cache = " + cache);
         this.node = node;
         this.cache = cache;
+        setupHeartBeat();
     }
 
     @Override
@@ -168,9 +215,13 @@ public class ClusterHandler implements IoHandler {
     }
 
     @Override
-    public void sessionOpened(IoSession ioSession) {
+    public void sessionOpened(IoSession ioSession) throws LtsllcException {
         node.setIoSession(ioSession);
         node.setConnected(true);
+        node.getClusterHandler().setupHeartBeat();
+        Node node = new Node("unknown", -1);
+        ClusterHandler newHandler = new ClusterHandler(node, MessageLog.getInstance().getCache());
+        // causes exception Cluster.getInstance().getIoAcceptor().setHandler(newHandler);
 
         if (Miranda.getInstance().getSynchronizationFlag()) {
             synchronize(ioSession);
@@ -180,6 +231,8 @@ public class ClusterHandler implements IoHandler {
     @Override
     public void sessionClosed(IoSession ioSession) throws Exception {
         logger.debug("IoSession closed, removing instance from cluster");
+        node.setConnected(false);
+        node.getClusterHandler().stopHeartBeat();
         Cluster.getInstance().removeNode(node);
     }
 
@@ -200,6 +253,8 @@ public class ClusterHandler implements IoHandler {
         logger.error("in ClusterHandler when encountered exception", throwable);
         logger.error("sending error and going back to start state");
         ioSession.write(ERROR);
+        setTimeOfLastActivity();
+        setTimeOfLastActivity();
         state = ClusterConnectionStates.START;
     }
 
@@ -218,6 +273,7 @@ public class ClusterHandler implements IoHandler {
      */
     @Override
     public void messageReceived(IoSession ioSession, Object o) throws IOException, LtsllcException {
+        setTimeOfLastActivity();
         logger.debug("entering messageReceived with state = " + state + " and message = " + o);
         String s = (String) o;
         s = s.toUpperCase();
@@ -237,14 +293,28 @@ public class ClusterHandler implements IoHandler {
                         break;
                     }
 
+                    case HEART_BEAT_START: {
+                        handleHeartBeatStart(ioSession);
+                        break;
+                    }
+
+                    case HEART_BEAT: {
+                        break;
+                    }
+
+                    case ERROR_START: {
+                        handleErrorStart(ioSession);
+                        break;
+                    }
+
                     case ERROR: {
-                        handleError(ioSession);
                         break;
                     }
 
                     default: {
                         logger.error("protocol violation, sending an error and returning to start state");
                         ioSession.write(ERROR);
+                        setTimeOfLastActivity();
                         state = ClusterConnectionStates.START;
                         break;
                     }
@@ -267,11 +337,31 @@ public class ClusterHandler implements IoHandler {
                     case AUCTION_OVER: {
                         state = ClusterConnectionStates.GENERAL;
                         ioSession.write(ClusterHandler.AUCTION_OVER);
+                        setTimeOfLastActivity();
+                        break;
+                    }
+
+                    case HEART_BEAT_START: {
+                        handleHeartBeatStart(ioSession);
+                        break;
+                    }
+
+                    case HEART_BEAT: {
+                        break;
+                    }
+
+                    case ERROR_START: {
+                        handleErrorStart(ioSession);
+                        break;
+                    }
+
+                    case ERROR: {
                         break;
                     }
 
                     default: {
                         ioSession.write(ERROR);
+                        setTimeOfLastActivity();
                         logger.error("protocol error, returning to START state");
                         state = ClusterConnectionStates.START;
                         break;
@@ -292,10 +382,27 @@ public class ClusterHandler implements IoHandler {
                         break;
                     }
 
+                    case HEART_BEAT_START: {
+                        handleHeartBeatStart (ioSession);
+                        break;
+                    }
+
+                    case HEART_BEAT: {
+                        break;
+                    }
+
+                    case ERROR_START: {
+                        handleErrorStart(ioSession);
+                        break;
+                    }
+
+                    case ERROR: {
+                        break;
+                    }
+
                     default: {
-                        ioSession.write(ERROR);
+                        handleError(ioSession);
                         logger.error("protocol error, returning to START state");
-                        state = ClusterConnectionStates.START;
                         break;
                     }
                 }
@@ -307,12 +414,14 @@ public class ClusterHandler implements IoHandler {
                 switch (messageType) {
                     case AUCTION: {
                         ioSession.write(AUCTION);
+                        setTimeOfLastActivity();
                         state = ClusterConnectionStates.AUCTION;
                         break;
                     }
 
                     case DEAD_NODE: {
                         ioSession.write(s);
+                        setTimeOfLastActivity();
                         break;
                     }
 
@@ -322,7 +431,8 @@ public class ClusterHandler implements IoHandler {
                     }
 
                     case HEART_BEAT_START: {
-                        ioSession.write(ClusterHandler.HEART_BEAT);
+                        ioSession.write(HEART_BEAT);
+                        setTimeOfLastActivity();
                         break;
                     }
 
@@ -340,12 +450,17 @@ public class ClusterHandler implements IoHandler {
                         break;
                     }
 
+                    case ERROR_START: {
+                        handleErrorStart(ioSession);
+                        break;
+                    }
+
                     case ERROR: {
-                        handleError(ioSession);
                         break;
                     }
 
                     case START: {
+                        handleStart(s,ioSession);
                         break;
                     }
 
@@ -392,6 +507,15 @@ public class ClusterHandler implements IoHandler {
                     case MESSAGES_END: {
                         sendStart(ioSession);
                         state = GENERAL;
+                        break;
+                    }
+
+                    case ERROR_START: {
+                        handleErrorStart(ioSession);
+                        break;
+                    }
+
+                    case ERROR: {
                         break;
                     }
 
@@ -448,10 +572,14 @@ public class ClusterHandler implements IoHandler {
             messageType = MessageType.BID;
         } else if (s.startsWith(DEAD_NODE)) {
             messageType = MessageType.DEAD_NODE;
+        } else if (s.startsWith(ERROR_START)) {
+            messageType = MessageType.ERROR_START;
         } else if (s.startsWith(ERROR)) {
             messageType = MessageType.ERROR;
         } else if (s.startsWith(GET_MESSAGE)) {
             messageType = MessageType.GET_MESSAGE;
+        } else if (s.startsWith(HEART_BEAT_START)) {
+            messageType = MessageType.HEART_BEAT_START;
         } else if (s.startsWith(HEART_BEAT)) {
             messageType = MessageType.HEART_BEAT;
         } else if (s.startsWith(MESSAGE_DELIVERED)) {
@@ -538,6 +666,7 @@ public class ClusterHandler implements IoHandler {
         Message message = cache.get(uuid);
         String strMessage = message.longToString();
         ioSession.write(strMessage);
+        setTimeOfLastActivity();
     }
 
     /**
@@ -562,6 +691,7 @@ public class ClusterHandler implements IoHandler {
         String strMessage = message.longToString();
 
         ioSession.write(strMessage);
+        setTimeOfLastActivity();
     }
 
     /**
@@ -592,6 +722,7 @@ public class ClusterHandler implements IoHandler {
         strMessage += " ";
         strMessage += myBid;
         ioSession.write(strMessage);
+        setTimeOfLastActivity();
         logger.debug("wrote " + strMessage);
 
         UUID owner = null;
@@ -615,6 +746,7 @@ public class ClusterHandler implements IoHandler {
                 strMessage += " ";
                 strMessage += messageID;
                 ioSession.write(strMessage);
+                setTimeOfLastActivity();
 
                 pushState(state);
                 state = ClusterConnectionStates.MESSAGE;
@@ -641,6 +773,7 @@ public class ClusterHandler implements IoHandler {
         strMessage += " ";
         strMessage += this.uuid;
         ioSession.write(strMessage);
+        setTimeOfLastActivity();
 
         synchronized (cache) {
             Set<UUID> set = cache.getUuidToInMemory().keySet();
@@ -700,6 +833,7 @@ public class ClusterHandler implements IoHandler {
         if (!cache.contains(uuid)) {
             logger.debug("cache miss, sending MESSAGE NOT FOUND");
             ioSession.write(MESSAGE_NOT_FOUND);
+            setTimeOfLastActivity();
         } else {
             Message message = cache.get(uuid);
             logger.debug("cache hit, message = " + message.longToString() + "; sending message");
@@ -728,15 +862,27 @@ public class ClusterHandler implements IoHandler {
      * @param ioSession The IoSession associated with this connection.
      */
     protected synchronized void handleStart(String input, IoSession ioSession) {
+        logger.debug("entering handleStart");
         Scanner scanner = new Scanner(input);
         scanner.skip(START);
         partnerID = UUID.fromString(scanner.next());
 
+        String host = scanner.next();
+        node.setHost(host);
+
+        int port = Integer.parseInt(scanner.next());
+        node.setPort(port);
+
         ioSession.getConfig().setUseReadOperation(true);
         node.setIoSession(ioSession);
         node.setPartnerID(partnerID);
+        node.setConnected(true);
 
-        state = ClusterConnectionStates.GENERAL;
+        if (state == ClusterConnectionStates.START) {
+            state = GENERAL;
+            sendStart(ioSession);
+        }
+        logger.debug("leaving handleStart");
     }
 
     /**
@@ -772,6 +918,7 @@ public class ClusterHandler implements IoHandler {
         } else {
             logger.error("in an auction where we were asked for a message we don't have: " + uuid);
             ioSession.write(MESSAGE_NOT_FOUND);
+            setTimeOfLastActivity();
         }
 
         logger.debug("leaving handleGetMessageAuction");
@@ -818,8 +965,10 @@ public class ClusterHandler implements IoHandler {
         stringBuffer.append(" ");
         stringBuffer.append(Miranda.getInstance().getMyUuid());
         ioSession.write(stringBuffer.toString());
-        state = ClusterConnectionStates.START;
+        setTimeOfLastActivity();
+        state = GENERAL;
         logger.debug("wrote " + stringBuffer.toString());
+
         logger.debug("leaving handleError");
     }
 
@@ -829,6 +978,7 @@ public class ClusterHandler implements IoHandler {
     public void sendOwners() {
         logger.debug("entering sendOwners");
         node.getIoSession().write(OWNERS);
+        setTimeOfLastActivity();
         logger.debug("Sent " + OWNERS);
         logger.debug("leaving sendOwners");
     }
@@ -877,8 +1027,10 @@ public class ClusterHandler implements IoHandler {
             stringBuffer.append(" ");
 
             ioSession.write(stringBuffer.toString());
+            setTimeOfLastActivity();
         }
         ioSession.write(OWNERS_END);
+        setTimeOfLastActivity();
         logger.debug("leaving handleSendOwners");
     }
 
@@ -895,8 +1047,10 @@ public class ClusterHandler implements IoHandler {
         Iterator<Message> iterator = messages.iterator();
         while (iterator.hasNext()) {
             ioSession.write(iterator.next().longToString() + " ");
+            setTimeOfLastActivity();
         }
         ioSession.write(MESSAGES_END);
+        setTimeOfLastActivity();
         logger.debug("leaving handleSendMessages");
     }
 
@@ -911,6 +1065,7 @@ public class ClusterHandler implements IoHandler {
     public void sendMessages() {
         logger.debug("entering sendMessages");
         node.getIoSession().write(ClusterHandler.MESSAGES);
+        setTimeOfLastActivity();
         logger.debug("wrote " + ClusterHandler.MESSAGES);
         logger.debug("leaving sendMessages");
     }
@@ -932,6 +1087,7 @@ public class ClusterHandler implements IoHandler {
 
         node.getIoSession().write (ClusterHandler.SYNCHRONIZE);
         logger.debug("wrote " + ClusterHandler.SYNCHRONIZE);
+        setTimeOfLastActivity();
 
         logger.debug("leaving sendSynchronize");
     }
@@ -945,6 +1101,7 @@ public class ClusterHandler implements IoHandler {
         stringBuffer.append(Miranda.getInstance().getMyUuid());
 
         node.getIoSession().write(stringBuffer.toString());
+        setTimeOfLastActivity();
         logger.debug("wrote " + stringBuffer.toString());
 
         logger.debug("leaving start");
@@ -953,10 +1110,12 @@ public class ClusterHandler implements IoHandler {
     public void incomingSynchronize (IoSession ioSession) {
         state = SYNCHRONIZING;
         ioSession.write(ClusterHandler.SYNCHRONIZE);
+        setTimeOfLastActivity();
     }
 
     public void sendSynchronizeStart (IoSession ioSession) {
         ioSession.write(SYNCHRONIZE_START);
+        setTimeOfLastActivity();
     }
 
     public void sendStart(IoSession ioSession) {
@@ -965,8 +1124,58 @@ public class ClusterHandler implements IoHandler {
         stringBuffer.append(START);
         stringBuffer.append(" ");
         stringBuffer.append(Miranda.getInstance().getMyUuid());
+        stringBuffer.append(" ");
+        stringBuffer.append(Miranda.getInstance().getMyHost());
+        stringBuffer.append(" ");
+        stringBuffer.append(Miranda.getInstance().getMyPort());
 
+        state = GENERAL;
         ioSession.write(stringBuffer.toString());
+        logger.debug("wrote " + stringBuffer.toString());
+        setTimeOfLastActivity();
         logger.debug("leaving sendStart");
+    }
+
+    public void setHeartBeat () {
+        long now = System.currentTimeMillis();
+        timeOfNextHeartBeat = now + Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL);
+    }
+
+    public void setupHeartBeat() {
+        HeartBeatTimerTask heartBeatTimerTask = new HeartBeatTimerTask(this, timer);
+        long period = Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL);
+        timer.schedule(heartBeatTimerTask, period, period);
+    }
+
+    public void setTimeOfLastActivity () {
+        timeOfLastActivity = System.currentTimeMillis();
+    }
+
+    public void handleErrorStart (IoSession ioSession) {
+        logger.debug("entering handleErrorStart");
+
+        ioSession.write(ERROR);
+        setTimeOfLastActivity();
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(START);
+        stringBuffer.append(" ");
+        stringBuffer.append(Miranda.getInstance().getMyUuid());
+        ioSession.write(stringBuffer.toString());
+        logger.debug("wrote " + stringBuffer.toString());
+        setTimeOfLastActivity();
+        state = GENERAL;
+
+        logger.debug("leaving handleErrorStart");
+    }
+
+    public void handleHeartBeatStart(IoSession ioSession) {
+        logger.debug("entering handleHeartBeatStart");
+        ioSession.write(HEART_BEAT);
+        setTimeOfLastActivity();
+        logger.debug("leaving handleHeartBeatStart");
+    }
+
+    public void stopHeartBeat () {
+        timer.cancel();
     }
 }

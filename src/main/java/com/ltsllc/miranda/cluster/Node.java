@@ -279,17 +279,5 @@ public class Node {
         ioSession.write(stringBuffer.toString());
     }
 
-    /**
-     * Send a heart beat message
-     */
-    public void sendHeartBeatStart () {
-        logger.debug("entering sendHeartBeatStart");
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(ClusterHandler.HEART_BEAT);
-        stringBuffer.append(" ");
-        stringBuffer.append(ClusterHandler.START);
-        ioSession.write (stringBuffer.toString());
-        logger.debug("wrote " + stringBuffer.toString());
-        logger.debug("leaving sendHeartBeatStart");
-    }
+
 }

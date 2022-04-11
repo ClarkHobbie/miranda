@@ -107,9 +107,14 @@ public class Miranda {
     public static final String PROPERTY_DEFAULT_CLUSTER = "off";
 
     /**
-     * ?!
+     * The host we are on
      */
     public static final String PROPERTY_HOST = "host";
+
+    /**
+     * The port we are listening to for the cluster
+     */
+    public static final String PROPERTY_PORT = "port";
 
     /**
      * The name of the property to look at to decide if clustering is on or off.  If the user doesn't supply an
@@ -166,6 +171,7 @@ public class Miranda {
      * The default period to wait between heart beat start messages is 5 sec
      */
     public static final String PROPERTY_DEFAULT_PROPERTY_HEART_BEAT_INTERVAL = "5000";
+
     /**
      * The logger to use
      */
@@ -211,23 +217,30 @@ public class Miranda {
      */
     protected Set<Message> inflight = new HashSet<>();
 
+    protected String myHost;
+
+    public String getMyHost() {
+        return myHost;
+    }
+
+    public void setMyHost(String myHost) {
+        this.myHost = myHost;
+    }
+
+    protected int myPort;
+
+    public int getMyPort() {
+        return myPort;
+    }
+
+    public void setMyPort(int myPort) {
+        this.myPort = myPort;
+    }
+
     /**
      * The getOwnerFlag signifies that we need to get owner and message information from our peers
      */
     protected boolean synchronizationFlag = false;
-
-    /**
-     * The time after which we should send out heart beat start messages
-     */
-    protected long heartBeatAlarm = -1;
-
-    public long getHeartBeatAlarm() {
-        return heartBeatAlarm;
-    }
-
-    public void setHeartBeatAlarm(long heartBeatAlarm) {
-        this.heartBeatAlarm = heartBeatAlarm;
-    }
 
     public boolean getSynchronizationFlag() {
         return synchronizationFlag;
@@ -373,11 +386,6 @@ public class Miranda {
              */
             compactIfTime();
 
-            //
-            // send out heart beat start messages, if it's time to
-            //
-            heartBeatStartIfTime();
-
             /*
              * See if it is time to connect to other nodes in the cluster
              */
@@ -413,6 +421,15 @@ public class Miranda {
         event.info("Miranda starting up");
         logger.debug("Miranda starting up");
         logger.debug("Checking to see if we should recover");
+        loadProperties();
+
+        myHost = properties.getProperty(PROPERTY_HOST);
+        myPort = properties.getIntProperty(PROPERTY_PORT);
+        if (myHost == null || myPort == -1) {
+            System.err.println("host and/or port must be set in the properties file");
+            System.exit(-1);
+        }
+
         ImprovedFile messageLogfile = new ImprovedFile(properties.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
         int messageLoadLimit = properties.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
         ImprovedFile ownersFile = new ImprovedFile(properties.getProperty(Miranda.PROPERTY_OWNER_FILE));
@@ -881,17 +898,5 @@ public class Miranda {
 
         compactionTime = -1;
         MessageLog.getInstance().compact();
-    }
-
-    public void heartBeatStartIfTime () {
-        long now = System.currentTimeMillis();
-        if (heartBeatAlarm == -1) {
-            heartBeatAlarm = now + properties.getLongProperty(PROPERTY_HEART_BEAT_INTERVAL);
-        } else if (now > heartBeatAlarm) {
-            Cluster.getInstance().sendHeartBeat();
-            heartBeatAlarm = now + properties.getLongProperty(PROPERTY_HEART_BEAT_INTERVAL);
-        } else {
-            return;
-        }
     }
 }

@@ -199,6 +199,11 @@ public class Cluster {
         Cluster.randomNumberGenerator = randomNumberGenerator;
     }
 
+    public synchronized void addNode (Node node) {
+        logger.debug("adding node " + node + " to nodes");
+        nodes.add(node);
+    }
+
     /**
      * remove a node from the cluster
      * <P>
@@ -210,8 +215,7 @@ public class Cluster {
         nodes.remove(node);
     }
 
-    /*
-    */
+
 
     /**
      * Inform the cluster of this node receiving a new message
@@ -227,7 +231,7 @@ public class Cluster {
             WriteFuture future = node.getIoSession().write(contents);
             try {
                 if (!future.await(IONM_TIMEOUT, IONM_TIMEOUT_UNITS)) {
-                    logger.error("write timed out informing another node of message delivery");
+                    logger.error("write timed out informing another node of new message");
                 }
             } catch (InterruptedException e) {
                 logger.error("Interrupted during wait in informOfNewMessage", e);
@@ -292,13 +296,10 @@ public class Cluster {
 
         IoAcceptor ioAcceptor = getIoAcceptor();
         ioAcceptor.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory(Charset.forName("UTF-8"))));
-        ImprovedProperties p = Miranda.getProperties();
-        Node node = new Node(UUID.randomUUID(), p.getProperty(Miranda.PROPERTY_HOST), p.getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
 
-        ImprovedFile messages = new ImprovedFile("messages.log");
-        LoggingCache cache = new LoggingCache(messages,104857600);
-        ClusterHandler clusterHandler = new ClusterHandler(node, cache);
-
+        Node node = new Node("unknown", -1);
+        ClusterHandler clusterHandler = new ClusterHandler(node, MessageLog.getInstance().getCache());
+        node.setClusterHandler(clusterHandler);
         ioAcceptor.setHandler(clusterHandler);
 
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
@@ -330,19 +331,13 @@ public class Cluster {
         events.info("Trying to connect to other nodes");
 
         if (Miranda.getProperties().getProperty(Miranda.PROPERTY_CLUSTER).equals("off")) {
+            logger.debug("clustering is off returning");
+            events.info("Clustering is off, aborting connect");
             return;
         }
 
         ioConnector = getIoConnector();
-        ImprovedProperties p = Miranda.getProperties();
-        Node newNode = new Node(UUID.randomUUID(), p.getProperty(Miranda.PROPERTY_HOST), p.getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
-
-        ImprovedFile messages = new ImprovedFile(p.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
-        int loadLimit = p.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
-        LoggingCache cache = new LoggingCache(messages,loadLimit);
-        ClusterHandler clusterHandler = new ClusterHandler(newNode, cache);
-
-        ioConnector.setHandler(clusterHandler);
+        ioConnector.setHandler(new ListenIoHandler());
         ioConnector.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory()));
 
         for (SpecNode specNode: list) {
@@ -383,15 +378,26 @@ public class Cluster {
         boolean returnValue = true;
         logger.debug("entering connectToNode with node = " + node.getHost() + ":" + node.getPort() + ", and ioConnector = " + ioConnector);
         InetSocketAddress addrRemote = new InetSocketAddress(node.getHost(), node.getPort());
-        getIoConnector().setHandler(new ClusterHandler(node, MessageLog.getInstance().getCache()));
+
+        ClusterHandler clusterHandler = new ClusterHandler(node, MessageLog.getInstance().getCache());
+        node.setClusterHandler(clusterHandler);
+
+        getIoConnector().setHandler(clusterHandler);
         ConnectFuture future = getIoConnector().connect(addrRemote);
         future.awaitUninterruptibly();
         IoSession ioSession = null;
         try {
-            ioSession = future.getSession();
-            ioSession.getConfig().setUseReadOperation(true);
-            node.setIoSession(ioSession);
-            node.setConnected(true);
+            if (future.getException() == null) {
+                ioSession = future.getSession();
+                ioSession.getConfig().setUseReadOperation(true);
+                node.setIoSession(ioSession);
+                node.setConnected(true);
+                clusterHandler.sendStart(ioSession);
+            } else {
+                logger.debug("failed to connect to " + node.getHost() + ":" + node.getPort());
+                returnValue = false;
+                node.setConnected(false);
+            }
         } catch (RuntimeIoException e) {
             logger.error("encountered exception", e);
             returnValue = false;
@@ -414,7 +420,8 @@ public class Cluster {
      *
      * @return Whether we are connected to all the other nodes.
      */
-    public boolean reconnect () throws LtsllcException {
+    public boolean
+    reconnect () throws LtsllcException {
         logger.debug("entering reconnect");
         boolean returnValue = true;
 
@@ -460,16 +467,5 @@ public class Cluster {
             }
         }
         return returnValue;
-    }
-
-    /**
-     * Send out a heartbeat message to all nodes
-     */
-    public synchronized void sendHeartBeat () {
-        for (Node node : nodes) {
-            if (node.isConnected()) {
-                node.sendHeartBeatStart();
-            }
-        }
     }
 }
