@@ -9,6 +9,7 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
+import org.eclipse.jetty.server.Server;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -42,9 +43,9 @@ class MirandaTest extends TestSuperclass {
     public void connectToOtherNodes () throws LtsllcException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
+        miranda.setMyUuid(UUID.randomUUID());
 
         miranda.setClusterAlarm(System.currentTimeMillis());
-        miranda.connectToOtherNodes();
 
         Cluster mockCluster = Mockito.mock(Cluster.class);
         Cluster.setInstance(mockCluster);
@@ -150,26 +151,28 @@ class MirandaTest extends TestSuperclass {
         ImprovedProperties p = Miranda.getProperties();
 
         ImprovedFile messages = new ImprovedFile(p.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
+        ImprovedFile messagesBackup = new ImprovedFile(p.getProperty(Miranda.PROPERTY_MESSAGE_LOG) + ".backup");
         ImprovedFile ownersFile = new ImprovedFile(p.getProperty(Miranda.PROPERTY_OWNER_FILE));
+        ImprovedFile ownersBackup = new ImprovedFile(p.getProperty(Miranda.PROPERTY_OWNER_FILE) + ".backup");
         when(mockMessageLog.performRecover(messages, p.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT),
                 ownersFile)).thenReturn(mockMessageLog);
 
         Cluster mockCluster = mock(Cluster.class);
         Cluster.setInstance(mockCluster);
 
-        ImprovedFile events = new ImprovedFile("events.log");
+        Server mockServer = mock(Server.class);
+        miranda.setServer(mockServer);
+
         try {
             messages.touch();
             String[] args = new String[0];
 
             miranda.startUp(args);
 
-            verify(mockMessageLog, atLeastOnce()).performRecover(messages,
-                    p.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT) , ownersFile);
+            assert(miranda.getSynchronizationFlag());
         } finally {
             messages.delete();
-            events.delete();
-            miranda.getServer().stop();
+            messagesBackup.delete();
         }
     }
 
@@ -236,6 +239,10 @@ class MirandaTest extends TestSuperclass {
     public void mainLoopRunning () throws LtsllcException, IOException, InterruptedException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
+        miranda.setMyUuid(UUID.randomUUID());
+
+        Cluster.defineStatics(miranda.getMyUuid());
+
         Message message = createTestMessage(UUID.randomUUID());
         List<Message> list = new ArrayList<>();
         list.add(message);
@@ -327,21 +334,27 @@ class MirandaTest extends TestSuperclass {
     public void shouldRecover () throws LtsllcException, IOException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
-
         ImprovedProperties p = Miranda.getProperties();
+
         ImprovedFile messages = new ImprovedFile(p.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
-        messages.touch();
         ImprovedFile owners = new ImprovedFile(p.getProperty(Miranda.PROPERTY_OWNER_FILE));
+        try {
 
-        assert(Miranda.shouldRecover());
+            messages.touch();
 
-        messages.delete();
+            assert (Miranda.shouldRecover());
 
-        assert (Miranda.shouldRecover());
+            messages.delete();
 
-        owners.touch();
+            assert (!Miranda.shouldRecover());
 
-        assert (Miranda.shouldRecover());
+            owners.touch();
+
+            assert (Miranda.shouldRecover());
+        } finally {
+            messages.delete();
+            owners.delete();
+        }
     }
 
     @Test
@@ -359,7 +372,7 @@ class MirandaTest extends TestSuperclass {
 
         miranda.successfulMessage(message);
 
-        assert (MessageLog.getInstance().getLocationFor(message.getMessageID()) == -1);
+        assert (MessageLog.getInstance().getOwnerOf(message.getMessageID()) == null);
     }
 
     @Test

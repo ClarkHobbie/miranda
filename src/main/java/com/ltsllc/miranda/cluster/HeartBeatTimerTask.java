@@ -10,21 +10,22 @@ import java.util.TimerTask;
 
 public class HeartBeatTimerTask extends TimerTask {
     public static final Logger logger = LogManager.getLogger();
-    protected ClusterHandler clusterHandler = null;
+
     protected Timer timer = null;
+    protected Node node = null;
 
 
-    public HeartBeatTimerTask (ClusterHandler clusterHandler, Timer timer) {
-        this.clusterHandler = clusterHandler;
+    public HeartBeatTimerTask (Node node, Timer timer) {
+        this.node = node;
         this.timer = timer;
     }
 
-    public ClusterHandler getClusterHandler() {
-        return clusterHandler;
+    public Node getNode() {
+        return node;
     }
 
-    public void setClusterHandler(ClusterHandler clusterHandler) {
-        this.clusterHandler = clusterHandler;
+    public void setNode(Node node) {
+        this.node = node;
     }
 
     @Override
@@ -37,11 +38,11 @@ public class HeartBeatTimerTask extends TimerTask {
         long now = System.currentTimeMillis();
         long period = Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL);
 
-        if (now > clusterHandler.getTimeOfLastActivity() + period) {
-            if (clusterHandler.getNode().isConnected()) {
-                clusterHandler.getNode().getIoSession().write(ClusterHandler.HEART_BEAT_START);
+        if (now > node.getTimeOfLastActivity() + period) {
+            if (node.isConnected()) {
+                node.getIoSession().write(ClusterHandler.HEART_BEAT_START);
                 logger.debug("wrote " + ClusterHandler.HEART_BEAT_START);
-                clusterHandler.setTimeOfLastActivity();
+                node.setTimeOfLastActivity();
             } else {
                 timer.cancel();
             }

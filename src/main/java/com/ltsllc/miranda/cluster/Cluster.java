@@ -157,6 +157,22 @@ public class Cluster {
         this.ioConnector = ioConnector;
     }
 
+    public ClusterHandler getConnectorClusterHandler() {
+        return connectorClusterHandler;
+    }
+
+    public void setConnectorClusterHandler(ClusterHandler connectorClusterHandler) {
+        this.connectorClusterHandler = connectorClusterHandler;
+    }
+
+    public ClusterHandler getAcceptorClusterHandler() {
+        return acceptorClusterHandler;
+    }
+
+    public void setAcceptorClusterHandler(ClusterHandler acceptorClusterHandler) {
+        this.acceptorClusterHandler = acceptorClusterHandler;
+    }
+
     public UUID getUuid() {
         return uuid;
     }
@@ -188,6 +204,10 @@ public class Cluster {
         return randomNumberGenerator;
     }
 
+    protected ClusterHandler connectorClusterHandler = null;
+
+    protected ClusterHandler acceptorClusterHandler = null;
+
     /**
      * Set the random number generator that this node uses
      *
@@ -199,9 +219,14 @@ public class Cluster {
         Cluster.randomNumberGenerator = randomNumberGenerator;
     }
 
-    public synchronized void addNode (Node node) {
+    public synchronized void addNode (Node node, IoSession ioSession) {
         logger.debug("adding node " + node + " to nodes");
         nodes.add(node);
+        for (Node node2 : nodes) {
+            connectorClusterHandler.getIoSessionToNode().put(ioSession, node);
+            acceptorClusterHandler.getIoSessionToNode().put (ioSession, node);
+
+        }
     }
 
     /**
@@ -210,9 +235,14 @@ public class Cluster {
      *     This method does so synchronously, so it is thread safe.
      * </P>
      */
-    public synchronized void removeNode(Node node) {
+    public synchronized void removeNode(Node node, IoSession ioSession) {
         logger.debug("removing node, " + node + " from nodes");
         nodes.remove(node);
+        for (Node node2 : nodes) {
+            connectorClusterHandler.getIoSessionToNode().remove(ioSession);
+            acceptorClusterHandler.getIoSessionToNode().remove(ioSession);
+        }
+        connectorClusterHandler.getIoSessionToNode().remove(ioSession);
     }
 
 
@@ -297,9 +327,7 @@ public class Cluster {
         IoAcceptor ioAcceptor = getIoAcceptor();
         ioAcceptor.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory(Charset.forName("UTF-8"))));
 
-        Node node = new Node("unknown", -1);
-        ClusterHandler clusterHandler = new ClusterHandler(node, MessageLog.getInstance().getCache());
-        node.setClusterHandler(clusterHandler);
+        ClusterHandler clusterHandler = new ClusterHandler();
         ioAcceptor.setHandler(clusterHandler);
 
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
@@ -379,8 +407,7 @@ public class Cluster {
         logger.debug("entering connectToNode with node = " + node.getHost() + ":" + node.getPort() + ", and ioConnector = " + ioConnector);
         InetSocketAddress addrRemote = new InetSocketAddress(node.getHost(), node.getPort());
 
-        ClusterHandler clusterHandler = new ClusterHandler(node, MessageLog.getInstance().getCache());
-        node.setClusterHandler(clusterHandler);
+        ClusterHandler clusterHandler = new ClusterHandler();
 
         getIoConnector().setHandler(clusterHandler);
         ConnectFuture future = getIoConnector().connect(addrRemote);
@@ -392,7 +419,7 @@ public class Cluster {
                 ioSession.getConfig().setUseReadOperation(true);
                 node.setIoSession(ioSession);
                 node.setConnected(true);
-                clusterHandler.sendStart(ioSession);
+                node.sendStart(ioSession);
             } else {
                 logger.debug("failed to connect to " + node.getHost() + ":" + node.getPort());
                 returnValue = false;
@@ -420,8 +447,7 @@ public class Cluster {
      *
      * @return Whether we are connected to all the other nodes.
      */
-    public boolean
-    reconnect () throws LtsllcException {
+    public boolean reconnect () throws LtsllcException {
         logger.debug("entering reconnect");
         boolean returnValue = true;
 

@@ -221,4 +221,11 @@ public class LoggingMap {
     public synchronized Collection<UUID> getAllKeys () {
         return uuidToUuid.keySet();
     }
+
+    /**
+     * Get a collection of all values
+     */
+    public synchronized Collection<UUID> values () {
+        return uuidToUuid.values();
+    }
 }

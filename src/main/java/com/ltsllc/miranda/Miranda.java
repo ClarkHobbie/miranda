@@ -741,6 +741,7 @@ public class Miranda {
          */
         notifyClientOfDelivery(message);
         inflight.remove(message);
+        MessageLog.getInstance().remove(message.getMessageID());
         logger.debug("leaving successfulMessage");
     }
 

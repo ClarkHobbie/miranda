@@ -17,12 +17,10 @@ public class ListenIoHandler implements IoHandler {
         Node node = new Node("unknown", -1);
         node.setConnected(true);
 
-        ClusterHandler clusterHandler = new ClusterHandler(node, MessageLog.getInstance().getCache());
-        node.setClusterHandler(clusterHandler);
         node.setIoSession(session);
-        node.getClusterHandler().sendStart(node.getIoSession());
+        node.sendStart(node.getIoSession());
 
-        Cluster.getInstance().addNode(node);
+        Cluster.getInstance().addNode(node, node.getIoSession());
     }
 
     @Override

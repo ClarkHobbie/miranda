@@ -116,19 +116,24 @@ class ClusterTest extends TestSuperclass {
     public void informOfDelivery () throws LtsllcException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
+        miranda.setMyUuid(UUID.randomUUID());
+
+        Cluster.defineStatics(miranda.getMyUuid());
 
         Node node1 = new Node("192.168.0.12", 2020);
         IoSession mockIoSession1 = mock(IoSession.class);
         node1.setIoSession(mockIoSession1);
+        node1.setConnected(true);
         WriteFuture mockWriteFuture1 = mock(WriteFuture.class);
         when(mockIoSession1.write(any())).thenReturn(mockWriteFuture1);
 
         Node node2 = new Node( "127.0.0.1", 2020);
         IoSession mockIoSession2 = mock(IoSession.class);
+        node2.setIoSession(mockIoSession2);
+        node2.setConnected(true);
         WriteFuture mockWriteFuture2 = mock(WriteFuture.class);
         when(mockIoSession2.write(any())).thenReturn(mockWriteFuture2);
 
-        node2.setIoSession(mockIoSession2);
 
         List<Node> list = new ArrayList<>();
         list.add(node1);
@@ -293,7 +298,7 @@ class ClusterTest extends TestSuperclass {
 
         List<Node> list = new ArrayList<>();
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
-        Node node = new Node("192.168.0.3", port);
+        Node node = new Node("192.168.0.12", port);
         node.setConnected(false);
         list.add(node);
         Cluster.getInstance().setNodes(list);
@@ -301,9 +306,10 @@ class ClusterTest extends TestSuperclass {
         IoConnector mockIoConnector = mock(IoConnector.class);
         Cluster.getInstance().setIoConnector(mockIoConnector);
 
-        InetSocketAddress inetSocketAddress = new InetSocketAddress("192.168.0.3", port);
+        InetSocketAddress inetSocketAddress = new InetSocketAddress("192.168.0.12", port);
         ConnectFuture mockConnectFuture = mock(ConnectFuture.class);
         when(mockIoConnector.connect(inetSocketAddress)).thenReturn(mockConnectFuture);
+        when(mockConnectFuture.getException()).thenReturn(new Exception());
 
         IoSession mockIoSession = mock(IoSession.class);
         when(mockConnectFuture.getSession()).thenReturn(mockIoSession);
