@@ -57,7 +57,7 @@ public class NodeTest {
             node.setIoSession(mockIoSession);
 
             StringBuffer reply = new StringBuffer();
-            reply.append(ClusterHandler.BID);
+            reply.append(Node.BID);
             reply.append(" ");
             reply.append(message.getMessageID());
             reply.append(" 123");
@@ -100,7 +100,7 @@ public class NodeTest {
         IoSession mockIoSession = Mockito.mock(IoSession.class);
 
         StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(ClusterHandler.MESSAGE_DELIVERED);
+        stringBuffer.append(Node.MESSAGE_DELIVERED);
         stringBuffer.append(" ");
         stringBuffer.append(newMessage.getMessageID());
 
@@ -125,7 +125,7 @@ public class NodeTest {
         Message newMessage = createTestMessage(UUID.randomUUID());
 
         StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(ClusterHandler.NEW_MESSAGE);
+        stringBuffer.append(Node.NEW_MESSAGE);
         stringBuffer.append(" ");
         stringBuffer.append(newMessage.internalsToString());
 
@@ -147,7 +147,7 @@ public class NodeTest {
         ImprovedFile owners = new ImprovedFile("owners.log");
         MessageLog.defineStatics(messages, 1000000, owners);
         StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(ClusterHandler.AUCTION);
+        stringBuffer.append(Node.AUCTION);
         stringBuffer.append(" ");
         stringBuffer.append(node.getUuid());
 
@@ -162,7 +162,7 @@ public class NodeTest {
         Node node = new Node(UUID.randomUUID(), UUID.randomUUID(), mockIoSession);
 
         StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(ClusterHandler.AUCTION_OVER);
+        stringBuffer.append(Node.AUCTION_OVER);
 
         node.informOfAuctionEnd();
 
@@ -223,7 +223,7 @@ public class NodeTest {
         LoggingCache cache = new LoggingCache(messageLog, 104857600); // 100Meg
 
         StringBuffer strMessage = new StringBuffer();
-        strMessage.append(ClusterHandler.START);
+        strMessage.append(Node.START);
         strMessage.append(" ");
         strMessage.append(UUID.randomUUID());
         strMessage.append(" 192.168.0.12 2020");
@@ -252,7 +252,7 @@ public class NodeTest {
         node.messageReceived(mockIoSession, strMessage);
 
         assert (node.getState() == ClusterConnectionStates.GENERAL);
-        Mockito.verify(mockIoSession).write(ClusterHandler.ERROR_START);
+        Mockito.verify(mockIoSession).write(Node.ERROR_START);
     }
 
     @Test
@@ -263,7 +263,7 @@ public class NodeTest {
         Miranda.getInstance().setMyHost("192.168.0.18");
         Miranda.getInstance().setMyPort(2020);
 
-        String strMessage = ClusterHandler.HEART_BEAT_START;
+        String strMessage = Node.HEART_BEAT_START;
 
         IoSession mockIoSession = mock(IoSession.class);
         when(mockIoSession.write(new Any())).thenReturn(null);
@@ -271,7 +271,7 @@ public class NodeTest {
         node.messageReceived(mockIoSession, strMessage);
 
         assert (node.getState() == ClusterConnectionStates.GENERAL);
-        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(ClusterHandler.ERROR_START);
+        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(Node.ERROR_START);
     }
 
     @Test
@@ -280,7 +280,7 @@ public class NodeTest {
         ImprovedFile owners = new ImprovedFile("owners.log");
         MessageLog.defineStatics(messages, 1000000, owners);
         try {
-            String strMessage = ClusterHandler.BID;
+            String strMessage = Node.BID;
             strMessage += " ";
             UUID uuid = UUID.randomUUID();
             strMessage += uuid;
@@ -303,7 +303,7 @@ public class NodeTest {
 
             node.messageReceived(mockIoSession, strMessage);
 
-            strMessage = ClusterHandler.GET_MESSAGE;
+            strMessage = Node.GET_MESSAGE;
             strMessage += " ";
             strMessage += uuid;
 
@@ -337,7 +337,7 @@ public class NodeTest {
             IoSession mockIoSession = mock(IoSession.class);
             when(mockIoSession.write(new Any())).thenReturn(null);
 
-            String strMessage = ClusterHandler.BID;
+            String strMessage = Node.BID;
             strMessage += " ";
             strMessage += messageUuid;
             strMessage += " 1234";
@@ -384,14 +384,14 @@ public class NodeTest {
         when(mockCache.isInMemory(uuid)).thenReturn(true);
         when(mockCache.get(uuid)).thenReturn(message);
 
-        String strMessage = ClusterHandler.GET_MESSAGE;
+        String strMessage = Node.GET_MESSAGE;
         strMessage +=  " ";
         strMessage += uuid;
         node.messageReceived(mockIoSession, strMessage);
 
         assert(node.getState() == ClusterConnectionStates.AUCTION);
 
-        strMessage = ClusterHandler.MESSAGE;
+        strMessage = Node.MESSAGE;
         strMessage += " ID: ";
         strMessage += uuid;
         strMessage += " STATUS: HTTP://GOOGLE.COM";
@@ -420,14 +420,14 @@ public class NodeTest {
         IoSession mockIoSession = mock(IoSession.class);
         when(mockIoSession.write(new Any())).thenReturn(null);
 
-        String strMessage = ClusterHandler.GET_MESSAGE;
+        String strMessage = Node.GET_MESSAGE;
         strMessage +=  " ";
         strMessage += uuid;
 
         node.messageReceived(mockIoSession, strMessage);
 
         assert(node.getState() == ClusterConnectionStates.AUCTION);
-        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(ClusterHandler.MESSAGE_NOT_FOUND);
+        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(Node.MESSAGE_NOT_FOUND);
     }
 
     @Test
@@ -441,7 +441,7 @@ public class NodeTest {
         IoSession mockIoSession = mock(IoSession.class);
         when(mockIoSession.write(new Any())).thenReturn(null);
 
-        String strMessage = ClusterHandler.AUCTION_OVER;
+        String strMessage = Node.AUCTION_OVER;
 
         node.messageReceived(mockIoSession, strMessage);
 
@@ -465,13 +465,13 @@ public class NodeTest {
         node.setCache(mockCache);
 
         IoSession mockIoSession = mock(IoSession.class);
-        when(mockIoSession.write(ClusterHandler.AUCTION)).thenReturn(null);
+        when(mockIoSession.write(Node.AUCTION)).thenReturn(null);
 
-        String strMessage = ClusterHandler.AUCTION;
+        String strMessage = Node.AUCTION;
         node.messageReceived(mockIoSession, strMessage);
 
         assert(node.getState() == ClusterConnectionStates.AUCTION);
-        Mockito.verify(mockIoSession).write(ClusterHandler.AUCTION);
+        Mockito.verify(mockIoSession).write(Node.AUCTION);
     }
 
     @Test
@@ -489,9 +489,9 @@ public class NodeTest {
         node.setCache(mockCache);
 
         IoSession mockIoSession = mock(IoSession.class);
-        when(mockIoSession.write(ClusterHandler.AUCTION)).thenReturn(null);
+        when(mockIoSession.write(Node.AUCTION)).thenReturn(null);
 
-        String strMessage = ClusterHandler.DEAD_NODE;
+        String strMessage = Node.DEAD_NODE;
         strMessage += " ";
         strMessage += uuid;
 
@@ -516,16 +516,16 @@ public class NodeTest {
         node.setCache(mockCache);
 
         IoSession mockIoSession = mock(IoSession.class);
-        when(mockIoSession.write(ClusterHandler.MESSAGE_NOT_FOUND)).thenReturn(null);
+        when(mockIoSession.write(Node.MESSAGE_NOT_FOUND)).thenReturn(null);
 
-        String strMessage = ClusterHandler.GET_MESSAGE;
+        String strMessage = Node.GET_MESSAGE;
         strMessage += " ";
         strMessage += uuid;
 
         node.messageReceived(mockIoSession, strMessage);
 
         assert(node.getState() == ClusterConnectionStates.GENERAL);
-        Mockito.verify(mockIoSession).write(ClusterHandler.MESSAGE_NOT_FOUND);
+        Mockito.verify(mockIoSession).write(Node.MESSAGE_NOT_FOUND);
     }
 
     @Test
@@ -548,9 +548,9 @@ public class NodeTest {
         node.setCache(mockCache);
 
         IoSession mockIoSession = mock(IoSession.class);
-        when(mockIoSession.write(ClusterHandler.AUCTION)).thenReturn(null);
+        when(mockIoSession.write(Node.AUCTION)).thenReturn(null);
 
-        String strMessage = ClusterHandler.GET_MESSAGE;
+        String strMessage = Node.GET_MESSAGE;
         strMessage += " ";
         strMessage += uuid;
 
@@ -569,12 +569,12 @@ public class NodeTest {
         node.setState(ClusterConnectionStates.GENERAL);
 
         IoSession mockIoSession = mock(IoSession.class);
-        when(mockIoSession.write(ClusterHandler.HEART_BEAT)).thenReturn(null);
+        when(mockIoSession.write(Node.HEART_BEAT)).thenReturn(null);
 
-        node.messageReceived(mockIoSession, ClusterHandler.HEART_BEAT);
+        node.messageReceived(mockIoSession, Node.HEART_BEAT);
 
         assert(node.getState() == ClusterConnectionStates.GENERAL);
-        Mockito.verify(mockIoSession,atMost(0)).write(ClusterHandler.HEART_BEAT);
+        Mockito.verify(mockIoSession,atMost(0)).write(Node.HEART_BEAT);
     }
 
     @Test
@@ -593,7 +593,7 @@ public class NodeTest {
         when(mockCache.contains(uuid)).thenReturn(true);
         when(mockCache.isOnline(uuid)).thenReturn(true);
 
-        String strMessage = ClusterHandler.MESSAGE_DELIVERED;
+        String strMessage = Node.MESSAGE_DELIVERED;
         strMessage += " ";
         strMessage += uuid;
 
@@ -612,7 +612,7 @@ public class NodeTest {
         MessageLog.setInstance(mockMessageLog);
 
         StringBuffer strMessage = new StringBuffer();
-        strMessage.append(ClusterHandler.NEW_MESSAGE);
+        strMessage.append(Node.NEW_MESSAGE);
         UUID uuid = UUID.fromString("123e4567-e89b-42d3-a456-556642440000");
         strMessage.append(" ");
         Message message = createTestMessage(uuid);
@@ -649,7 +649,7 @@ public class NodeTest {
 
     @Test
     public void testGeneralBid () throws LtsllcException, IOException {
-        String strMessage = ClusterHandler.BID;
+        String strMessage = Node.BID;
         UUID uuid = UUID.fromString("123e4567-e89b-42d3-a456-556642440000");
         UUID partnerID = UUID.randomUUID();
         strMessage += " ";
@@ -673,7 +673,7 @@ public class NodeTest {
         verify(mockIoSession, times(2)).write(valueCaptor.capture());
 
         assert(node.getState() == ClusterConnectionStates.GENERAL);
-        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(ClusterHandler.ERROR_START);
+        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(Node.ERROR_START);
     }
 
     @Test
@@ -702,7 +702,7 @@ public class NodeTest {
         Cluster.defineStatics(UUID.randomUUID());
         Cluster.getInstance().setIoConnector(new NioSocketConnector());
         Cluster.getInstance().setIoAcceptor(new NioSocketAcceptor());
-        Cluster.getInstance().setConnectorClusterHandler(new ClusterHandler());
+        Cluster.getInstance().setClusterHandler(new ClusterHandler());
         IoSession mockIoSession = mock(IoSession.class);
         List<Node> nodeList = new ArrayList<>();
         Node node = new Node(UUID.randomUUID(), "localhost", 2020);
@@ -729,7 +729,7 @@ public class NodeTest {
         node.exceptionCaught(mockIoSession, new Exception("Exception"));
 
         assert (node.getState() == ClusterConnectionStates.GENERAL);
-        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(ClusterHandler.ERROR_START);
+        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(Node.ERROR_START);
     }
 
     @Test
@@ -741,7 +741,7 @@ public class NodeTest {
             UUID messageUuid = UUID.randomUUID();
             UUID ourUuid = UUID.randomUUID();
 
-            String strMessage = ClusterHandler.BID;
+            String strMessage = Node.BID;
             strMessage += " ";
             strMessage += messageUuid;
             strMessage += " ";
@@ -779,7 +779,7 @@ public class NodeTest {
     @Test
     public void handleGetMessage () throws IOException, LtsllcException {
         UUID messageUuid = UUID.randomUUID();
-        String strMessage = ClusterHandler.GET_MESSAGE;
+        String strMessage = Node.GET_MESSAGE;
         strMessage += " ";
         strMessage += messageUuid;
 
@@ -806,11 +806,11 @@ public class NodeTest {
 
         node.setCache(mockMessageCache);
 
-        strMessage = ClusterHandler.GET_MESSAGE;
+        strMessage = Node.GET_MESSAGE;
         strMessage += " ";
         strMessage += messageUuid;
 
-        String replyMessage = ClusterHandler.MESSAGE_NOT_FOUND;
+        String replyMessage = Node.MESSAGE_NOT_FOUND;
 
         node.handleGetMessage(strMessage, mockIoSession);
 
@@ -826,7 +826,7 @@ public class NodeTest {
         UUID messageId = UUID.randomUUID();
         Message testMessage = createTestMessage(messageId);
 
-        String strMessage = ClusterHandler.GET_MESSAGE;
+        String strMessage = Node.GET_MESSAGE;
         strMessage += " ";
         strMessage += messageId;
 
@@ -847,7 +847,7 @@ public class NodeTest {
         when(mockMessageCache.contains(messageId)).thenReturn(false);
         node.setCache(mockMessageCache);
 
-        replyMessage = ClusterHandler.MESSAGE_NOT_FOUND;
+        replyMessage = Node.MESSAGE_NOT_FOUND;
 
         node.handleGetMessageAuction(strMessage, mockIoSession);
 
@@ -891,7 +891,7 @@ public class NodeTest {
         Message message = createTestMessage(UUID.randomUUID());
 
         StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(ClusterHandler.MESSAGE_DELIVERED);
+        stringBuffer.append(Node.MESSAGE_DELIVERED);
         stringBuffer.append(" ");
         stringBuffer.append(message.getMessageID());
 
@@ -922,7 +922,7 @@ public class NodeTest {
         LoggingCache mockMessageCache = mock(LoggingCache.class);
         node.setCache(mockMessageCache);
 
-        stringBuffer.append(ClusterHandler.NEW_MESSAGE);
+        stringBuffer.append(Node.NEW_MESSAGE);
         stringBuffer.append(" ");
         stringBuffer.append(message.longToString());
 
@@ -945,7 +945,7 @@ public class NodeTest {
         UUID partnerID = UUID.randomUUID();
 
         StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(ClusterHandler.START);
+        stringBuffer.append(Node.START);
         stringBuffer.append(" ");
         stringBuffer.append(partnerID);
         stringBuffer.append(" ");
@@ -955,7 +955,7 @@ public class NodeTest {
         when(mockIoSession.getConfig()).thenReturn(mockIoSessionConfig);
 
         StringBuffer reply = new StringBuffer();
-        reply.append(ClusterHandler.START);
+        reply.append(Node.START);
         reply.append(" ");
         reply.append(node.getUuid());
 
@@ -1030,7 +1030,7 @@ public class NodeTest {
         miranda.setMyPort(2020);
 
         StringBuffer message = new StringBuffer();
-        message.append(ClusterHandler.ERROR);
+        message.append(Node.ERROR);
 
         IoSession mockIoSession = mock(IoSession.class);
 
@@ -1046,7 +1046,7 @@ public class NodeTest {
 
         node.handleError(mockIoSession);
 
-        verify(mockIoSession, atLeastOnce()).write(ClusterHandler.ERROR_START);
+        verify(mockIoSession, atLeastOnce()).write(Node.ERROR_START);
         assert(node.getState() == ClusterConnectionStates.GENERAL);
     }
 
@@ -1076,6 +1076,7 @@ public class NodeTest {
 
             Node node = new Node("localhost", 2020);
             node.setConnected(true);
+            node.setupHeartBeat();
             node.setIoSession(mockIoSession);
 
             node.handleSendOwners(mockIoSession);
@@ -1087,7 +1088,7 @@ public class NodeTest {
             List<String> list = valueCaptor.getAllValues();
             assert ("OWNER 00000000-0000-0000-0000-000000000001 00000000-0000-0000-0000-000000000001 ".equals(list.get(0)));
             assert ("OWNER 00000000-0000-0000-0000-000000000002 00000000-0000-0000-0000-000000000001 ".equals(list.get(1)));
-            assert (ClusterHandler.OWNERS_END.equals(list.get(2)));
+            assert (Node.OWNERS_END.equals(list.get(2)));
         } finally {
             if (messages.exists()) {
                 messages.delete();
@@ -1109,7 +1110,7 @@ public class NodeTest {
                     "http://localhost:8080 CONTENTS: 010203 ";
             String string2 = "MESSAGE ID: 00000000-0000-0000-0000-000000000002 STATUS: http://localhost:8080 DELIVERY: " +
                     "http://localhost:8080 CONTENTS: 010203 ";
-            String string3 = ClusterHandler.MESSAGES_END;
+            String string3 = Node.MESSAGES_END;
 
             Miranda miranda = new Miranda();
             miranda.loadProperties();

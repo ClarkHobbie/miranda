@@ -145,6 +145,19 @@ public class Cluster {
         this.ioAcceptor = ioAcceptor;
     }
 
+    /**
+     * The IoHandler for the acceptor and the connector
+     */
+    protected ClusterHandler clusterHandler;
+
+    public ClusterHandler getClusterHandler() {
+        return clusterHandler;
+    }
+
+    public void setClusterHandler(ClusterHandler clusterHandler) {
+        this.clusterHandler = clusterHandler;
+    }
+
     public IoConnector getIoConnector() {
         if (ioConnector == null) {
             ioConnector = new NioSocketConnector();
@@ -155,22 +168,6 @@ public class Cluster {
 
     public void setIoConnector(IoConnector ioConnector) {
         this.ioConnector = ioConnector;
-    }
-
-    public ClusterHandler getConnectorClusterHandler() {
-        return connectorClusterHandler;
-    }
-
-    public void setConnectorClusterHandler(ClusterHandler connectorClusterHandler) {
-        this.connectorClusterHandler = connectorClusterHandler;
-    }
-
-    public ClusterHandler getAcceptorClusterHandler() {
-        return acceptorClusterHandler;
-    }
-
-    public void setAcceptorClusterHandler(ClusterHandler acceptorClusterHandler) {
-        this.acceptorClusterHandler = acceptorClusterHandler;
     }
 
     public UUID getUuid() {
@@ -190,6 +187,11 @@ public class Cluster {
     }
 
     public Cluster() {
+        clusterHandler = new ClusterHandler();
+        ioConnector = new NioSocketConnector();
+        ioConnector.setHandler(clusterHandler);
+        ioAcceptor = new NioSocketAcceptor();
+        ioAcceptor.setHandler(clusterHandler);
     }
 
     public synchronized List<Node> getNodes() {
@@ -204,10 +206,6 @@ public class Cluster {
         return randomNumberGenerator;
     }
 
-    protected ClusterHandler connectorClusterHandler = null;
-
-    protected ClusterHandler acceptorClusterHandler = null;
-
     /**
      * Set the random number generator that this node uses
      *
@@ -221,11 +219,24 @@ public class Cluster {
 
     public synchronized void addNode (Node node, IoSession ioSession) {
         logger.debug("adding node " + node + " to nodes");
-        nodes.add(node);
+        boolean alreadyPresent = false;
         for (Node node2 : nodes) {
-            connectorClusterHandler.getIoSessionToNode().put(ioSession, node);
-            acceptorClusterHandler.getIoSessionToNode().put (ioSession, node);
+            if (node2.getHost().equalsIgnoreCase(node.getHost()) &&
+                    (node2.getPort() == node.getPort()) ) {
+                alreadyPresent = true;
+                logger.debug("node already present discarding");
+                if (node.isConnected()) {
+                    node2.setIoSession(node.getIoSession());
+                }
+            }
+        }
+        if (!alreadyPresent) {
+            nodes.add(node);
+        }
 
+        for (Node node2 : nodes) {
+            clusterHandler.getIoSessionToNode().put(ioSession, node);
+            clusterHandler.getIoSessionToNode().put(ioSession, node);
         }
     }
 
@@ -239,10 +250,8 @@ public class Cluster {
         logger.debug("removing node, " + node + " from nodes");
         nodes.remove(node);
         for (Node node2 : nodes) {
-            connectorClusterHandler.getIoSessionToNode().remove(ioSession);
-            acceptorClusterHandler.getIoSessionToNode().remove(ioSession);
+            clusterHandler.getIoSessionToNode().remove(ioSession);
         }
-        connectorClusterHandler.getIoSessionToNode().remove(ioSession);
     }
 
 
@@ -327,9 +336,6 @@ public class Cluster {
         IoAcceptor ioAcceptor = getIoAcceptor();
         ioAcceptor.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory(Charset.forName("UTF-8"))));
 
-        ClusterHandler clusterHandler = new ClusterHandler();
-        ioAcceptor.setHandler(clusterHandler);
-
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
 
         SocketAddress socketAddress = new InetSocketAddress(port);
@@ -365,12 +371,10 @@ public class Cluster {
         }
 
         ioConnector = getIoConnector();
-        ioConnector.setHandler(new ListenIoHandler());
         ioConnector.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory()));
 
         for (SpecNode specNode: list) {
             Node node = new Node(specNode.getHost(), specNode.getPort());
-            node.setConnected(false);
             nodes.add(node);
         }
 
@@ -379,7 +383,7 @@ public class Cluster {
                 continue;
             }
 
-            node.setConnected(connectToNode(node,ioConnector));
+            connectToNode(node,ioConnector);
         }
 
         boolean tempAllNodesFailed = false;
@@ -407,9 +411,6 @@ public class Cluster {
         logger.debug("entering connectToNode with node = " + node.getHost() + ":" + node.getPort() + ", and ioConnector = " + ioConnector);
         InetSocketAddress addrRemote = new InetSocketAddress(node.getHost(), node.getPort());
 
-        ClusterHandler clusterHandler = new ClusterHandler();
-
-        getIoConnector().setHandler(clusterHandler);
         ConnectFuture future = getIoConnector().connect(addrRemote);
         future.awaitUninterruptibly();
         IoSession ioSession = null;
@@ -419,11 +420,16 @@ public class Cluster {
                 ioSession.getConfig().setUseReadOperation(true);
                 node.setIoSession(ioSession);
                 node.setConnected(true);
+                node.setupHeartBeat();
                 node.sendStart(ioSession);
+                clusterHandler.getIoSessionToNode().put(ioSession, node);
+
             } else {
                 logger.debug("failed to connect to " + node.getHost() + ":" + node.getPort());
                 returnValue = false;
                 node.setConnected(false);
+                node.stopHeartBeat();
+                Miranda.getInstance().setClusterAlarm(System.currentTimeMillis());
             }
         } catch (RuntimeIoException e) {
             logger.error("encountered exception", e);
@@ -447,7 +453,7 @@ public class Cluster {
      *
      * @return Whether we are connected to all the other nodes.
      */
-    public boolean reconnect () throws LtsllcException {
+    public synchronized boolean reconnect () throws LtsllcException {
         logger.debug("entering reconnect");
         boolean returnValue = true;
 
@@ -462,10 +468,7 @@ public class Cluster {
 
         for (Node node : nodes) {
             if (!node.isConnected()) {
-                if (connectToNode(node,ioConnector)) {
-                    node.setConnected(true);
-                } else {
-                    node.setConnected(false);
+                if (!connectToNode(node,ioConnector)) {
                     Miranda.getInstance().setClusterAlarm(System.currentTimeMillis() + Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_RETRY));
                     returnValue = false;
                 }

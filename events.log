@@ -46,3 +46,209 @@
 21:17:26.788 [main] INFO  events - message log, messages.log, exists
 21:17:26.789 [main] INFO  events - owner log, owners.log, exists
 21:17:26.839 [main] INFO  events - delivered e6d35fd1-bb53-4a4a-b479-d36f01a1c30a
+06:13:22.330 [main] INFO  events - Miranda starting up
+06:13:22.497 [main] INFO  events - Trying to connect to other nodes
+06:13:40.401 [main] INFO  events - connected to 192.168.0.12:2020
+06:19:59.255 [main] INFO  events - Miranda starting up
+06:19:59.417 [main] INFO  events - Trying to connect to other nodes
+06:30:12.107 [main] INFO  events - Miranda starting up
+06:30:12.273 [main] INFO  events - Trying to connect to other nodes
+06:30:25.687 [main] INFO  events - connected to 192.168.0.12:2020
+11:57:05.000 [main] INFO  events - Miranda starting up
+11:57:05.159 [main] INFO  events - Trying to connect to other nodes
+11:57:05.202 [main] INFO  events - connected to 192.168.0.12:2020
+12:01:45.254 [main] INFO  events - Miranda starting up
+12:01:45.415 [main] INFO  events - Trying to connect to other nodes
+12:01:52.037 [main] INFO  events - connected to 192.168.0.12:2020
+12:11:35.342 [main] INFO  events - Miranda starting up
+12:11:35.501 [main] INFO  events - Trying to connect to other nodes
+12:28:13.558 [main] INFO  events - Miranda starting up
+12:28:13.714 [main] INFO  events - Trying to connect to other nodes
+12:28:51.628 [main] INFO  events - Miranda starting up
+12:28:51.788 [main] INFO  events - Trying to connect to other nodes
+14:06:00.942 [main] INFO  events - Miranda starting up
+14:06:01.108 [main] INFO  events - Trying to connect to other nodes
+14:09:39.398 [main] INFO  events - Miranda starting up
+14:09:39.572 [main] INFO  events - Trying to connect to other nodes
+14:11:29.684 [main] INFO  events - Miranda starting up
+14:11:29.850 [main] INFO  events - Trying to connect to other nodes
+14:51:57.872 [main] INFO  events - Miranda starting up
+14:51:58.037 [main] INFO  events - Trying to connect to other nodes
+14:56:33.259 [main] INFO  events - Miranda starting up
+14:56:33.419 [main] INFO  events - Trying to connect to other nodes
+15:13:09.605 [main] INFO  events - Miranda starting up
+15:13:09.766 [main] INFO  events - Trying to connect to other nodes
+15:13:44.330 [main] INFO  events - connected to 192.168.0.12:2020
+17:15:46.110 [main] INFO  events - Miranda starting up
+17:15:46.275 [main] INFO  events - Trying to connect to other nodes
+17:16:11.114 [main] INFO  events - connected to 192.168.0.12:2020
+11:48:01.614 [main] INFO  events - Miranda starting up
+11:48:01.777 [main] INFO  events - Trying to connect to other nodes
+11:54:50.372 [main] INFO  events - Miranda starting up
+11:54:50.531 [main] INFO  events - Trying to connect to other nodes
+11:54:50.580 [main] INFO  events - connected to 192.168.0.12:2020
+12:16:37.676 [main] INFO  events - Miranda starting up
+12:16:37.927 [main] INFO  events - Trying to connect to other nodes
+12:16:38.040 [main] INFO  events - connected to 192.168.0.12:2020
+12:19:21.486 [main] INFO  events - Miranda starting up
+12:19:21.654 [main] INFO  events - Trying to connect to other nodes
+12:22:48.907 [main] INFO  events - Miranda starting up
+12:22:49.074 [main] INFO  events - Trying to connect to other nodes
+12:25:32.146 [main] INFO  events - connected to 192.168.0.12:2020
+12:27:17.124 [main] INFO  events - Miranda starting up
+12:27:17.291 [main] INFO  events - Trying to connect to other nodes
+12:29:31.435 [main] INFO  events - connected to 192.168.0.12:2020
+12:30:15.697 [main] INFO  events - Miranda starting up
+12:30:15.867 [main] INFO  events - Trying to connect to other nodes
+12:30:19.437 [main] INFO  events - connected to 192.168.0.12:2020
+12:31:16.709 [main] INFO  events - Miranda starting up
+12:31:16.868 [main] INFO  events - Trying to connect to other nodes
+12:32:17.597 [main] INFO  events - connected to 192.168.0.12:2020
+12:38:06.861 [main] INFO  events - Miranda starting up
+12:38:07.057 [main] INFO  events - Trying to connect to other nodes
+12:38:20.257 [main] INFO  events - connected to 192.168.0.12:2020
+12:38:33.570 [main] INFO  events - Miranda starting up
+12:38:33.742 [main] INFO  events - Trying to connect to other nodes
+12:39:34.259 [main] INFO  events - connected to 192.168.0.12:2020
+13:14:00.256 [main] INFO  events - Miranda starting up
+13:14:00.427 [main] INFO  events - Trying to connect to other nodes
+13:15:14.669 [main] INFO  events - connected to 192.168.0.12:2020
+15:04:16.936 [main] INFO  events - Miranda starting up
+15:04:17.105 [main] INFO  events - Trying to connect to other nodes
+15:04:56.874 [main] INFO  events - connected to 192.168.0.12:2020
+15:17:21.026 [main] INFO  events - Miranda starting up
+15:17:21.211 [main] INFO  events - Trying to connect to other nodes
+15:17:59.032 [main] INFO  events - connected to 192.168.0.12:2020
+18:44:07.793 [main] INFO  events - Miranda starting up
+18:44:07.991 [main] INFO  events - Trying to connect to other nodes
+18:44:30.880 [main] INFO  events - connected to 192.168.0.12:2020
+18:47:09.794 [main] INFO  events - Miranda starting up
+18:47:09.983 [main] INFO  events - Trying to connect to other nodes
+18:47:36.497 [main] INFO  events - connected to 192.168.0.12:2020
+18:52:43.333 [main] INFO  events - Miranda starting up
+18:52:43.523 [main] INFO  events - Trying to connect to other nodes
+18:52:52.066 [main] INFO  events - connected to 192.168.0.12:2020
+18:54:58.382 [main] INFO  events - Miranda starting up
+18:54:58.567 [main] INFO  events - Trying to connect to other nodes
+18:54:58.588 [main] INFO  events - connected to 192.168.0.12:2020
+19:04:23.063 [main] INFO  events - Miranda starting up
+19:04:23.243 [main] INFO  events - Trying to connect to other nodes
+19:04:23.264 [main] INFO  events - connected to 192.168.0.12:2020
+19:05:54.609 [main] INFO  events - Miranda starting up
+19:05:54.792 [main] INFO  events - Trying to connect to other nodes
+19:05:54.812 [main] INFO  events - connected to 192.168.0.12:2020
+19:07:23.338 [main] INFO  events - Miranda starting up
+19:07:23.531 [main] INFO  events - Trying to connect to other nodes
+19:08:21.144 [main] INFO  events - Miranda starting up
+19:08:21.326 [main] INFO  events - Trying to connect to other nodes
+19:08:21.347 [main] INFO  events - connected to 192.168.0.12:2020
+19:09:26.766 [main] INFO  events - Miranda starting up
+19:09:26.950 [main] INFO  events - Trying to connect to other nodes
+19:09:42.481 [main] INFO  events - connected to 192.168.0.12:2020
+19:09:52.590 [main] INFO  events - Miranda starting up
+19:09:52.775 [main] INFO  events - Trying to connect to other nodes
+19:09:52.796 [main] INFO  events - connected to 192.168.0.12:2020
+19:17:55.495 [main] INFO  events - Miranda starting up
+19:17:55.680 [main] INFO  events - Trying to connect to other nodes
+19:17:55.702 [main] INFO  events - connected to 192.168.0.12:2020
+19:54:47.235 [main] INFO  events - Miranda starting up
+19:54:47.417 [main] INFO  events - Trying to connect to other nodes
+19:54:54.465 [main] INFO  events - connected to 192.168.0.12:2020
+20:05:49.389 [main] INFO  events - Miranda starting up
+20:05:49.574 [main] INFO  events - Trying to connect to other nodes
+20:05:49.595 [main] INFO  events - connected to 192.168.0.12:2020
+20:07:54.495 [main] INFO  events - Miranda starting up
+20:07:54.685 [main] INFO  events - Trying to connect to other nodes
+20:07:54.705 [main] INFO  events - connected to 192.168.0.12:2020
+20:10:55.345 [main] INFO  events - Miranda starting up
+20:10:55.525 [main] INFO  events - Trying to connect to other nodes
+20:11:04.085 [main] INFO  events - connected to 192.168.0.12:2020
+20:15:14.924 [main] INFO  events - Miranda starting up
+20:15:15.115 [main] INFO  events - Trying to connect to other nodes
+20:15:22.736 [main] INFO  events - connected to 192.168.0.12:2020
+20:16:34.019 [main] INFO  events - Miranda starting up
+20:16:34.210 [main] INFO  events - Trying to connect to other nodes
+20:16:50.736 [main] INFO  events - connected to 192.168.0.12:2020
+20:29:46.812 [main] INFO  events - Miranda starting up
+20:29:47.005 [main] INFO  events - Trying to connect to other nodes
+20:30:01.993 [main] INFO  events - connected to 192.168.0.12:2020
+20:30:26.994 [main] INFO  events - Miranda starting up
+20:30:27.182 [main] INFO  events - Trying to connect to other nodes
+20:32:04.277 [main] INFO  events - connected to 192.168.0.12:2020
+20:32:16.936 [main] INFO  events - Miranda starting up
+20:32:17.119 [main] INFO  events - Trying to connect to other nodes
+20:32:44.976 [main] INFO  events - connected to 192.168.0.12:2020
+20:36:21.623 [main] INFO  events - Miranda starting up
+20:36:21.806 [main] INFO  events - Trying to connect to other nodes
+20:36:37.999 [main] INFO  events - connected to 192.168.0.12:2020
+20:37:31.809 [main] INFO  events - Miranda starting up
+20:37:31.993 [main] INFO  events - Trying to connect to other nodes
+20:40:02.091 [main] INFO  events - connected to 192.168.0.12:2020
+21:05:01.067 [main] INFO  events - Miranda starting up
+21:05:01.252 [main] INFO  events - Trying to connect to other nodes
+21:05:47.045 [main] INFO  events - connected to 192.168.0.12:2020
+21:05:52.394 [main] INFO  events - Miranda starting up
+21:05:52.582 [main] INFO  events - Trying to connect to other nodes
+21:06:55.201 [main] INFO  events - connected to 192.168.0.12:2020
+21:08:14.798 [main] INFO  events - Miranda starting up
+21:08:14.979 [main] INFO  events - Trying to connect to other nodes
+21:08:50.889 [main] INFO  events - connected to 192.168.0.12:2020
+00:16:37.545 [main] INFO  events - Miranda starting up
+00:16:37.735 [main] INFO  events - Trying to connect to other nodes
+00:17:08.506 [main] INFO  events - connected to 192.168.0.12:2020
+00:18:10.886 [main] INFO  events - Miranda starting up
+00:18:11.068 [main] INFO  events - Trying to connect to other nodes
+00:18:23.561 [main] INFO  events - connected to 192.168.0.12:2020
+03:58:18.553 [main] INFO  events - Miranda starting up
+03:58:18.743 [main] INFO  events - Trying to connect to other nodes
+03:58:33.893 [main] INFO  events - connected to 192.168.0.12:2020
+03:59:10.883 [main] INFO  events - Miranda starting up
+03:59:11.070 [main] INFO  events - Trying to connect to other nodes
+03:59:59.284 [main] INFO  events - connected to 192.168.0.12:2020
+04:00:59.176 [main] INFO  events - Miranda starting up
+04:00:59.356 [main] INFO  events - Trying to connect to other nodes
+04:01:05.935 [main] INFO  events - connected to 192.168.0.12:2020
+04:03:04.802 [main] INFO  events - Miranda starting up
+04:03:04.984 [main] INFO  events - Trying to connect to other nodes
+04:03:12.423 [main] INFO  events - connected to 192.168.0.12:2020
+04:14:30.326 [main] INFO  events - Miranda starting up
+04:14:30.507 [main] INFO  events - Trying to connect to other nodes
+04:14:37.174 [main] INFO  events - connected to 192.168.0.12:2020
+04:31:18.052 [main] INFO  events - Miranda starting up
+04:31:18.235 [main] INFO  events - Trying to connect to other nodes
+04:31:18.254 [main] INFO  events - connected to 192.168.0.12:2020
+04:34:21.511 [main] INFO  events - Miranda starting up
+04:35:00.626 [main] INFO  events - Miranda starting up
+04:35:00.810 [main] INFO  events - Trying to connect to other nodes
+04:35:00.827 [main] INFO  events - connected to 192.168.0.12:2020
+04:37:12.936 [main] INFO  events - Miranda starting up
+04:37:13.119 [main] INFO  events - Trying to connect to other nodes
+04:37:13.137 [main] INFO  events - connected to 192.168.0.12:2020
+04:51:47.543 [main] INFO  events - Miranda starting up
+04:51:47.730 [main] INFO  events - Trying to connect to other nodes
+04:54:16.011 [main] INFO  events - Miranda starting up
+04:54:16.193 [main] INFO  events - Trying to connect to other nodes
+04:58:40.797 [main] INFO  events - Miranda starting up
+04:58:40.984 [main] INFO  events - Trying to connect to other nodes
+04:58:41.003 [main] INFO  events - connected to 192.168.0.12:2020
+05:01:34.000 [main] INFO  events - Miranda starting up
+05:01:34.205 [main] INFO  events - Trying to connect to other nodes
+05:01:34.225 [main] INFO  events - connected to 192.168.0.12:2020
+07:14:16.664 [main] INFO  events - Miranda starting up
+07:14:16.941 [main] INFO  events - Trying to connect to other nodes
+07:14:16.968 [main] INFO  events - connected to 192.168.0.12:2020
+07:27:58.688 [main] INFO  events - Miranda starting up
+07:27:59.022 [main] INFO  events - Trying to connect to other nodes
+07:27:59.048 [main] INFO  events - connected to 192.168.0.12:2020
+07:30:49.050 [main] INFO  events - Miranda starting up
+07:30:49.294 [main] INFO  events - Trying to connect to other nodes
+07:30:49.316 [main] INFO  events - connected to 192.168.0.12:2020
+07:31:34.780 [main] INFO  events - Miranda starting up
+07:31:34.986 [main] INFO  events - Trying to connect to other nodes
+07:31:35.021 [main] INFO  events - connected to 192.168.0.12:2020
+07:41:32.164 [main] INFO  events - Miranda starting up
+07:41:32.417 [main] INFO  events - Trying to connect to other nodes
+07:41:32.450 [main] INFO  events - connected to 192.168.0.12:2020
+08:04:17.571 [main] INFO  events - Miranda starting up
+08:04:17.764 [main] INFO  events - Trying to connect to other nodes
+08:04:17.784 [main] INFO  events - connected to 192.168.0.12:2020

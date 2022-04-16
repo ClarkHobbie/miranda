@@ -23,45 +23,20 @@ import java.util.*;
 import static com.ltsllc.miranda.cluster.ClusterConnectionStates.*;
 
 /**
- * A connection to another node in the cluster
+ * The IoHandler for an IoSession.
  *
- * <p>
- * This class implements the Cluster protocol (see the package documentation).
+ * <P>
+ *     This classes main responsibility is to select the proper Node for an event, and then to pass the event on to that
+ *     Node.  To accomplish this the class maintains a mapping from IoSessions to their respective Node, that must be
+ *     maintained by others.
  * </P>
+ *
+ * @see Node
+ * @see IoHandler
  */
 public class ClusterHandler implements IoHandler {
     public static final Logger logger = LogManager.getLogger();
     public static final Logger events = LogManager.getLogger("events");
-
-    /*
-     * message name constants
-     */
-    public static final String AUCTION = "AUCTION";
-    public static final String AUCTION_OVER = "AUCTION OVER";
-    public static final String BID = "BID";
-    public static final String DEAD_NODE = "DEAD NODE";
-    public static final String ERROR = "ERROR";
-    public static final String ERROR_START = "ERROR_START";
-    public static final String GET_MESSAGE = "GET MESSAGE";
-    public static final String HEART_BEAT_START = "HEART BEAT START";
-    public static final String HEART_BEAT = "HEART BEAT";
-    public static final String MESSAGE = "MESSAGE";
-    public static final String MESSAGES = "MESSAGES";
-    public static final String MESSAGES_END = "MESSAGES END";
-    public static final String MESSAGE_DELIVERED = "MESSAGE DELIVERED";
-    public static final String MESSAGE_NOT_FOUND = "MESSAGE NOT FOUND";
-    public static final String NEW_MESSAGE = "MESSAGE CREATED";
-    public static final String NEW_NODE = "NEW NODE";
-    public static final String NEW_NODE_CONFIRMED = "NEW NODE CONFIRMED";
-    public static final String NEW_NODE_OVER = "NEW NODE OVER";
-    public static final String OWNER = "OWNER";
-    public static final String OWNERS = "OWNERS";
-    public static final String OWNERS_END = "OWNERS END";
-    public static final String START = "START";
-    public static final String SYNCHRONIZE = "SYNCHRONIZE";
-    public static final String SYNCHRONIZE_START = "SYNCHRONIZE START";
-    public static final String TIMEOUT = "TIMEOUT";
-
 
 
     protected Map<IoSession, Node> ioSessionToNode = new HashMap<>();
@@ -75,23 +50,56 @@ public class ClusterHandler implements IoHandler {
     }
 
 
-    public ClusterHandler() {
-    }
+    public ClusterHandler() {}
 
+    /**
+     * Ignore the sessionCreated event
+     *
+     * @param session The new session
+     */
     @Override
     public void sessionCreated(IoSession session) {
     }
 
+    /**
+     * Pass the sessionOpened event onto the node
+     * <P>
+     *    The interesting part of the method is the is when a node is trying to connect to this node.  In that case, a
+     *    Node does not exist for the connecting node so the method creates a new one.
+     * </P>
+     *
+     * @param ioSession
+     * @throws LtsllcException
+     */
     @Override
     public void sessionOpened(IoSession ioSession) throws LtsllcException {
         Node node = ioSessionToNode.get(ioSession);
+
+        //
+        // This is a new connection add it to the cluster
+        //
         if (node == null) {
             node = new Node("Unknown", -1);
+            node.setConnected(true);
+            node.setupHeartBeat();
+            node.setIoSession(ioSession);
+
+            Cluster.getInstance().addNode(node, ioSession);
         }
 
         node.sessionOpened(ioSession);
     }
 
+    /**
+     * The session is closing --- pass the event along to the Node
+     *
+     * <P>
+     *     If no mapping exists for this IoSession then this represents an error - throw an exception.
+     * </P>
+     *
+     * @param ioSession The closing IoSession.
+     * @throws LtsllcException If no mapping exists for the session
+     */
     @Override
     public void sessionClosed(IoSession ioSession) throws LtsllcException {
         Node node = ioSessionToNode.get(ioSession);
@@ -102,17 +110,22 @@ public class ClusterHandler implements IoHandler {
         node.sessionClosed(ioSession);
     }
 
+    /**
+     * Ignore the sessionIdle event.
+     *
+     * @param session The session
+     * @param status The idle status
+     */
     @Override
     public void sessionIdle(IoSession session, IdleStatus status) {
     }
 
     /**
      * An exception occurred in this ClusterHandler
-     * <p>
-     * The response to this happening is to send an error to the other node and to return to the start state.
      *
      * @param ioSession The session where this occurred
      * @param throwable The exception
+     * @throws LtsllcException If no mapping exists for this IoSession
      */
     @Override
     public void exceptionCaught(IoSession ioSession, Throwable throwable) throws LtsllcException {
@@ -129,10 +142,14 @@ public class ClusterHandler implements IoHandler {
      *
      * @param ioSession The sender node
      * @param o         The message
+     * @throws IOException If the underlying Node throws this exception
+     * @throws LtsllcException If the underlying Node throws this exception; but this is also thrown by this method in
+     * the case where no mapping exists for the IoSession.
      */
     @Override
     public void messageReceived(IoSession ioSession, Object o) throws IOException, LtsllcException {
         logger.debug("entering messageReceived with session = " + ioSession + ", and message = " + o );
+
         Node node = ioSessionToNode.get(ioSession);
         if (null == node) {
             throw new LtsllcException("null node");
@@ -144,7 +161,7 @@ public class ClusterHandler implements IoHandler {
     }
 
     /**
-     * The node sent a message
+     * Ignore the messageSent event
      *
      * @param session The session over which the message was sent.
      * @param message The message.
@@ -156,7 +173,7 @@ public class ClusterHandler implements IoHandler {
     }
 
     /**
-     * An IoSession closed - remove it from the cluster
+     * Ignore the inputClosed event
      *
      * @param ioSession The node that closed the session
      */
@@ -164,6 +181,12 @@ public class ClusterHandler implements IoHandler {
     public void inputClosed(IoSession ioSession) {
     }
 
+    /**
+     * Ignore the event event.
+     *
+     * @param session The IoSession on which the event took place.
+     * @param event The event/
+     */
     @Override
     public void event(IoSession session, FilterEvent event) {
     }

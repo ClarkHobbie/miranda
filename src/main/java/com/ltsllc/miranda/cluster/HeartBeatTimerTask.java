@@ -40,11 +40,12 @@ public class HeartBeatTimerTask extends TimerTask {
 
         if (now > node.getTimeOfLastActivity() + period) {
             if (node.isConnected()) {
-                node.getIoSession().write(ClusterHandler.HEART_BEAT_START);
-                logger.debug("wrote " + ClusterHandler.HEART_BEAT_START);
-                node.setTimeOfLastActivity();
+                node.sendHeartBeat();
             } else {
-                timer.cancel();
+                if (!node.isAlreadyCancelledHeartBeat()) {
+                    timer.cancel();
+                    node.setAlreadyCancelledHeartBeat(true);
+                }
             }
         }
 

@@ -53,6 +53,7 @@ public class Node {
     public static final String OWNERS = "OWNERS";
     public static final String OWNERS_END = "OWNERS END";
     public static final String START = "START";
+    public static final String START_ACKNOWLEDGED = "START ACKNOWLEDGED";
     public static final String SYNCHRONIZE = "SYNCHRONIZE";
     public static final String SYNCHRONIZE_START = "SYNCHRONIZE START";
     public static final String TIMEOUT = "TIMEOUT";
@@ -140,10 +141,6 @@ public class Node {
         this.partnerID = partnerID;
     }
 
-    /**
-     * Are we connected?
-     */
-    protected boolean connected = false;
 
     /**
      * The hostname or IP address of our partner node
@@ -192,6 +189,45 @@ public class Node {
         this.timeOfLastActivity = timeOfLastActivity;
     }
 
+    /**
+     * The heart beat associated with the node
+     */
+    protected HeartBeatTimerTask heartBeatTimerTask = null;
+
+    public HeartBeatTimerTask getHeartBeatTimerTask() {
+        return heartBeatTimerTask;
+    }
+
+    public void setHeartBeatTimerTask(HeartBeatTimerTask heartBeatTimerTask) {
+        this.heartBeatTimerTask = heartBeatTimerTask;
+    }
+
+    /**
+     * Do we already have a heart beat?
+     */
+    protected boolean alreadyHaveAHeartBeat = false;
+
+    public boolean isAlreadyHaveAHeartBeat() {
+        return alreadyHaveAHeartBeat;
+    }
+
+    public void setAlreadyHaveAHeartBeat(boolean alreadyHaveAHeartBeat) {
+        this.alreadyHaveAHeartBeat = alreadyHaveAHeartBeat;
+    }
+
+    /**
+     * Have we already cancelled the heart beat?
+     */
+    protected boolean alreadyCancelledHeartBeat = false;
+
+    public boolean isAlreadyCancelledHeartBeat() {
+        return alreadyCancelledHeartBeat;
+    }
+
+    public void setAlreadyCancelledHeartBeat(boolean alreadyCancelledHeartBeat) {
+        this.alreadyCancelledHeartBeat = alreadyCancelledHeartBeat;
+    }
+
     protected Stack<ClusterConnectionStates> stateStack = new Stack<>();
 
     public String getHost() {
@@ -210,6 +246,10 @@ public class Node {
         this.port = port;
     }
 
+    /**
+     * Are we connected?
+     */
+    protected boolean connected = false;
 
     public boolean isConnected() {
         return connected;
@@ -230,7 +270,7 @@ public class Node {
         logger.debug("entering informOfStartOfAuction with uuid = " + uuid);
         StringBuffer stringBuffer = new StringBuffer();
 
-        stringBuffer.append(ClusterHandler.AUCTION);
+        stringBuffer.append(AUCTION);
         stringBuffer.append(" ");
         stringBuffer.append(uuid);
 
@@ -240,7 +280,7 @@ public class Node {
     }
 
     public void informOfAuctionEnd () {
-        ioSession.write(ClusterHandler.AUCTION_OVER);
+        ioSession.write(Node.AUCTION_OVER);
     }
 
     /**
@@ -252,7 +292,7 @@ public class Node {
         logger.debug("entering informOfEndOfAuction");
         StringBuffer stringBuffer = new StringBuffer();
 
-        stringBuffer.append(ClusterHandler.AUCTION_OVER);
+        stringBuffer.append(Node.AUCTION_OVER);
         ioSession.write(stringBuffer.toString());
         logger.debug("wrote "  + stringBuffer.toString());
         logger.debug("leaving informOfEndOfAuction");
@@ -273,7 +313,7 @@ public class Node {
         int myBid = ourRandom.nextInt();
 
         StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(ClusterHandler.BID);
+        stringBuffer.append(Node.BID);
         stringBuffer.append(" ");
         stringBuffer.append(message.getMessageID());
         stringBuffer.append(" ");
@@ -289,7 +329,7 @@ public class Node {
 
         if (readFuture.await(timeout, TimeUnit.MILLISECONDS)) {
             logger.debug("timed out waiting for reply, keeping the message, sending timeout and setting the state to start");
-            ioSession.write(ClusterHandler.TIMEOUT);
+            ioSession.write(Node.TIMEOUT);
             MessageLog.getInstance().setOwner(message.getMessageID(), uuid);
             returnValue = true;
         } else {
@@ -329,7 +369,7 @@ public class Node {
      */
     public void informOfMessageCreation (Message message) {
         StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(ClusterHandler.NEW_MESSAGE);
+        stringBuffer.append(Node.NEW_MESSAGE);
         stringBuffer.append(" ");
         stringBuffer.append(message.internalsToString());
 
@@ -345,7 +385,7 @@ public class Node {
      */
     public void informOfMessageDelivery (Message message) {
         StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(ClusterHandler.MESSAGE_DELIVERED);
+        stringBuffer.append(Node.MESSAGE_DELIVERED);
         stringBuffer.append (" ");
         stringBuffer.append(message.getMessageID());
 
@@ -367,6 +407,10 @@ public class Node {
                         handleStart(s, ioSession);
                         break;
                     }
+
+                    case START_ACKNOWLEDGED:
+                        state = GENERAL;
+                        break;
 
                     case SYNCHRONIZE_START: {
                         handleSynchronizeStart(ioSession);
@@ -413,7 +457,7 @@ public class Node {
 
                     case AUCTION_OVER: {
                         state = ClusterConnectionStates.GENERAL;
-                        ioSession.write(ClusterHandler.AUCTION_OVER);
+                        ioSession.write(Node.AUCTION_OVER);
                         setTimeOfLastActivity();
                         break;
                     }
@@ -525,9 +569,12 @@ public class Node {
                     }
 
                     case START: {
-                        handleStart(s,ioSession);
+                        ioSession.write(Node.START_ACKNOWLEDGED);
                         break;
                     }
+
+                    case START_ACKNOWLEDGED:
+                        break;
 
                     default: {
                         handleError(ioSession);
@@ -650,6 +697,8 @@ public class Node {
             messageType = MessageType.OWNERS;
         } else if (s.startsWith(OWNER)) {
             messageType = MessageType.OWNER;
+        } else if (s.startsWith(START_ACKNOWLEDGED)) {
+            messageType = MessageType.START_ACKNOWLEDGED;
         } else if (s.startsWith(START)) {
             messageType = MessageType.START;
         } else if (s.startsWith(SYNCHRONIZE_START)) {
@@ -690,11 +739,9 @@ public class Node {
 
         ioSession.getConfig().setUseReadOperation(true);
         connected = true;
+        ioSession.write(Node.START_ACKNOWLEDGED);
+        sendStart(ioSession);
 
-        if (state == ClusterConnectionStates.START) {
-            state = GENERAL;
-            sendStart(ioSession);
-        }
         logger.debug("leaving handleStart");
     }
 
@@ -709,7 +756,6 @@ public class Node {
         stringBuffer.append(" ");
         stringBuffer.append(Miranda.getInstance().getMyPort());
 
-        state = GENERAL;
         ioSession.write(stringBuffer.toString());
         logger.debug("wrote " + stringBuffer.toString());
         setTimeOfLastActivity();
@@ -718,7 +764,7 @@ public class Node {
 
     public void handleSynchronizeStart (IoSession ioSession) {
         state = SYNCHRONIZING;
-        ioSession.write(ClusterHandler.SYNCHRONIZE);
+        ioSession.write(Node.SYNCHRONIZE);
         setTimeOfLastActivity();
     }
 
@@ -969,7 +1015,7 @@ public class Node {
         logger.debug("wrote " + ERROR_START);
 
         StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(ClusterHandler.START);
+        stringBuffer.append(Node.START);
         stringBuffer.append(" ");
         stringBuffer.append(Miranda.getInstance().getMyUuid());
         stringBuffer.append(" ");
@@ -978,7 +1024,7 @@ public class Node {
         stringBuffer.append(Miranda.getInstance().getMyPort());
         ioSession.write(stringBuffer.toString());
         setTimeOfLastActivity();
-        state = GENERAL;
+        state = ClusterConnectionStates.START;
         logger.debug("wrote " + stringBuffer.toString());
 
         logger.debug("leaving handleError");
@@ -1031,9 +1077,10 @@ public class Node {
      */
     public void sendOwners() {
         logger.debug("entering sendOwners");
-        ioSession.write(OWNERS);
 
+        ioSession.write(OWNERS);
         setTimeOfLastActivity();
+
         logger.debug("Sent " + OWNERS);
         logger.debug("leaving sendOwners");
     }
@@ -1089,11 +1136,19 @@ public class Node {
         logger.debug("leaving handelOwner");
     }
 
+    /**
+     * Send the messages message
+     *
+     * <P>
+     *     This method does not send out any messages, it merely tells the node on the other side that we will be
+     *     sending messages.  This is part of the synchronization process.
+     * </P>
+     */
     public void sendMessages() {
         logger.debug("entering sendMessages");
-        ioSession.write(ClusterHandler.MESSAGES);
+        ioSession.write(Node.MESSAGES);
         setTimeOfLastActivity();
-        logger.debug("wrote " + ClusterHandler.MESSAGES);
+        logger.debug("wrote " + Node.MESSAGES);
         logger.debug("leaving sendMessages");
     }
 
@@ -1118,72 +1173,144 @@ public class Node {
     }
 
     /**
-     * Receive a message
+     * Receive a message message
+     *
+     * <P>
+     *     This method expects a message, in long format, is in the input string.  The method responds by adding the
+     *     message to the message log.
+     * </P>
+     *
+     * @throws IOException If there is a problem adding the message to the message log.
      */
     public void handleReceiveMessage(String input) throws IOException {
         Message message = Message.readLongFormat(input);
         MessageLog.getInstance().add(message, null);
     }
 
-    public void sessionOpened(IoSession ioSession) throws LtsllcException {
+    /**
+     * The IoSession has been opened --- start synchronizing if the Miranda synchronization flag has been set.
+     *
+     * @param ioSession The newly opened session
+     */
+    public void sessionOpened(IoSession ioSession) {
         this.ioSession = ioSession;
         connected = true;
-        setupHeartBeat();
 
         if (Miranda.getInstance().getSynchronizationFlag()) {
             synchronize(ioSession);
         }
     }
 
-    public void setupHeartBeat() {
-        HeartBeatTimerTask heartBeatTimerTask = new HeartBeatTimerTask(this, timer);
-        long period = Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL);
-        timer.schedule(heartBeatTimerTask, period, period);
-    }
 
+    /**
+     * Go into the synchronization state.
+     *
+     * <P>
+     *     This starts the synchronization process by going into the synchronization state and sending a synchronization
+     *     start message
+     * </P>
+     * @param ioSession The IoSession over which to send the synchronization message
+     */
     public void synchronize(IoSession ioSession) {
         Miranda.getInstance().setSynchronizationFlag(false);
-        ImprovedProperties p = Miranda.getProperties();
-        ImprovedFile messages = new ImprovedFile(p.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
-        ImprovedFile owners = new ImprovedFile(p.getProperty(Miranda.PROPERTY_OWNER_FILE));
-        int loadLimit = p.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
-        MessageLog.defineStatics(messages, loadLimit, owners);
         state = SYNCHRONIZING;
-
-        sendSynchronizeStart(ioSession);
-    }
-
-    public void sendSynchronizeStart (IoSession ioSession) {
         ioSession.write(SYNCHRONIZE_START);
         setTimeOfLastActivity();
     }
 
+    /**
+     * An exception was caught on the IoSession --- send an error then send a start message
+     *
+     * @param ioSession The IoSession for which the exception was caught.
+     * @param throwable The exception.
+     */
     public void exceptionCaught (IoSession ioSession, Throwable throwable) {
         logger.error("caught exception starting over", throwable);
         ioSession.write(ERROR_START);
         sendStart(ioSession);
     }
 
+    /**
+     * The IoSession for this node has closed --- remove it from the cluster.
+     *
+     * @param ioSession The closing IoSession.
+     */
     public void sessionClosed(IoSession ioSession) {
         stopHeartBeat();
         connected = false;
         Cluster.getInstance().removeNode(this,ioSession);
     }
 
+    /**
+     * Stop sending heart beat messages.
+     */
     public void stopHeartBeat () {
+        if (alreadyCancelledHeartBeat) {
+            return;
+        }
+        alreadyCancelledHeartBeat = true;
+
         timer.cancel();
     }
 
+    /**
+     * "Forget" about a message
+     *
+     * @param message The message to forget about.
+     */
     public void undefineMessage (Message message) {
         cache.undefine(message.getMessageID());
     }
 
+    /**
+     * A node was created.  Add it to the cluster
+     *
+     * @param ioSession The new IoSession.
+     */
     public void sessionCreated (IoSession ioSession) {
-        if (host.equalsIgnoreCase("unknown")) {
-            Cluster.getInstance().addNode(this, ioSession);
-            uuid = Miranda.getInstance().getMyUuid();
-        }
         connected = true;
         this.ioSession = ioSession;
+        setupHeartBeat();
+
+        Cluster.getInstance().addNode(this, ioSession);
+    }
+
+    /**
+     * Setup a timer and a TimerTask to perform heart beats
+     */
+    public void setupHeartBeat () {
+        if (alreadyHaveAHeartBeat) {
+            return;
+        }
+        alreadyHaveAHeartBeat = true;
+
+        //
+        // clear any old heart beats
+        //
+        if (timer != null) {
+            timer.cancel();
+            timer = null;
+        }
+
+        //
+        // create a new Timer and TimerTask
+        //
+        timer = new Timer();
+
+        if (heartBeatTimerTask == null) {
+            heartBeatTimerTask = new HeartBeatTimerTask(this, timer);
+        }
+
+        //
+        // schedule the heart beat
+        //
+        long period = Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL);
+        timer.schedule(heartBeatTimerTask, period, period);
+    }
+
+    public void sendHeartBeat () {
+        ioSession.write(Node.HEART_BEAT_START);
+        logger.debug("wrote " + Node.HEART_BEAT_START);
+        setTimeOfLastActivity();
     }
 }
