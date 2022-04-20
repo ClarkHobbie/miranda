@@ -184,7 +184,7 @@ public class NodeTest {
     }
 
     @Test
-    public void testStartMessage () throws LtsllcException, IOException {
+    public void testStartMessage () throws LtsllcException, IOException, CloneNotSupportedException {
         ImprovedFile messages = new ImprovedFile("messages.log");
         ImprovedFile owners = new ImprovedFile("owners.log");
 
@@ -215,7 +215,7 @@ public class NodeTest {
     }
 
     @Test
-    public void testStartStart () throws LtsllcException, IOException {
+    public void testStartStart () throws LtsllcException, IOException, CloneNotSupportedException {
         Node node = new Node("localhost", 2020);
         node.setUuid(UUID.randomUUID());
 
@@ -239,7 +239,7 @@ public class NodeTest {
     }
 
     @Test
-    public void testStartBid () throws LtsllcException, IOException {
+    public void testStartBid () throws LtsllcException, IOException, CloneNotSupportedException {
         String strMessage = "BID 123e4567-e89b-42d3-a456-556642440000 123456";
         Node node = new Node("192.168.0.12", 2020);
         node.setState(ClusterConnectionStates.START);
@@ -256,7 +256,7 @@ public class NodeTest {
     }
 
     @Test
-    public void testAuctionHeartBeat () throws LtsllcException, IOException {
+    public void testAuctionHeartBeat () throws LtsllcException, IOException, CloneNotSupportedException {
         Node node = new Node("192.168.0.12",2020);
         node.setState(ClusterConnectionStates.AUCTION);
 
@@ -275,7 +275,7 @@ public class NodeTest {
     }
 
     @Test
-    public void testAuctionBidWonNotInCache () throws LtsllcException, IOException {
+    public void testAuctionBidWonNotInCache () throws LtsllcException, IOException, CloneNotSupportedException {
         ImprovedFile messages = new ImprovedFile("messages.log");
         ImprovedFile owners = new ImprovedFile("owners.log");
         MessageLog.defineStatics(messages, 1000000, owners);
@@ -315,7 +315,7 @@ public class NodeTest {
     }
 
     @Test
-    public void testAuctionBidLost () throws IOException, LtsllcException {
+    public void testAuctionBidLost () throws IOException, LtsllcException, CloneNotSupportedException {
         ImprovedFile messages = new ImprovedFile("messages.log");
         ImprovedFile owners = new ImprovedFile("owners.log");
         try {
@@ -357,7 +357,7 @@ public class NodeTest {
     }
 
     @Test
-    public void testAuctionGetMessageInCache () throws LtsllcException, IOException {
+    public void testAuctionGetMessageInCache () throws LtsllcException, IOException, CloneNotSupportedException {
         Node node = new Node("192.168.0.12",2020);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
@@ -404,7 +404,7 @@ public class NodeTest {
     }
 
     @Test
-    public void testAuctionGetMessageCacheMiss () throws LtsllcException, IOException {
+    public void testAuctionGetMessageCacheMiss () throws LtsllcException, IOException, CloneNotSupportedException {
         Node node = new Node("192.168.0.12",2020);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
@@ -431,7 +431,7 @@ public class NodeTest {
     }
 
     @Test
-    public void testAuctionAuctionOver () throws LtsllcException, IOException {
+    public void testAuctionAuctionOver () throws LtsllcException, IOException, CloneNotSupportedException {
         Node node = new Node("192.168.0.12",2020);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
@@ -451,7 +451,7 @@ public class NodeTest {
     }
 
     @Test
-    public void testGeneralAuction () throws LtsllcException, IOException {
+    public void testGeneralAuction () throws LtsllcException, IOException, CloneNotSupportedException {
         Node node = new Node("192.168.0.12",2020);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
@@ -475,7 +475,7 @@ public class NodeTest {
     }
 
     @Test
-    public void testGeneralDeadNode () throws LtsllcException, IOException {
+    public void testGeneralDeadNode () throws LtsllcException, IOException, CloneNotSupportedException {
         Node node = new Node("192.168.0.12",2020);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
@@ -502,7 +502,7 @@ public class NodeTest {
     }
 
     @Test
-    public void testGeneralGetMessageCacheMiss () throws LtsllcException, IOException {
+    public void testGeneralGetMessageCacheMiss () throws LtsllcException, IOException, CloneNotSupportedException {
         Node node = new Node("192.168.0.12",2020);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
@@ -529,7 +529,7 @@ public class NodeTest {
     }
 
     @Test
-    public void testGeneralGetMessageCacheHit () throws LtsllcException, IOException {
+    public void testGeneralGetMessageCacheHit () throws LtsllcException, IOException, CloneNotSupportedException {
         Node node = new Node("192.168.0.12",2020);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
@@ -561,7 +561,7 @@ public class NodeTest {
     }
 
     @Test
-    public void testGeneralHeartBeat () throws LtsllcException, IOException {
+    public void testGeneralHeartBeat () throws LtsllcException, IOException, CloneNotSupportedException {
         Node node = new Node("192.168.0.12",2020);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
@@ -578,7 +578,7 @@ public class NodeTest {
     }
 
     @Test
-    public void testGeneralMessageDelivered () throws LtsllcException, IOException {
+    public void testGeneralMessageDelivered () throws LtsllcException, IOException, CloneNotSupportedException {
         Node node = new Node("192.168.0.12",2020);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
@@ -607,7 +607,7 @@ public class NodeTest {
     }
 
     @Test
-    public void testGeneralNewMessage () throws LtsllcException, IOException {
+    public void testGeneralNewMessage () throws LtsllcException, IOException, CloneNotSupportedException {
         MessageLog mockMessageLog = mock(MessageLog.class);
         MessageLog.setInstance(mockMessageLog);
 
@@ -648,7 +648,7 @@ public class NodeTest {
 
 
     @Test
-    public void testGeneralBid () throws LtsllcException, IOException {
+    public void testGeneralBid () throws LtsllcException, IOException, CloneNotSupportedException {
         String strMessage = Node.BID;
         UUID uuid = UUID.fromString("123e4567-e89b-42d3-a456-556642440000");
         UUID partnerID = UUID.randomUUID();
@@ -935,7 +935,7 @@ public class NodeTest {
     }
 
     @Test
-    public void handleStart () throws LtsllcException {
+    public void handleStart () throws LtsllcException, CloneNotSupportedException {
         Node node = new Node("192.168.0.12",2020);
 
         ImprovedFile messages = new ImprovedFile("messages.log");

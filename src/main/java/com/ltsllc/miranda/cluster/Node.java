@@ -25,8 +25,9 @@ import static com.ltsllc.miranda.cluster.ClusterConnectionStates.SYNCHRONIZING;
 /**
  * A node in the cluster
  */
-public class Node {
+public class Node implements Cloneable {
     public static final Logger logger = LogManager.getLogger();
+    public static final Logger events = LogManager.getLogger("events");
 
     /*
      * message name constants
@@ -179,13 +180,13 @@ public class Node {
     /**
      * When the last time we sent anything or received anything
      */
-    protected long timeOfLastActivity;
+    protected Long timeOfLastActivity = System.currentTimeMillis();
 
-    public long getTimeOfLastActivity() {
+    public Long getTimeOfLastActivity() {
         return timeOfLastActivity;
     }
 
-    public void setTimeOfLastActivity(long timeOfLastActivity) {
+    public void setTimeOfLastActivity(Long timeOfLastActivity) {
         this.timeOfLastActivity = timeOfLastActivity;
     }
 
@@ -392,7 +393,7 @@ public class Node {
         ioSession.write(stringBuffer.toString());
     }
 
-    public void messageReceived (IoSession ioSession, Object o) throws IOException, LtsllcException {
+    public void messageReceived (IoSession ioSession, Object o) throws IOException, LtsllcException, CloneNotSupportedException {
         setTimeOfLastActivity();
         logger.debug("entering messageReceived with state = " + state + " and message = " + o);
         String s = (String) o;
@@ -413,7 +414,13 @@ public class Node {
                         break;
 
                     case SYNCHRONIZE_START: {
-                        handleSynchronizeStart(ioSession);
+                        handleSynchronizeStart(s,ioSession);
+                        break;
+                    }
+
+                    case SYNCHRONIZE: {
+                        handleSynchronize(s,ioSession);
+                        state = SYNCHRONIZING;
                         break;
                     }
 
@@ -565,11 +572,12 @@ public class Node {
                     }
 
                     case ERROR: {
+                        state = ClusterConnectionStates.START;
                         break;
                     }
 
                     case START: {
-                        ioSession.write(Node.START_ACKNOWLEDGED);
+                        handleStartGeneral(s, ioSession);
                         break;
                     }
 
@@ -587,12 +595,12 @@ public class Node {
             case SYNCHRONIZING: {
                 switch (messageType) {
                     case SYNCHRONIZE: {
-                        sendOwners();
+                        handleSynchronize(s,ioSession);
                         break;
                     }
 
                     case OWNERS: {
-                        handleSendOwners(ioSession);
+                        sendAllOwners(ioSession);
                         break;
                     }
 
@@ -602,12 +610,7 @@ public class Node {
                     }
 
                     case OWNERS_END: {
-                        sendMessages();
-                        break;
-                    }
-
-                    case MESSAGES: {
-                        handleSendMessages(ioSession);
+                        sendMessages(ioSession);
                         break;
                     }
 
@@ -616,9 +619,21 @@ public class Node {
                         break;
                     }
 
+                    case MESSAGES: {
+                        sendAllMessages(ioSession);
+                        sendStart(ioSession);
+                        state = ClusterConnectionStates.START;
+                        break;
+                    }
+
                     case MESSAGES_END: {
                         sendStart(ioSession);
-                        state = GENERAL;
+                        state = ClusterConnectionStates.START;
+                        break;
+                    }
+
+                    case HEART_BEAT_START: {
+                        handleHeartBeatStart(ioSession);
                         break;
                     }
 
@@ -727,7 +742,7 @@ public class Node {
      * @param input     The string that came to us.
      * @param ioSession The IoSession associated with this connection.
      */
-    protected synchronized void handleStart(String input, IoSession ioSession) {
+    protected synchronized void handleStart(String input, IoSession ioSession) throws LtsllcException, CloneNotSupportedException {
         logger.debug("entering handleStart");
         Scanner scanner = new Scanner(input);
         scanner.skip(START);
@@ -741,6 +756,8 @@ public class Node {
         connected = true;
         ioSession.write(Node.START_ACKNOWLEDGED);
         sendStart(ioSession);
+
+        Cluster.getInstance().coalesce();
 
         logger.debug("leaving handleStart");
     }
@@ -762,10 +779,30 @@ public class Node {
         logger.debug("leaving sendStart");
     }
 
-    public void handleSynchronizeStart (IoSession ioSession) {
+    public void handleSynchronizeStart (String input,IoSession ioSession) {
         state = SYNCHRONIZING;
-        ioSession.write(Node.SYNCHRONIZE);
+
+        Scanner scanner = new Scanner(input);
+        scanner.next();scanner.next(); // SYNCHRONIZE START
+        UUID partnerID = UUID.fromString(scanner.next());
+        String host = scanner.next();
+        int port = scanner.nextInt();
+        this.partnerID = partnerID;
+        this.host = host;
+        this.port = port;
+
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(SYNCHRONIZE);
+        stringBuffer.append(" ");
+        stringBuffer.append(Miranda.getInstance().getMyUuid());
+        stringBuffer.append(" ");
+        stringBuffer.append(Miranda.getInstance().getMyHost());
+        stringBuffer.append(" ");
+        stringBuffer.append(Miranda.getInstance().getMyPort());
+        ioSession.write(stringBuffer.toString());
         setTimeOfLastActivity();
+
+        logger.debug("wrote " + stringBuffer);
     }
 
     public void handleHeartBeatStart(IoSession ioSession) {
@@ -779,19 +816,9 @@ public class Node {
         logger.debug("entering handleErrorStart");
 
         ioSession.write(ERROR);
-        setTimeOfLastActivity();
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(START);
-        stringBuffer.append(" ");
-        stringBuffer.append(Miranda.getInstance().getMyUuid());
-        stringBuffer.append(" ");
-        stringBuffer.append(Miranda.getInstance().getMyHost());
-        stringBuffer.append(" ");
-        stringBuffer.append(Miranda.getInstance().getMyPort());
-        ioSession.write(stringBuffer.toString());
-        logger.debug("wrote " + stringBuffer.toString());
-        setTimeOfLastActivity();
-        state = GENERAL;
+
+        sendStart(ioSession);
+        state = ClusterConnectionStates.START;
 
         logger.debug("leaving handleErrorStart");
     }
@@ -1013,19 +1040,9 @@ public class Node {
 
         ioSession.write(ERROR_START);
         logger.debug("wrote " + ERROR_START);
-
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(Node.START);
-        stringBuffer.append(" ");
-        stringBuffer.append(Miranda.getInstance().getMyUuid());
-        stringBuffer.append(" ");
-        stringBuffer.append(Miranda.getInstance().getMyHost());
-        stringBuffer.append(" ");
-        stringBuffer.append(Miranda.getInstance().getMyPort());
-        ioSession.write(stringBuffer.toString());
-        setTimeOfLastActivity();
         state = ClusterConnectionStates.START;
-        logger.debug("wrote " + stringBuffer.toString());
+
+        sendStart(ioSession);
 
         logger.debug("leaving handleError");
     }
@@ -1072,18 +1089,6 @@ public class Node {
         logger.debug("leaving handleNewMessage");
     }
 
-    /**
-     * Send the owners message to our peer
-     */
-    public void sendOwners() {
-        logger.debug("entering sendOwners");
-
-        ioSession.write(OWNERS);
-        setTimeOfLastActivity();
-
-        logger.debug("Sent " + OWNERS);
-        logger.debug("leaving sendOwners");
-    }
 
     /**
      * Send all the owner information in the system
@@ -1144,11 +1149,28 @@ public class Node {
      *     sending messages.  This is part of the synchronization process.
      * </P>
      */
-    public void sendMessages() {
-        logger.debug("entering sendMessages");
-        ioSession.write(Node.MESSAGES);
+    public void sendMessages(IoSession ioSession) {
+        ioSession.write(MESSAGES);
         setTimeOfLastActivity();
-        logger.debug("wrote " + Node.MESSAGES);
+
+        logger.debug("wrote " + MESSAGES);
+    }
+
+    public void sendAllMessages(IoSession ioSession) throws IOException {
+        logger.debug("entering sendAllMessages");
+
+        for (Message message : MessageLog.getInstance().copyAllMessages()) {
+            String msg = message.longToString();
+
+            ioSession.write(msg);
+            setTimeOfLastActivity();
+            logger.debug("wrote " + msg);
+        }
+
+        ioSession.write(MESSAGES_END);
+        setTimeOfLastActivity();
+        logger.debug("wrote " + MESSAGES_END);
+
         logger.debug("leaving sendMessages");
     }
 
@@ -1213,9 +1235,9 @@ public class Node {
      */
     public void synchronize(IoSession ioSession) {
         Miranda.getInstance().setSynchronizationFlag(false);
+
+        sendSynchronizationStart(ioSession);
         state = SYNCHRONIZING;
-        ioSession.write(SYNCHRONIZE_START);
-        setTimeOfLastActivity();
     }
 
     /**
@@ -1312,5 +1334,88 @@ public class Node {
         ioSession.write(Node.HEART_BEAT_START);
         logger.debug("wrote " + Node.HEART_BEAT_START);
         setTimeOfLastActivity();
+    }
+
+    /**
+     * Record the information from the START message, acknowledge the START message, but don't send a START of owr own
+     *
+     * @param input The START message.
+     * @param ioSession The IoSession we should respond with.
+     * @throws LtsllcException If there there is a problem coalescing the resulting cluster
+     */
+    public void handleStartGeneral (String input, IoSession ioSession) throws LtsllcException, CloneNotSupportedException {
+        Scanner scanner = new Scanner(input);
+        scanner.next(); // START
+        partnerID = UUID.fromString(scanner.next());
+        host = scanner.next();
+        port = scanner.nextInt();
+
+        ioSession.write(START_ACKNOWLEDGED);
+
+        Cluster.getInstance().coalesce();
+    }
+
+    public Object clone() throws CloneNotSupportedException {
+        return super.clone();
+    }
+
+    public void sendOwners (IoSession ioSession) throws IOException {
+        ioSession.write(OWNERS);
+        setTimeOfLastActivity();
+        logger.debug("wrote " + OWNERS);
+    }
+
+    public void sendAllOwners(IoSession ioSession) {
+        for (UUID messageID : MessageLog.getInstance().getUuidToOwner().getAllKeys()) {
+            StringBuffer stringBuffer = new StringBuffer();
+            stringBuffer.append(OWNER);
+            stringBuffer.append(" ");
+            stringBuffer.append(messageID);
+            stringBuffer.append(" ");
+            stringBuffer.append(MessageLog.getInstance().getOwnerOf(messageID));
+
+            ioSession.write(stringBuffer.toString());
+            setTimeOfLastActivity();
+            logger.debug("wrote " + stringBuffer);
+        }
+
+        ioSession.write(OWNERS_END);
+        setTimeOfLastActivity();
+        logger.debug("wrote " + OWNERS_END);
+
+    }
+
+    public void handleSynchronize (String input, IoSession ioSession) {
+        Scanner scanner = new Scanner(input);
+
+        scanner.next(); // SYNCHRONIZE
+        UUID partnerID = UUID.fromString(scanner.next());
+        String host = scanner.next();
+        int port = scanner.nextInt();
+
+        this.partnerID = partnerID;
+        this.host = host;
+        this.port = port;
+
+        ioSession.write(OWNERS);
+        setTimeOfLastActivity();
+
+        logger.debug("wrote " + OWNERS);
+    }
+
+
+    public void sendSynchronizationStart(IoSession ioSession) {
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(SYNCHRONIZE_START);
+        stringBuffer.append(" ");
+        stringBuffer.append(Miranda.getInstance().getMyUuid());
+        stringBuffer.append(" ");
+        stringBuffer.append(Miranda.getInstance().getMyHost());
+        stringBuffer.append(" ");
+        stringBuffer.append(Miranda.getInstance().getMyPort());
+
+        ioSession.write(stringBuffer.toString());
+        setTimeOfLastActivity();
+        logger.debug("wrote " + stringBuffer);
     }
 }

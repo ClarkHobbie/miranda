@@ -14,6 +14,8 @@
         </file>
     </Appenders>
     <Loggers>
+        <!-- Don't log anything from commons unless it is at error level -->
+        <Logger name="com.ltsllc.commons" level="ERROR"/>
         <Logger name="events" additivity="false">
             <AppenderRef ref="events"/>
         </Logger>

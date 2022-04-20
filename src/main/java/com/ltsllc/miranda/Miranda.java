@@ -376,8 +376,14 @@ public class Miranda {
                 deliver(message);
             }
 
+            //
+            // if we want to synchronize but we are disconnected from all the other nodes in the cluster then...
+            //
             if (Cluster.getInstance().getAllNodesFailed() && synchronizationFlag) {
                 logger.debug("getAllNodesFailed and synchronizationFlag set, entering recovery");
+                event.info("We want to synchronize but we are disconnected from all the nodes in the cluster so recovering locally");
+                Miranda.getInstance().setSynchronizationFlag(false);
+                Cluster.getInstance().setAllNodesFailed(false);
                 recoverLocally();
             }
 
@@ -425,8 +431,8 @@ public class Miranda {
 
         myHost = properties.getProperty(PROPERTY_HOST);
         myPort = properties.getIntProperty(PROPERTY_PORT);
-        if (myHost == null || myPort == -1) {
-            System.err.println("host and/or port must be set in the properties file");
+        if (myHost == null || myPort == -1 || myUuid == null) {
+            System.err.println("UUID, host and port must be set in the properties file");
             System.exit(-1);
         }
 
@@ -849,17 +855,13 @@ public class Miranda {
 
     /**
      * Recover as if we were not clustering
+     *
+     * @throws LtsllcException If there are problems with the files.
+     * @throws IOException If there are problems recovering.
      */
     public synchronized void recoverLocally() throws LtsllcException, IOException {
         logger.debug("entering recoverLocally");
         event.warn("The other nodes in the cluster are not responding, recovering locally.");
-
-        if (!synchronizationFlag && !Cluster.getInstance().getAllNodesFailed()) {
-            logger.debug("synchronizationFlag and getAllNodesFailed flags are not set, aborting recovery");
-            return;
-        }
-        setSynchronizationFlag(false);
-        Cluster.getInstance().setAllNodesFailed(false);
 
         ImprovedProperties p = properties;
         ImprovedFile messages = new ImprovedFile(p.getProperty(PROPERTY_MESSAGE_LOG));

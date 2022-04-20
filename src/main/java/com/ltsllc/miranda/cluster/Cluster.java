@@ -101,7 +101,7 @@ public class Cluster {
     protected static Cluster instance = null;
 
     /**
-     * Did all the nodes fail to connect?
+     * Did all the nodes fail to connect?  Is the node disconnected from all other nodes in the cluster?
      */
     protected boolean allNodesFailed = false;
 
@@ -317,7 +317,6 @@ public class Cluster {
      * @see #connectNodes(List)
      */
     public void connect(List<SpecNode> list) throws LtsllcException {
-        uuid = UUID.randomUUID();
         listen();
         connectNodes(list);
     }
@@ -374,7 +373,7 @@ public class Cluster {
         ioConnector.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory()));
 
         for (SpecNode specNode: list) {
-            Node node = new Node(specNode.getHost(), specNode.getPort());
+            Node node = new Node(Miranda.getInstance().getMyUuid(), specNode.getHost(), specNode.getPort());
             nodes.add(node);
         }
 
@@ -421,9 +420,13 @@ public class Cluster {
                 node.setIoSession(ioSession);
                 node.setConnected(true);
                 node.setupHeartBeat();
-                node.sendStart(ioSession);
                 clusterHandler.getIoSessionToNode().put(ioSession, node);
-
+                if (Miranda.getInstance().getSynchronizationFlag()) {
+                    Miranda.getInstance().setSynchronizationFlag(false);
+                    node.sendSynchronizationStart(ioSession);
+                } else {
+                    node.sendStart(ioSession);
+                }
             } else {
                 logger.debug("failed to connect to " + node.getHost() + ":" + node.getPort());
                 returnValue = false;
@@ -497,4 +500,110 @@ public class Cluster {
         }
         return returnValue;
     }
+
+    /**
+     * Merge nodes that point to the same thing.
+     *
+     * <P>
+     *     Two nodes point to the same thing when the hosts of the two nodes are the (without case), and the ports are
+     *     the same.
+     * </P>
+     */
+    public synchronized void coalesce () throws LtsllcException, CloneNotSupportedException {
+        List<Node> results = new ArrayList<>(nodes.size());
+
+        for (Node node : nodes) {
+            Node node2 = (Node) node.clone();
+            results.add(node2);
+        }
+
+        for (int i = 0; i  < nodes.size(); i++) {
+            for (int j = 1; j < nodes.size(); j++) {
+                if (i == j) {
+                    continue;
+                }
+
+                Node node1 = nodes.get(i);
+                Node node2 = nodes.get(j);
+                if ((node1.getHost().equalsIgnoreCase(node2.getHost())) &&
+                        (node1.getPort() == node2.getPort())) {
+                    Node mergedNode = mergeNodes(i, j, nodes);
+                }
+            }
+        }
+
+        nodes = results;
+    }
+
+    /**
+     * Merge two nodes
+     */
+    public Node mergeNodes (int index1, int index2, List<Node> list) throws LtsllcException {
+        Node node1 = list.get(index1);
+        Node node2 = list.get(index2);
+
+        boolean connected = node1.isConnected() || node2.isConnected();
+        node1.setConnected(connected);
+
+        if ((node2.getUuid() != null) && (node1.getUuid() !=null) && (!node1.getUuid().equals(node2.getUuid()))) {
+            throw new LtsllcException("nodes have different UUIDs");
+        } else if ((node1.getUuid() == null) && (node2.getUuid() == null)) {
+            throw new LtsllcException("both nodes have null UUIDs");
+        } else if (node1.getUuid() == null) {
+            node1.setUuid(node2.getUuid());
+        }
+        //
+        // if it gets to this point node2.getUuid may be null, in which case we should use node1's UUID, but we are
+        // returning node1 so there is nothing to do
+        //
+
+        if ((node1.getPartnerID() != null) && (node2.getPartnerID() != null) &&
+                (!node1.getPartnerID().equals(node2.getPartnerID()))) {
+            throw new LtsllcException("nodes have different partner UUIDs");
+        } else if ((node1.getPartnerID() == null) && (node2.getPartnerID() == null)) {
+            throw new LtsllcException("both nodes have null partner UUIDs");
+        } else if (node1.getPartnerID() == null) {
+            node1.setPartnerID(node2.getPartnerID());
+        }
+        //
+        // Once again there is nothing to do
+        //
+
+        if ((!node1.isAlreadyHaveAHeartBeat()) && (node2.isAlreadyHaveAHeartBeat())) {
+            node1.setupHeartBeat();
+        } else if (!node1.isAlreadyHaveAHeartBeat()) {
+            node1.setupHeartBeat();
+        }
+        //
+        // it is possible for node1 to have a heart beat and node2 doesn't but there is nothing to do in that case
+        //
+
+        if (node1.getTimeOfLastActivity() < node2.getTimeOfLastActivity()) {
+            node1.setTimeOfLastActivity(node2.getTimeOfLastActivity());
+        } else if ((node1.getTimeOfLastActivity() == null) && (node2.getTimeOfLastActivity() != null)) {
+            node1.setTimeOfLastActivity(node2.getTimeOfLastActivity());
+        }
+        //
+        // many other cases that boil down to just using node1's value
+        //
+
+        if ((node1.getIoSession() == null) && (node2.getIoSession() != null)) {
+            throw new LtsllcException("node1 has a null ioSession while node2 does not");
+        }
+
+        if (node2.getIoSession() != null) {
+            node2.getIoSession().closeNow();
+        }
+
+        if (node1.getCache() == null) {
+            node1.setCache(MessageLog.getInstance().getCache());
+        }
+
+        if (node2.getIoSession() != null) {
+            Cluster.getInstance().getClusterHandler().getIoSessionToNode().remove(node2.getIoSession());
+        }
+
+        return node1;
+    }
+
 }

@@ -79,7 +79,7 @@ public class ClusterHandler implements IoHandler {
         // This is a new connection add it to the cluster
         //
         if (node == null) {
-            node = new Node("Unknown", -1);
+            node = new Node(Miranda.getInstance().getMyUuid(), "Unknown", -1);
             node.setConnected(true);
             node.setupHeartBeat();
             node.setIoSession(ioSession);
@@ -147,7 +147,7 @@ public class ClusterHandler implements IoHandler {
      * the case where no mapping exists for the IoSession.
      */
     @Override
-    public void messageReceived(IoSession ioSession, Object o) throws IOException, LtsllcException {
+    public void messageReceived(IoSession ioSession, Object o) throws IOException, LtsllcException, CloneNotSupportedException {
         logger.debug("entering messageReceived with session = " + ioSession + ", and message = " + o );
 
         Node node = ioSessionToNode.get(ioSession);
