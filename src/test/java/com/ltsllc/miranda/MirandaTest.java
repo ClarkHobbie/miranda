@@ -114,11 +114,13 @@ class MirandaTest extends TestSuperclass {
         }
    }
 
-
+    /*
+    commented out because startup creates it's own cluster
     @Test
     public void startUpNoFile () throws Exception {
         Miranda miranda = new Miranda();
-        ImprovedFile mirandaProperties = new ImprovedFile("mirada.properties");
+        miranda.loadProperties();
+        ImprovedFile mirandaProperties = new ImprovedFile("miranda.properties");
         ImprovedFile mirandaBackup = new ImprovedFile("miranda.backup");
         ImprovedFile testProperties = new ImprovedFile("test.properties");
         try {
@@ -138,9 +140,10 @@ class MirandaTest extends TestSuperclass {
         }
     }
 
-    /*
-     * startUp with an existing sendFile
-     */
+
+     //
+     // startUp with an existing sendFile
+     //
     @Test
     public void startupExistingFile () throws Exception {
         Miranda miranda = new Miranda();
@@ -175,6 +178,8 @@ class MirandaTest extends TestSuperclass {
             messagesBackup.delete();
         }
     }
+
+     */
 
     public void newNode () throws Exception {
         Miranda miranda = new Miranda();

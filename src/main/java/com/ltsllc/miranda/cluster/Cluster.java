@@ -219,23 +219,21 @@ public class Cluster {
 
     public synchronized void addNode (Node node, IoSession ioSession) {
         logger.debug("adding node " + node + " to nodes");
+
+        node.setIoSession(ioSession);
+
         boolean alreadyPresent = false;
         for (Node node2 : nodes) {
-            if (node2.getHost().equalsIgnoreCase(node.getHost()) &&
-                    (node2.getPort() == node.getPort()) ) {
+            if (node2.getUuid().equals(node.getUuid())) {
                 alreadyPresent = true;
                 logger.debug("node already present discarding");
-                if (node.isConnected()) {
-                    node2.setIoSession(node.getIoSession());
-                }
+                node.stopHeartBeat();
+                node.closeSession();
             }
         }
+
         if (!alreadyPresent) {
             nodes.add(node);
-        }
-
-        for (Node node2 : nodes) {
-            clusterHandler.getIoSessionToNode().put(ioSession, node);
             clusterHandler.getIoSessionToNode().put(ioSession, node);
         }
     }
@@ -249,12 +247,10 @@ public class Cluster {
     public synchronized void removeNode(Node node, IoSession ioSession) {
         logger.debug("removing node, " + node + " from nodes");
         nodes.remove(node);
-        for (Node node2 : nodes) {
-            clusterHandler.getIoSessionToNode().remove(ioSession);
-        }
+        node.stopHeartBeat();
+        node.closeSession();
+        clusterHandler.getIoSessionToNode().remove(ioSession);
     }
-
-
 
     /**
      * Inform the cluster of this node receiving a new message
@@ -294,9 +290,10 @@ public class Cluster {
         String contents = "MESSAGE DELIVERED " + message.getMessageID();
         logger.debug("session contents = " + contents);
         for (Node node : nodes) {
-            if (!node.isConnected()) {
+            if (node.getIoSession() == null) {
                 continue;
             }
+
             WriteFuture future = node.getIoSession().write(contents);
             try {
                 future.await(IOD_TIMEOUT, IOD_TIMEOUT_UNITS);
@@ -373,21 +370,17 @@ public class Cluster {
         ioConnector.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory()));
 
         for (SpecNode specNode: list) {
-            Node node = new Node(Miranda.getInstance().getMyUuid(), specNode.getHost(), specNode.getPort());
+            Node node = new Node(specNode.getHost(), specNode.getPort());
             nodes.add(node);
         }
 
+        boolean tempAllNodesFailed = true;
+
         for (Node node : nodes) {
-            if (node.isConnected()) {
-                continue;
+            if (node.getIoSession() != null) {
+                tempAllNodesFailed = false;
             }
-
-            connectToNode(node,ioConnector);
-        }
-
-        boolean tempAllNodesFailed = false;
-        for (Node node : nodes) {
-            tempAllNodesFailed = !node.isConnected();
+            tempAllNodesFailed = !connectToNode(node,ioConnector);
         }
 
         if (tempAllNodesFailed) {
@@ -398,9 +391,6 @@ public class Cluster {
     /**
      * Try to connect to a Node
      *
-     * <P>
-     *     This method updates the node's connected attribute to reflect whether it is connected.
-     * </P>
      * @param node The node to try and connect to.
      * @param ioConnector Over what to make the connection.
      * @return true if we were able to connect to the node, false otherwise.
@@ -418,7 +408,6 @@ public class Cluster {
                 ioSession = future.getSession();
                 ioSession.getConfig().setUseReadOperation(true);
                 node.setIoSession(ioSession);
-                node.setConnected(true);
                 node.setupHeartBeat();
                 clusterHandler.getIoSessionToNode().put(ioSession, node);
                 if (Miranda.getInstance().getSynchronizationFlag()) {
@@ -430,7 +419,6 @@ public class Cluster {
             } else {
                 logger.debug("failed to connect to " + node.getHost() + ":" + node.getPort());
                 returnValue = false;
-                node.setConnected(false);
                 node.stopHeartBeat();
                 Miranda.getInstance().setClusterAlarm(System.currentTimeMillis());
             }
@@ -440,7 +428,7 @@ public class Cluster {
             Miranda.getInstance().setClusterAlarm(System.currentTimeMillis() + Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_RETRY));
         }
         if (returnValue) {
-            events.info ("connected to " + node.getHost() + ":" + node.getPort());
+            events.info ("Connected to " + node.getHost() + ":" + node.getPort());
         }
         logger.debug("leaving connectToNode with " + returnValue);
         return returnValue;
@@ -469,8 +457,11 @@ public class Cluster {
             return true;
         }
 
+        //
+        // if a node is not connected then try and connect it
+        //
         for (Node node : nodes) {
-            if (!node.isConnected()) {
+            if (node.getIoSession() == null) {
                 if (!connectToNode(node,ioConnector)) {
                     Miranda.getInstance().setClusterAlarm(System.currentTimeMillis() + Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_RETRY));
                     returnValue = false;
@@ -488,16 +479,17 @@ public class Cluster {
      * otherwise.
      */
     public boolean connectedToAll() {
-        boolean returnValue = false;
+        boolean returnValue = true;
 
         //
         // create a list of the other nodes we know about
         //
         for (Node node : nodes ) {
-            if (!node.isConnected()) {
+            if (node.getIoSession() == null) {
                 returnValue = false;
             }
         }
+
         return returnValue;
     }
 
@@ -505,105 +497,43 @@ public class Cluster {
      * Merge nodes that point to the same thing.
      *
      * <P>
-     *     Two nodes point to the same thing when the hosts of the two nodes are the (without case), and the ports are
-     *     the same.
+     *     Two nodes point to the same thing when the hosts of the two nodes are the (without case) same, and the ports
+     *     are the same.
      * </P>
      */
     public synchronized void coalesce () throws LtsllcException, CloneNotSupportedException {
+        List<Node> copy = new ArrayList<>(nodes.size());
         List<Node> results = new ArrayList<>(nodes.size());
 
         for (Node node : nodes) {
-            Node node2 = (Node) node.clone();
-            results.add(node2);
-        }
-
-        for (int i = 0; i  < nodes.size(); i++) {
-            for (int j = 1; j < nodes.size(); j++) {
-                if (i == j) {
-                    continue;
-                }
-
-                Node node1 = nodes.get(i);
-                Node node2 = nodes.get(j);
-                if ((node1.getHost().equalsIgnoreCase(node2.getHost())) &&
-                        (node1.getPort() == node2.getPort())) {
-                    Node mergedNode = mergeNodes(i, j, nodes);
-                }
+            if (node.getUuid() != null) {
+                Node node2 = (Node) node.clone();
+                copy.add(node2);
             }
         }
+
+        while (!copy.isEmpty()) {
+            Node node1 = copy.get(0);
+            copy.remove(node1);
+
+            while (!copy.isEmpty()) {
+                Node node2 = copy.get(0);
+                copy.remove(node2);
+                if (node1.uuid.equals(node2.uuid)) {
+                    node1.merge(node2);
+                    node2.stopHeartBeat();
+                    node2.closeSession();
+                } else {
+                    results.add(node2);
+                }
+            }
+
+            results.add(node1);
+        }
+
 
         nodes = results;
     }
 
-    /**
-     * Merge two nodes
-     */
-    public Node mergeNodes (int index1, int index2, List<Node> list) throws LtsllcException {
-        Node node1 = list.get(index1);
-        Node node2 = list.get(index2);
-
-        boolean connected = node1.isConnected() || node2.isConnected();
-        node1.setConnected(connected);
-
-        if ((node2.getUuid() != null) && (node1.getUuid() !=null) && (!node1.getUuid().equals(node2.getUuid()))) {
-            throw new LtsllcException("nodes have different UUIDs");
-        } else if ((node1.getUuid() == null) && (node2.getUuid() == null)) {
-            throw new LtsllcException("both nodes have null UUIDs");
-        } else if (node1.getUuid() == null) {
-            node1.setUuid(node2.getUuid());
-        }
-        //
-        // if it gets to this point node2.getUuid may be null, in which case we should use node1's UUID, but we are
-        // returning node1 so there is nothing to do
-        //
-
-        if ((node1.getPartnerID() != null) && (node2.getPartnerID() != null) &&
-                (!node1.getPartnerID().equals(node2.getPartnerID()))) {
-            throw new LtsllcException("nodes have different partner UUIDs");
-        } else if ((node1.getPartnerID() == null) && (node2.getPartnerID() == null)) {
-            throw new LtsllcException("both nodes have null partner UUIDs");
-        } else if (node1.getPartnerID() == null) {
-            node1.setPartnerID(node2.getPartnerID());
-        }
-        //
-        // Once again there is nothing to do
-        //
-
-        if ((!node1.isAlreadyHaveAHeartBeat()) && (node2.isAlreadyHaveAHeartBeat())) {
-            node1.setupHeartBeat();
-        } else if (!node1.isAlreadyHaveAHeartBeat()) {
-            node1.setupHeartBeat();
-        }
-        //
-        // it is possible for node1 to have a heart beat and node2 doesn't but there is nothing to do in that case
-        //
-
-        if (node1.getTimeOfLastActivity() < node2.getTimeOfLastActivity()) {
-            node1.setTimeOfLastActivity(node2.getTimeOfLastActivity());
-        } else if ((node1.getTimeOfLastActivity() == null) && (node2.getTimeOfLastActivity() != null)) {
-            node1.setTimeOfLastActivity(node2.getTimeOfLastActivity());
-        }
-        //
-        // many other cases that boil down to just using node1's value
-        //
-
-        if ((node1.getIoSession() == null) && (node2.getIoSession() != null)) {
-            throw new LtsllcException("node1 has a null ioSession while node2 does not");
-        }
-
-        if (node2.getIoSession() != null) {
-            node2.getIoSession().closeNow();
-        }
-
-        if (node1.getCache() == null) {
-            node1.setCache(MessageLog.getInstance().getCache());
-        }
-
-        if (node2.getIoSession() != null) {
-            Cluster.getInstance().getClusterHandler().getIoSessionToNode().remove(node2.getIoSession());
-        }
-
-        return node1;
-    }
 
 }

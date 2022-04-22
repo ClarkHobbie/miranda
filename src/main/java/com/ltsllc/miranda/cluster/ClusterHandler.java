@@ -79,8 +79,7 @@ public class ClusterHandler implements IoHandler {
         // This is a new connection add it to the cluster
         //
         if (node == null) {
-            node = new Node(Miranda.getInstance().getMyUuid(), "Unknown", -1);
-            node.setConnected(true);
+            node = new Node("Unknown", -1);
             node.setupHeartBeat();
             node.setIoSession(ioSession);
 

@@ -24,6 +24,13 @@ import static com.ltsllc.miranda.cluster.ClusterConnectionStates.SYNCHRONIZING;
 
 /**
  * A node in the cluster
+ *
+ * <P>
+ *     This object represents a node in the cluster.  It contains a host, a port and the uuid of that node.  It also
+ *     represents the state of the connection as in have we just connected or are we in the middle of something.
+ *     Finally the class also serves as the container for many constants.  Generally these are constants that have to do
+ *     with the connection such as "what does a bid look like?"
+ * </P>
  */
 public class Node implements Cloneable {
     public static final Logger logger = LogManager.getLogger();
@@ -59,10 +66,11 @@ public class Node implements Cloneable {
     public static final String SYNCHRONIZE_START = "SYNCHRONIZE START";
     public static final String TIMEOUT = "TIMEOUT";
 
-    public Node (UUID myUUID, UUID partnerID, IoSession ioSession){
+    public Node (UUID myUUID, String host, int port, IoSession ioSession){
         this.ioSession = ioSession;
         this.uuid = myUUID;
-        this.partnerID = partnerID;
+        this.host = host;
+        this.port = port;
     }
 
     public Node (UUID myUuid, String host, int myPort) {
@@ -128,20 +136,6 @@ public class Node implements Cloneable {
     public void setUuid(UUID uuid) {
         this.uuid = uuid;
     }
-
-    /**
-     * The UUID of the node on the other side of the ioSession
-     */
-    protected UUID partnerID;
-
-    public UUID getPartnerID() {
-        return partnerID;
-    }
-
-    public void setPartnerID(UUID partnerID) {
-        this.partnerID = partnerID;
-    }
-
 
     /**
      * The hostname or IP address of our partner node
@@ -248,19 +242,6 @@ public class Node implements Cloneable {
     }
 
     /**
-     * Are we connected?
-     */
-    protected boolean connected = false;
-
-    public boolean isConnected() {
-        return connected;
-    }
-
-    public void setConnected(boolean connected) {
-        this.connected = connected;
-    }
-
-    /**
      * Tell the node that we are starting an auction.
      *
      * This method returns after the node acknowledges that we are starting an auction.
@@ -339,12 +320,12 @@ public class Node implements Cloneable {
             Scanner scanner = new Scanner((String) readFuture.getMessage());
             scanner.skip("BID");
             UUID uuidOfMessage = UUID.fromString(scanner.next());
-            int theirBid = Integer.parseInt(scanner.next());
+            int theirBid = scanner.nextInt();
 
             logger.debug("myBid = " + myBid + " theirBid = " + theirBid);
             if (myBid > theirBid) {
                 logger.debug("won the bid, assigning the message to us");
-                MessageLog.getInstance().setOwner (uuidOfMessage, uuid);
+                MessageLog.getInstance().setOwner (uuidOfMessage, Miranda.getInstance().getMyUuid());
                 returnValue = true;
             } else if (myBid == theirBid) {
                 logger.debug("a tie, reissuing bid");
@@ -353,7 +334,7 @@ public class Node implements Cloneable {
                 returnValue = false;
                 logger.debug("lost bid, turning over message to the other node");
                 undefineMessage(message);
-                MessageLog.getInstance().setOwner(uuidOfMessage, partnerID);
+                MessageLog.getInstance().setOwner(uuidOfMessage, uuid);
             }
         }
 
@@ -453,7 +434,7 @@ public class Node implements Cloneable {
             case AUCTION: {
                 switch (messageType) {
                     case BID: {
-                        handleBid(s, ioSession, partnerID);
+                        handleBid(s, ioSession, uuid);
                         break;
                     }
 
@@ -562,7 +543,7 @@ public class Node implements Cloneable {
                     }
 
                     case NEW_MESSAGE: {
-                        handleNewMessage(s, partnerID);
+                        handleNewMessage(s, uuid);
                         break;
                     }
 
@@ -643,6 +624,11 @@ public class Node implements Cloneable {
                     }
 
                     case ERROR: {
+                        break;
+                    }
+
+                    case START: {
+                        handleStartSynchronizing(s, ioSession);
                         break;
                     }
 
@@ -746,14 +732,13 @@ public class Node implements Cloneable {
         logger.debug("entering handleStart");
         Scanner scanner = new Scanner(input);
         scanner.skip(START);
-        partnerID = UUID.fromString(scanner.next());
+        uuid = UUID.fromString(scanner.next());
 
         host = scanner.next();
 
         port = Integer.parseInt(scanner.next());
 
         ioSession.getConfig().setUseReadOperation(true);
-        connected = true;
         ioSession.write(Node.START_ACKNOWLEDGED);
         sendStart(ioSession);
 
@@ -784,10 +769,10 @@ public class Node implements Cloneable {
 
         Scanner scanner = new Scanner(input);
         scanner.next();scanner.next(); // SYNCHRONIZE START
-        UUID partnerID = UUID.fromString(scanner.next());
+        UUID uuid = UUID.fromString(scanner.next());
         String host = scanner.next();
         int port = scanner.nextInt();
-        this.partnerID = partnerID;
+        this.uuid = uuid;
         this.host = host;
         this.port = port;
 
@@ -1084,7 +1069,6 @@ public class Node implements Cloneable {
         Message message = Message.readLongFormat(scanner);
 
         MessageLog.getInstance().setOwner(message.getMessageID(), partnerUuid);
-        MessageLog.getInstance().add(message, partnerID);
 
         logger.debug("leaving handleNewMessage");
     }
@@ -1216,7 +1200,6 @@ public class Node implements Cloneable {
      */
     public void sessionOpened(IoSession ioSession) {
         this.ioSession = ioSession;
-        connected = true;
 
         if (Miranda.getInstance().getSynchronizationFlag()) {
             synchronize(ioSession);
@@ -1259,7 +1242,7 @@ public class Node implements Cloneable {
      */
     public void sessionClosed(IoSession ioSession) {
         stopHeartBeat();
-        connected = false;
+        closeSession();
         Cluster.getInstance().removeNode(this,ioSession);
     }
 
@@ -1270,15 +1253,19 @@ public class Node implements Cloneable {
         if (alreadyCancelledHeartBeat) {
             return;
         }
+
         alreadyCancelledHeartBeat = true;
 
-        timer.cancel();
+        if (timer != null) {
+            timer.cancel();
+            timer = null;
+        }
     }
 
     /**
      * "Forget" about a message
      *
-     * @param message The message to forget about.
+     * @param message The message to forget.
      */
     public void undefineMessage (Message message) {
         cache.undefine(message.getMessageID());
@@ -1290,7 +1277,6 @@ public class Node implements Cloneable {
      * @param ioSession The new IoSession.
      */
     public void sessionCreated (IoSession ioSession) {
-        connected = true;
         this.ioSession = ioSession;
         setupHeartBeat();
 
@@ -1346,7 +1332,7 @@ public class Node implements Cloneable {
     public void handleStartGeneral (String input, IoSession ioSession) throws LtsllcException, CloneNotSupportedException {
         Scanner scanner = new Scanner(input);
         scanner.next(); // START
-        partnerID = UUID.fromString(scanner.next());
+        uuid = UUID.fromString(scanner.next());
         host = scanner.next();
         port = scanner.nextInt();
 
@@ -1359,12 +1345,16 @@ public class Node implements Cloneable {
         return super.clone();
     }
 
-    public void sendOwners (IoSession ioSession) throws IOException {
-        ioSession.write(OWNERS);
-        setTimeOfLastActivity();
-        logger.debug("wrote " + OWNERS);
-    }
-
+    /**
+     * Send all this object's owner information
+     *
+     * <P>
+     *     Owner's information consists or a message UUID, and the owner UUID.  The method terminates the info with an
+     *     owners end message.  This method uses the MessagesLog's owners information as the info on this host.
+     * </P>
+     *
+     * @param ioSession The IoSession on which to send the owners info.
+     */
     public void sendAllOwners(IoSession ioSession) {
         for (UUID messageID : MessageLog.getInstance().getUuidToOwner().getAllKeys()) {
             StringBuffer stringBuffer = new StringBuffer();
@@ -1385,15 +1375,25 @@ public class Node implements Cloneable {
 
     }
 
+    /**
+     * Take care of recording the data in a synchronize message
+     *
+     * <P>
+     *     This method sends the proper response to a synchronize message - to whit a owners message.
+     * </P>
+     *
+     * @param input A String containing the synchronize message
+     * @param ioSession The session on which to send the reply
+     */
     public void handleSynchronize (String input, IoSession ioSession) {
         Scanner scanner = new Scanner(input);
 
         scanner.next(); // SYNCHRONIZE
-        UUID partnerID = UUID.fromString(scanner.next());
+        UUID uuid = UUID.fromString(scanner.next());
         String host = scanner.next();
         int port = scanner.nextInt();
 
-        this.partnerID = partnerID;
+        this.uuid = uuid;
         this.host = host;
         this.port = port;
 
@@ -1404,6 +1404,16 @@ public class Node implements Cloneable {
     }
 
 
+    /**
+     * Send a synchronization start message, that includes the UUID of this node, the host its on and the port where
+     * it is listening
+     *
+     * <P>
+     *     This method takes care of setting the time of last activity and the contents of the synchronization message.
+     * </P>
+     *
+     * @param ioSession The IoSession to send the message on.
+     */
     public void sendSynchronizationStart(IoSession ioSession) {
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append(SYNCHRONIZE_START);
@@ -1418,4 +1428,52 @@ public class Node implements Cloneable {
         setTimeOfLastActivity();
         logger.debug("wrote " + stringBuffer);
     }
+
+    public void closeSession () {
+        if (ioSession != null) {
+            ioSession.closeNow();
+            ioSession = null;
+        }
+    }
+
+    /**
+     * Merge this node with another node
+     *
+     * @param other The other node to merge with
+     */
+    public void merge (Node other) throws LtsllcException {
+        setupHeartBeat();
+
+        if ( (timeOfLastActivity != null && other.timeOfLastActivity != null) && (timeOfLastActivity < other.timeOfLastActivity)) {
+            timeOfLastActivity = other.timeOfLastActivity;
+        } else if ((timeOfLastActivity == null) && (other.timeOfLastActivity != null)) {
+            timeOfLastActivity = other.timeOfLastActivity;
+        }
+        //
+        // many other cases that boil down to just using the node's value
+        //
+
+        if ((ioSession == null) && (other.ioSession != null)) {
+            throw new LtsllcException("node1 has a null ioSession while node2 does not");
+        }
+
+        other.closeSession();
+
+        if (cache == null) {
+            cache = MessageLog.getInstance().getCache();
+        }
+    }
+
+    public void handleStartSynchronizing (String input, IoSession ioSession) throws LtsllcException, CloneNotSupportedException {
+        Scanner scanner = new Scanner(input);
+        scanner.next(); // START
+        uuid = UUID.fromString(scanner.next());
+        host = scanner.next();
+        port = scanner.nextInt();
+
+        ioSession.write(START_ACKNOWLEDGED);
+
+        Cluster.getInstance().coalesce();
+    }
+
 }

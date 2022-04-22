@@ -123,7 +123,6 @@ class ClusterTest extends TestSuperclass {
         Node node1 = new Node("192.168.0.12", 2020);
         IoSession mockIoSession1 = mock(IoSession.class);
         node1.setIoSession(mockIoSession1);
-        node1.setConnected(true);
         node1.setupHeartBeat();
         WriteFuture mockWriteFuture1 = mock(WriteFuture.class);
         when(mockIoSession1.write(any())).thenReturn(mockWriteFuture1);
@@ -131,7 +130,6 @@ class ClusterTest extends TestSuperclass {
         Node node2 = new Node( "127.0.0.1", 2020);
         IoSession mockIoSession2 = mock(IoSession.class);
         node2.setIoSession(mockIoSession2);
-        node2.setConnected(true);
         node2.setupHeartBeat();
         WriteFuture mockWriteFuture2 = mock(WriteFuture.class);
         when(mockIoSession2.write(any())).thenReturn(mockWriteFuture2);
@@ -265,7 +263,6 @@ class ClusterTest extends TestSuperclass {
 
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
         Node node = new Node("192.168.0.12", port);
-        node.setConnected(false);
         node.stopHeartBeat();
 
         InetSocketAddress addr = new InetSocketAddress("192.168.0.12", port);
@@ -302,7 +299,6 @@ class ClusterTest extends TestSuperclass {
         List<Node> list = new ArrayList<>();
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
         Node node = new Node("192.168.0.12", port);
-        node.setConnected(false);
         node.stopHeartBeat();
         list.add(node);
         Cluster.getInstance().setNodes(list);
@@ -343,7 +339,6 @@ class ClusterTest extends TestSuperclass {
         List<Node> list = new ArrayList<>();
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
         Node node = new Node("192.168.0.3", port);
-        node.setConnected(false);
         node.stopHeartBeat();
         list.add(node);
         Cluster.getInstance().setNodes(list);

@@ -64,10 +64,8 @@ public class NodeTest {
 
             Mockito.when(mockReadFuture.getMessage()).thenReturn(reply.toString());
 
-            UUID nodeUuid = UUID.randomUUID();
-            UUID partnerUuid = UUID.randomUUID();
-            node.setUuid(nodeUuid);
-            node.setPartnerID(partnerUuid);
+            Miranda.getInstance().setMyUuid(UUID.randomUUID());
+            node.setUuid(UUID.randomUUID());
 
             ImprovedRandom mockImprovedRandom = Mockito.mock(ImprovedRandom.class);
             Mockito.when(mockImprovedRandom.nextInt()).thenReturn(456);
@@ -76,7 +74,7 @@ public class NodeTest {
 
             node.auctionMessage(message);
 
-            assert (MessageLog.getInstance().getOwnerOf(message.getMessageID()) == nodeUuid);
+            assert (MessageLog.getInstance().getOwnerOf(message.getMessageID()) == Miranda.getInstance().getMyUuid());
         } finally {
             messages.delete();
             owners.delete();
@@ -104,7 +102,8 @@ public class NodeTest {
         stringBuffer.append(" ");
         stringBuffer.append(newMessage.getMessageID());
 
-        Node node = new Node(UUID.randomUUID(),UUID.randomUUID(),mockIoSession);
+        Node node = new Node(UUID.randomUUID(),"192.168.0.12",2020);
+        node.setIoSession(mockIoSession);
         node.informOfMessageDelivery(newMessage);
 
         assert (MessageLog.getInstance().getOwnerOf(newMessage.getMessageID()) == null);
@@ -131,7 +130,8 @@ public class NodeTest {
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
 
-        Node node = new Node(UUID.randomUUID(), UUID.randomUUID(), mockIoSession);
+        Node node = new Node(UUID.randomUUID(), "192.168.0.12", 2020);
+        node.setIoSession(mockIoSession);
 
         node.informOfMessageCreation(newMessage);
 
@@ -141,7 +141,8 @@ public class NodeTest {
     @Test
     public void informOfStartOfAuction () {
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Node node = new Node(UUID.randomUUID(), UUID.randomUUID(), mockIoSession);
+        Node node = new Node(UUID.randomUUID(), "192.168.0.12", 2020);
+        node.setIoSession(mockIoSession);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         ImprovedFile owners = new ImprovedFile("owners.log");
@@ -159,7 +160,8 @@ public class NodeTest {
     @Test
     public void informOfEndOfAuction () {
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Node node = new Node(UUID.randomUUID(), UUID.randomUUID(), mockIoSession);
+        Node node = new Node(UUID.randomUUID(), "192.168.0.12", 2020);
+        node.setIoSession(mockIoSession);
 
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append(Node.AUCTION_OVER);
@@ -202,7 +204,7 @@ public class NodeTest {
 
             node.messageReceived(mockIoSession, stringBuffer.toString());
 
-            assert (node.getState() == ClusterConnectionStates.GENERAL);
+            assert (node.getState() == ClusterConnectionStates.START);
         } finally {
             if (messages.exists()) {
                 messages.delete();
@@ -235,7 +237,7 @@ public class NodeTest {
 
         node.messageReceived(mockIoSession, strMessage.toString());
 
-        assert (node.getState() == ClusterConnectionStates.GENERAL);
+        assert (node.getState() == ClusterConnectionStates.START);
     }
 
     @Test
@@ -251,7 +253,7 @@ public class NodeTest {
 
         node.messageReceived(mockIoSession, strMessage);
 
-        assert (node.getState() == ClusterConnectionStates.GENERAL);
+        assert (node.getState() == ClusterConnectionStates.START);
         Mockito.verify(mockIoSession).write(Node.ERROR_START);
     }
 
@@ -270,7 +272,7 @@ public class NodeTest {
 
         node.messageReceived(mockIoSession, strMessage);
 
-        assert (node.getState() == ClusterConnectionStates.GENERAL);
+        assert (node.getState() == ClusterConnectionStates.START);
         Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(Node.ERROR_START);
     }
 
@@ -321,13 +323,9 @@ public class NodeTest {
         try {
             MessageLog.defineStatics(messages, 1000000, owners);
 
-            UUID ourUuid = UUID.randomUUID();
             UUID theirUuid = UUID.randomUUID();
-            Node node = new Node(ourUuid, "localhost", 2020);
+            Node node = new Node(theirUuid, "localhost", 2020);
 
-            LoggingCache cache = new LoggingCache(messages, 104857600);
-            node.setUuid(ourUuid);
-            node.setPartnerID(theirUuid);
             node.setState(ClusterConnectionStates.AUCTION);
 
             MessageCache mockCache = mock(MessageCache.class);
@@ -624,12 +622,8 @@ public class NodeTest {
         LoggingCache cache = new LoggingCache(messages,104857600);
         node.setState(ClusterConnectionStates.GENERAL);
 
-        UUID partnerID = UUID.randomUUID();
         UUID nodeUuid = UUID.randomUUID();
         node.setUuid(nodeUuid);
-
-        UUID otherUuid = UUID.randomUUID();
-        node.setPartnerID(partnerID);
 
         IoSession mockIoSession = mock(IoSession.class);
 
@@ -640,7 +634,7 @@ public class NodeTest {
         node.messageReceived(mockIoSession, strMessage.toString());
 
         assert(node.getState() == ClusterConnectionStates.GENERAL);
-        Mockito.verify(mockMessageLog, Mockito.atLeastOnce()).setOwner(message.getMessageID(), partnerID);
+        Mockito.verify(mockMessageLog, Mockito.atLeastOnce()).setOwner(message.getMessageID(), nodeUuid);
     }
 
     @Captor
@@ -672,7 +666,7 @@ public class NodeTest {
 
         verify(mockIoSession, times(2)).write(valueCaptor.capture());
 
-        assert(node.getState() == ClusterConnectionStates.GENERAL);
+        assert(node.getState() == ClusterConnectionStates.START);
         Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(Node.ERROR_START);
     }
 
@@ -692,7 +686,7 @@ public class NodeTest {
         node.sessionCreated(null);
 
         List<Node> list = Cluster.getInstance().getNodes();
-        assert (list.size() == 0);
+        assert (list.size() == 1);
     }
 
     @Test
@@ -728,7 +722,7 @@ public class NodeTest {
 
         node.exceptionCaught(mockIoSession, new Exception("Exception"));
 
-        assert (node.getState() == ClusterConnectionStates.GENERAL);
+        assert (node.getState() == ClusterConnectionStates.START);
         Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(Node.ERROR_START);
     }
 
@@ -908,14 +902,12 @@ public class NodeTest {
         miranda.loadProperties();
 
         Node node = new Node("localhost", 2020);
-        node.setPartnerID(UUID.randomUUID());
+        node.setUuid(UUID.randomUUID());
         StringBuffer stringBuffer = new StringBuffer();
 
         LoggingCache cache = new LoggingCache(messages,104857600);
 
         MessageLog.defineStatics(messages, 104857600, ownersLog);
-
-        UUID partnerId = UUID.randomUUID();
 
         Message message = createTestMessage(UUID.randomUUID());
 
@@ -929,13 +921,16 @@ public class NodeTest {
         MessageLog mockMessageLog = mock(MessageLog.class);
         MessageLog.setInstance(mockMessageLog);
 
-        node.handleNewMessage(stringBuffer.toString(),partnerId);
+        node.handleNewMessage(stringBuffer.toString(),node.getUuid());
 
-        Mockito.verify(mockMessageLog, Mockito.atLeastOnce()).setOwner(message.getMessageID(), partnerId);
+        Mockito.verify(mockMessageLog, Mockito.atLeastOnce()).setOwner(message.getMessageID(), node.getUuid());
     }
 
     @Test
     public void handleStart () throws LtsllcException, CloneNotSupportedException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+        Cluster.defineStatics(miranda.getMyUuid());
         Node node = new Node("192.168.0.12",2020);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
@@ -949,7 +944,7 @@ public class NodeTest {
         stringBuffer.append(" ");
         stringBuffer.append(partnerID);
         stringBuffer.append(" ");
-        stringBuffer.append("192.168.0.12 2020");
+        stringBuffer.append("192.168.0.20 2020");
         IoSession mockIoSession = mock(IoSession.class);
         IoSessionConfig mockIoSessionConfig = mock(IoSessionConfig.class);
         when(mockIoSession.getConfig()).thenReturn(mockIoSessionConfig);
@@ -957,11 +952,15 @@ public class NodeTest {
         StringBuffer reply = new StringBuffer();
         reply.append(Node.START);
         reply.append(" ");
-        reply.append(node.getUuid());
+        reply.append(miranda.getMyUuid());
+        reply.append(" ");
+        reply.append(miranda.getMyHost());
+        reply.append(" ");
+        reply.append(miranda.getMyPort());
 
         node.handleStart(stringBuffer.toString().toUpperCase(), mockIoSession);
 
-        assert(node.getState() == ClusterConnectionStates.GENERAL);
+        assert(node.getState() == ClusterConnectionStates.START);
     }
 
 
@@ -1008,7 +1007,6 @@ public class NodeTest {
 
         Node node = new Node("192.168.0.12", 2020);
         node.setUuid(UUID.randomUUID());
-        node.setPartnerID(UUID.randomUUID());
 
         ImprovedProperties p = Miranda.getProperties();
         ImprovedFile messages = new ImprovedFile(p.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
@@ -1036,7 +1034,7 @@ public class NodeTest {
 
         Node node = new Node("192.168.0.12", 2020);
         UUID partnerID = UUID.randomUUID();
-        node.setPartnerID(partnerID);
+        node.setUuid(partnerID);
 
         ImprovedProperties p = Miranda.getProperties();
         ImprovedFile messages = new ImprovedFile(p.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
@@ -1047,7 +1045,7 @@ public class NodeTest {
         node.handleError(mockIoSession);
 
         verify(mockIoSession, atLeastOnce()).write(Node.ERROR_START);
-        assert(node.getState() == ClusterConnectionStates.GENERAL);
+        assert(node.getState() == ClusterConnectionStates.START);
     }
 
     @Test
@@ -1075,7 +1073,6 @@ public class NodeTest {
             IoSession mockIoSession = mock(IoSession.class);
 
             Node node = new Node("localhost", 2020);
-            node.setConnected(true);
             node.setupHeartBeat();
             node.setIoSession(mockIoSession);
 
