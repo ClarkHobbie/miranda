@@ -7,6 +7,7 @@ package com.ltsllc.miranda;
  */
 public enum MessageType {
     AUCTION,
+    AUCTION_START,
     AUCTION_OVER,
     BID,
     DEAD_NODE,

@@ -27,7 +27,7 @@ import java.util.*;
  *     referenced message is "forgotten" until enough space is freed up to store the new message.
  * </P>
  */
-public class MessageLog {
+public class MessageLog implements Alarmable {
     public static final Logger logger = LogManager.getLogger();
     public static final Logger events = LogManager.getLogger("events");
 
@@ -84,6 +84,7 @@ public class MessageLog {
      */
     public static void defineStatics (ImprovedFile logfile, int loadLimit, ImprovedFile ownerLogfile) {
         instance = new MessageLog(logfile, loadLimit, ownerLogfile);
+        AlarmClock.getInstance().schedule(instance, Alarms.COMPACTION, Miranda.properties.getLongProperty(Miranda.PROPERTY_COMPACTION_TIME));
     }
 
     /**
@@ -355,5 +356,31 @@ public class MessageLog {
     public void compact () throws IOException {
         cache.compact();
         uuidToOwner.compact();
+    }
+
+    @Override
+    public void alarm(Alarms alarm) throws IOException {
+        if (alarm == Alarms.COMPACTION) {
+            compact();
+        }
+    }
+
+    /**
+     * Get all the messages the a provided owner owns
+     *
+     * @param owner The owner we need to search for.
+     * @return A List of the messages the owner owns.
+     */
+    public synchronized List<UUID> getAllMessagesOwnedBy (UUID owner) {
+        List<UUID> results = new ArrayList<>();
+
+        Collection<UUID> collection = uuidToOwner.getAllKeys();
+        for (UUID message : collection) {
+            if (getOwnerOf(message) == owner) {
+                results.add(message);
+            }
+        }
+
+        return results;
     }
 }

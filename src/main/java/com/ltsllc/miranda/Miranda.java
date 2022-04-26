@@ -20,9 +20,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
+import static com.ltsllc.miranda.Alarms.COMPACTION;
+
 
 public class Miranda {
-    public static final int STATUS_SUCCESS = 200;
     /**
      * The property for specifying what port number to use for cluster connections
      */
@@ -144,6 +145,17 @@ public class Miranda {
     public static final String PROPERTY_DEFAULT_MESSAGE_LOG = "messages.log";
 
     /**
+     * The timeout (in milliseconds) that miranda will wait for a START_ACKNOWLEDGED message after issuing a START
+     * message.
+     */
+    public static final String PROPERTY_START_TIMEOUT = "timeouts.start";
+
+    /**
+     * The default timeout for a start message (1000 milliseconds).
+     */
+    public static final String PROPERTY_DEFAULT_START_TIMEOUT = "500";
+
+    /**
      * The universally unique identifier (UUID) of this node.
      *
      * <P>
@@ -173,6 +185,26 @@ public class Miranda {
     public static final String PROPERTY_DEFAULT_PROPERTY_HEART_BEAT_INTERVAL = "5000";
 
     /**
+     * The timeout (in milliseconds) for another node to respond to an auction message
+     */
+    public static final String PROPERTY_AUCTION_TIMEOUT = "timeouts.auction";
+
+    /**
+     * The default timeout to respond to an auction message
+     */
+    public static final String PROPERTY_DEFAULT_AUCTION_TIMEOUT = "500";
+
+    /**
+     * The period for a heart beat to timeout (in milliseconds)
+     */
+    public static final String PROPERTY_HEART_BEAT_TIMEOUT = "timeouts.heart_beat";
+
+    /**
+     * The default timeout for a heart beat (1/2 a second)
+     */
+    public static final String PROPERTY_DEFAULT_HEART_BEAT_TIMEOUT = "500";
+
+    /**
      * The logger to use
      */
     protected static final Logger logger = LogManager.getLogger();
@@ -196,11 +228,6 @@ public class Miranda {
      * The system properties
      */
     protected static ImprovedProperties properties;
-
-    /**
-     * The time, after which the system should try to reconnect to the other nodes of the cluster
-     */
-    protected long clusterAlarm = -1;
 
     /**
      * The jetty server that receives new messages
@@ -254,19 +281,6 @@ public class Miranda {
      * The UUID of this node
      */
     protected UUID myUuid = null;
-
-    /**
-     * Do we need to do a compaction?
-     */
-    protected long compactionTime = -1;
-
-    public long getCompactionTime() {
-        return compactionTime;
-    }
-
-    public void setCompactionTime(long compactionTime) {
-        this.compactionTime = compactionTime;
-    }
 
     public UUID getMyUuid() {
         return myUuid;
@@ -325,14 +339,6 @@ public class Miranda {
         this.server = server;
     }
 
-    public long getClusterAlarm() {
-        return clusterAlarm;
-    }
-
-    public void setClusterAlarm(long clusterAlarm) {
-        this.clusterAlarm = clusterAlarm;
-    }
-
     public static Miranda getInstance() {
         return instance;
     }
@@ -386,34 +392,8 @@ public class Miranda {
                 Cluster.getInstance().setAllNodesFailed(false);
                 recoverLocally();
             }
-
-            /*
-             * do we need to do a compaction?
-             */
-            compactIfTime();
-
-            /*
-             * See if it is time to connect to other nodes in the cluster
-             */
-            connectToOtherNodes();
         }
         logger.debug("leaving mainLoop");
-    }
-
-    public void connectToOtherNodes () throws LtsllcException {
-        //
-        // first see if it is time to connect
-        //
-        if (clusterAlarm == -1) {
-            return;
-        }
-
-        clusterAlarm = -1;
-
-        //
-        // if it's time to reconnect...
-        //
-        Cluster.getInstance().reconnect();
     }
 
     /**
@@ -458,8 +438,8 @@ public class Miranda {
         parseNodes();
 
         logger.debug("Starting cluster");
-        Cluster.defineStatics(myUuid);
-        Cluster.getInstance().connect(specNodes);
+        Cluster.defineStatics();
+        Cluster.getInstance().start(specNodes);
 
         logger.debug("starting the message port");
         startMessagePort(properties.getIntProperty(PROPERTY_MESSAGE_PORT));
@@ -613,6 +593,9 @@ public class Miranda {
         properties.setIfNull(PROPERTY_CLUSTER_PORT, PROPERTY_DEFAULT_CLUSTER_PORT);
         properties.setIfNull(PROPERTY_COMPACTION_TIME, PROPERTY_DEFAULT_COMPACTION_TIME);
         properties.setIfNull(PROPERTY_HEART_BEAT_INTERVAL, PROPERTY_DEFAULT_PROPERTY_HEART_BEAT_INTERVAL);
+        properties.setIfNull(PROPERTY_START_TIMEOUT, PROPERTY_DEFAULT_START_TIMEOUT);
+        properties.setIfNull(PROPERTY_AUCTION_TIMEOUT, PROPERTY_DEFAULT_AUCTION_TIMEOUT);
+        properties.setIfNull(PROPERTY_HEART_BEAT_TIMEOUT, PROPERTY_DEFAULT_HEART_BEAT_TIMEOUT);
     }
 
     public void storeProperties () throws IOException {
@@ -729,9 +712,7 @@ public class Miranda {
      */
     public void successfulMessage(Message message) throws IOException {
         logger.debug("entering successfulMessage with: " + message);
-        if (compactionTime == -1) {
-            compactionTime = System.currentTimeMillis() + properties.getLongProperty(PROPERTY_COMPACTION_TIME);
-        }
+
 /*
         Cluster.getInstance().informOfDelivery(message);
 
@@ -890,16 +871,4 @@ public class Miranda {
         logger.debug("leaving recoverLocally");
     }
 
-    public void compactIfTime () throws IOException {
-        if (compactionTime == -1) {
-            return;
-        }
-
-        if (System.currentTimeMillis() < compactionTime) {
-            return;
-        }
-
-        compactionTime = -1;
-        MessageLog.getInstance().compact();
-    }
 }

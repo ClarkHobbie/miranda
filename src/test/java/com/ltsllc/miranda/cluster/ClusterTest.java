@@ -68,7 +68,7 @@ class ClusterTest extends TestSuperclass {
         when(mockIoSession.getConfig()).thenReturn(mockIoSessionConfig);
 
         miranda.parseNodes();
-        Cluster.getInstance().connect(miranda.getSpecNodes());
+        Cluster.getInstance().start(miranda.getSpecNodes());
     }
 
     /*
@@ -77,11 +77,8 @@ class ClusterTest extends TestSuperclass {
      * o    send back a 200
      * o    send back a non-200
      * TODO how does miranda respond to
-     *  o   No other nodes
-     *  o   1 other nodes
      *  o   2 other nodes
      * TODO how does miranda respond to
-     *  o a timeout when sending the notification of a new message
      *  o an interrupt during the write
      *  o a timeout reading the response
      *  o an interrupt during the response
@@ -118,19 +115,17 @@ class ClusterTest extends TestSuperclass {
         miranda.loadProperties();
         miranda.setMyUuid(UUID.randomUUID());
 
-        Cluster.defineStatics(miranda.getMyUuid());
+        Cluster.defineStatics();
 
         Node node1 = new Node("192.168.0.12", 2020);
         IoSession mockIoSession1 = mock(IoSession.class);
         node1.setIoSession(mockIoSession1);
-        node1.setupHeartBeat();
         WriteFuture mockWriteFuture1 = mock(WriteFuture.class);
         when(mockIoSession1.write(any())).thenReturn(mockWriteFuture1);
 
         Node node2 = new Node( "127.0.0.1", 2020);
         IoSession mockIoSession2 = mock(IoSession.class);
         node2.setIoSession(mockIoSession2);
-        node2.setupHeartBeat();
         WriteFuture mockWriteFuture2 = mock(WriteFuture.class);
         when(mockIoSession2.write(any())).thenReturn(mockWriteFuture2);
 
@@ -184,7 +179,7 @@ class ClusterTest extends TestSuperclass {
             miranda.loadProperties();
             miranda.parseNodes();
 
-            Cluster.defineStatics(UUID.fromString(Miranda.getProperties().getProperty(Miranda.PROPERTY_UUID)));
+            Cluster.defineStatics();
 
             properties.copyTo(backup);
             testProperties.copyTo(properties);
@@ -209,7 +204,7 @@ class ClusterTest extends TestSuperclass {
             when(mockIoSession.getConfig()).thenReturn(mockIoSessionConfig);
 
             List<SpecNode> list = miranda.getSpecNodes();
-            Cluster.getInstance().connect(list);
+            Cluster.getInstance().start(list);
 
             verify(mockIoConnector, atLeastOnce()).connect(temp);
         } finally {
@@ -230,7 +225,7 @@ class ClusterTest extends TestSuperclass {
 
             IoAcceptor mockIoAcceptor = mock(IoAcceptor.class);
 
-            Cluster.defineStatics(UUID.fromString(Miranda.getProperties().getProperty(Miranda.PROPERTY_UUID)));
+            Cluster.defineStatics();
             Cluster.getInstance().setIoAcceptor(mockIoAcceptor);
 
             DefaultIoFilterChainBuilder mockDefaultFilterChainBuilder = mock(DefaultIoFilterChainBuilder.class);
@@ -259,11 +254,10 @@ class ClusterTest extends TestSuperclass {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        Cluster.defineStatics(UUID.fromString(Miranda.getProperties().getProperty(Miranda.PROPERTY_UUID)));
+        Cluster.defineStatics();
 
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
         Node node = new Node("192.168.0.12", port);
-        node.stopHeartBeat();
 
         InetSocketAddress addr = new InetSocketAddress("192.168.0.12", port);
 
@@ -294,12 +288,11 @@ class ClusterTest extends TestSuperclass {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        Cluster.defineStatics(UUID.fromString(Miranda.getProperties().getProperty(Miranda.PROPERTY_UUID)));
+        Cluster.defineStatics();
 
         List<Node> list = new ArrayList<>();
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
         Node node = new Node("192.168.0.12", port);
-        node.stopHeartBeat();
         list.add(node);
         Cluster.getInstance().setNodes(list);
 
@@ -326,7 +319,7 @@ class ClusterTest extends TestSuperclass {
 
         Cluster.getInstance().reconnect();
 
-        assert (miranda.getClusterAlarm() != -1);
+        assert (!Cluster.getInstance().allConnected());
     }
 
     @Test
@@ -334,12 +327,11 @@ class ClusterTest extends TestSuperclass {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        Cluster.defineStatics(UUID.fromString(Miranda.getProperties().getProperty(Miranda.PROPERTY_UUID)));
+        Cluster.defineStatics();
 
         List<Node> list = new ArrayList<>();
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
         Node node = new Node("192.168.0.3", port);
-        node.stopHeartBeat();
         list.add(node);
         Cluster.getInstance().setNodes(list);
 
@@ -364,7 +356,6 @@ class ClusterTest extends TestSuperclass {
         when(mockWriteFuture.getSession()).thenReturn(mockIoSession);
 
         Cluster.getInstance().reconnect();
-
-        assert (-1 == miranda.getClusterAlarm());
+        assert(Cluster.getInstance().allConnected());
     }
 }

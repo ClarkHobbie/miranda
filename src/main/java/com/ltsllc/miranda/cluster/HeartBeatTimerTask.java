@@ -57,9 +57,7 @@ public class HeartBeatTimerTask extends TimerTask {
             if (node.getIoSession() != null) {
                 node.sendHeartBeat();
             } else {
-                if (!node.isAlreadyCancelledHeartBeat()) {
-                    node.stopHeartBeat();
-                }
+
             }
         }
 

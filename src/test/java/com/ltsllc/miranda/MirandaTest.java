@@ -40,19 +40,17 @@ class MirandaTest extends TestSuperclass {
     }
 
     @Test
-    public void connectToOtherNodes () throws LtsllcException {
+    public void connectToOtherNodes () throws LtsllcException, InterruptedException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
         miranda.setMyUuid(UUID.randomUUID());
 
-        miranda.setClusterAlarm(System.currentTimeMillis());
+        Cluster.defineStatics();
 
-        Cluster mockCluster = Mockito.mock(Cluster.class);
-        Cluster.setInstance(mockCluster);
-
-        miranda.connectToOtherNodes();
-
-        Mockito.verify(mockCluster, atLeastOnce()).reconnect();
+        Miranda.getProperties().setProperty(Miranda.PROPERTY_CLUSTER_RETRY, "500");
+        synchronized (this) {
+            wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_CLUSTER_RETRY));
+        }
     }
 
     @Test
@@ -246,7 +244,7 @@ class MirandaTest extends TestSuperclass {
         miranda.loadProperties();
         miranda.setMyUuid(UUID.randomUUID());
 
-        Cluster.defineStatics(miranda.getMyUuid());
+        Cluster.defineStatics();
 
         Message message = createTestMessage(UUID.randomUUID());
         List<Message> list = new ArrayList<>();
@@ -262,6 +260,9 @@ class MirandaTest extends TestSuperclass {
         assert (miranda.getInflight().contains(message));
     }
 
+    /*
+    this doesn't correspond to any method
+
     @Test
     public void setClusterAlarm () throws LtsllcException, IOException {
         Miranda miranda = new Miranda();
@@ -276,12 +277,11 @@ class MirandaTest extends TestSuperclass {
         MessageLog.setInstance(mockMessageLog);
         when (mockMessageLog.copyAllMessages()).thenReturn(list);
 
-        miranda.setClusterAlarm(System.currentTimeMillis() - 10000);
-
         miranda.mainLoop();
 
         verify(mockCluster, atLeastOnce()).reconnect();
     }
+    */
 
     @Test
     public void deliver () throws LtsllcException, IOException {
@@ -345,6 +345,7 @@ class MirandaTest extends TestSuperclass {
         ImprovedFile owners = new ImprovedFile(p.getProperty(Miranda.PROPERTY_OWNER_FILE));
         try {
 
+            owners.delete();
             messages.touch();
 
             assert (Miranda.shouldRecover());

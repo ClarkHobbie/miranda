@@ -5,6 +5,7 @@ import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.commons.util.Utils;
+import com.ltsllc.miranda.Auction;
 import com.ltsllc.miranda.Message;
 import com.ltsllc.miranda.MessageLog;
 import com.ltsllc.miranda.Miranda;
@@ -13,7 +14,6 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.mina.core.future.ReadFuture;
 import org.apache.mina.core.session.IoSession;
 import org.apache.mina.core.session.IoSessionConfig;
 import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
@@ -34,6 +34,7 @@ import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.times;
 
 public class NodeTest {
+    /*
     @Test
     public void auctionMessage () throws InterruptedException, LtsllcException, IOException {
         ImprovedFile messages = new ImprovedFile("messages.log");
@@ -80,6 +81,7 @@ public class NodeTest {
             owners.delete();
         }
     }
+     */
 
     public Message createTestMessage (UUID uuid) {
         Message message = new Message();
@@ -115,7 +117,7 @@ public class NodeTest {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        Cluster.defineStatics(UUID.randomUUID());
+        Cluster.defineStatics();
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         ImprovedFile owners = new ImprovedFile("owners.log");
@@ -272,8 +274,8 @@ public class NodeTest {
 
         node.messageReceived(mockIoSession, strMessage);
 
-        assert (node.getState() == ClusterConnectionStates.START);
-        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(Node.ERROR_START);
+        assert (node.getState() == ClusterConnectionStates.AUCTION);
+        Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(Node.HEART_BEAT);
     }
 
     @Test
@@ -453,23 +455,39 @@ public class NodeTest {
         Node node = new Node("192.168.0.12",2020);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
-        LoggingCache cache = new LoggingCache(messages,104857600);
         node.setState(ClusterConnectionStates.GENERAL);
 
         LoggingCache mockCache = mock(LoggingCache.class);
-
-        UUID uuid = UUID.fromString("123e4567-e89b-42d3-a456-556642440000");
+        UUID nodeUuid = UUID.randomUUID();
 
         node.setCache(mockCache);
+        node.setState(ClusterConnectionStates.GENERAL);
 
         IoSession mockIoSession = mock(IoSession.class);
         when(mockIoSession.write(Node.AUCTION)).thenReturn(null);
 
-        String strMessage = Node.AUCTION;
-        node.messageReceived(mockIoSession, strMessage);
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(Node.AUCTION_START);
+        stringBuffer.append(" ");
+        stringBuffer.append(nodeUuid);
 
-        assert(node.getState() == ClusterConnectionStates.AUCTION);
-        Mockito.verify(mockIoSession).write(Node.AUCTION);
+        Message message = createTestMessage(UUID.randomUUID());
+        List<UUID> list = new ArrayList<>();
+        list.add(message.getMessageID());
+
+        MessageLog mockMessageLog = mock(MessageLog.class);
+        MessageLog.setInstance(mockMessageLog);
+        when (mockMessageLog.getAllMessagesOwnedBy(nodeUuid)).thenReturn(list);
+
+        node.messageReceived(mockIoSession, stringBuffer.toString());
+
+        stringBuffer = new StringBuffer();
+        stringBuffer.append(Node.AUCTION);
+        stringBuffer.append(" ");
+        stringBuffer.append(nodeUuid);
+
+        verify(mockIoSession, atLeastOnce()).write(stringBuffer.toString());
+
     }
 
     @Test
@@ -675,7 +693,7 @@ public class NodeTest {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        Cluster.defineStatics(UUID.randomUUID());
+        Cluster.defineStatics();
 
         Cluster.getInstance().setNodes(new ArrayList<>());
 
@@ -693,7 +711,7 @@ public class NodeTest {
     public void sessionClosed () throws Exception {
         Configurator.setRootLevel(Level.DEBUG);
 
-        Cluster.defineStatics(UUID.randomUUID());
+        Cluster.defineStatics();
         Cluster.getInstance().setIoConnector(new NioSocketConnector());
         Cluster.getInstance().setIoAcceptor(new NioSocketAcceptor());
         Cluster.getInstance().setClusterHandler(new ClusterHandler());
@@ -930,7 +948,7 @@ public class NodeTest {
     public void handleStart () throws LtsllcException, CloneNotSupportedException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
-        Cluster.defineStatics(miranda.getMyUuid());
+        Cluster.defineStatics();
         Node node = new Node("192.168.0.12",2020);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
@@ -966,7 +984,7 @@ public class NodeTest {
 
     @Test
     public void popState () throws LtsllcException {
-        Cluster.defineStatics(UUID.randomUUID());
+        Cluster.defineStatics();
         Node node = new Node("192.168.0.12",2020);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
@@ -1073,7 +1091,6 @@ public class NodeTest {
             IoSession mockIoSession = mock(IoSession.class);
 
             Node node = new Node("localhost", 2020);
-            node.setupHeartBeat();
             node.setIoSession(mockIoSession);
 
             node.handleSendOwners(mockIoSession);
@@ -1187,6 +1204,267 @@ public class NodeTest {
                 owners.delete();
             }
         }
+    }
+
+    @Test
+    public void startTimeout () throws LtsllcException, InterruptedException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+        miranda.setMyUuid(UUID.randomUUID());
+        miranda.setMyHost("192.168.0.20");
+        miranda.setMyPort(2020);
+
+        Node node = new Node("192.168.0.12", 2020);
+        IoSession mockIoSession = mock(IoSession.class);
+        node.setIoSession(mockIoSession);
+
+        node.sendStart(mockIoSession);
+
+        synchronized (this) {
+            wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_START_TIMEOUT));
+        }
+
+        assert (node.getState() == ClusterConnectionStates.START);
+    }
+
+    @Test
+    public void startTimeoutNot () throws LtsllcException, InterruptedException, IOException, CloneNotSupportedException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
+        miranda.setMyUuid(UUID.randomUUID());
+        miranda.setMyHost("192.168.0.20");
+        miranda.setMyPort(2020);
+
+        Node node = new Node("192.168.0.12", 2020);
+        IoSession mockIoSession = mock(IoSession.class);
+        IoSessionConfig mockIoSessionConfig = mock(IoSessionConfig.class);
+        when(mockIoSession.getConfig()).thenReturn(mockIoSessionConfig);
+
+        Cluster mockCluster = mock(Cluster.class);
+        Cluster.setInstance(mockCluster);
+
+        node.setIoSession(mockIoSession);
+
+        node.sendStart(mockIoSession);
+
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(Node.START_ACKNOWLEDGED);
+
+        mockIoSession = mock(IoSession.class);
+        node.setIoSession(mockIoSession);
+
+        node.messageReceived(mockIoSession, stringBuffer.toString());
+
+        synchronized (this) {
+            wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_START_TIMEOUT));
+        }
+
+        verify (mockIoSession, times(0)).write(any());
+
+    }
+
+    @Test
+    public void heartBeatTimeout () throws LtsllcException, InterruptedException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+        IoSession mockIoSession = mock(IoSession.class);
+        UUID nodeUuid = UUID.randomUUID();
+        Cluster.defineStatics();
+        Cluster mockCluster = mock(Cluster.class);
+        Cluster.setInstance(mockCluster);
+
+        Node node = new Node(nodeUuid, "192.168.0.1", 2020, mockIoSession);
+        node.sendHeartBeat();
+
+        synchronized (this) {
+            wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_TIMEOUT));
+        }
+
+        verify(mockCluster, atLeastOnce()).auction(any());
+    }
+
+    @Test
+    public void heartBeatTimeoutNot () throws LtsllcException, IOException, CloneNotSupportedException, InterruptedException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
+        IoSession mockIoSession = mock(IoSession.class);
+
+        Cluster mockCluster = mock(Cluster.class);
+        Cluster.setInstance(mockCluster);
+
+        UUID nodeUuid = UUID.randomUUID();
+
+        Node node = new Node (nodeUuid, "192.168.0.12", 2020, mockIoSession);
+        node.sendHeartBeat();
+
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(Node.HEART_BEAT);
+
+        node.messageReceived(mockIoSession, stringBuffer.toString());
+
+        synchronized (this) {
+            wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_TIMEOUT));
+        }
+
+        verify(mockCluster, times(0)).auction(any());
+    }
+
+    @Test
+    public void auctionTimeout () throws LtsllcException, InterruptedException {
+        ImprovedFile messagesLog = new ImprovedFile("message.log");
+        ImprovedFile messagesBackup = new ImprovedFile("messag.log.backup");
+        ImprovedFile testMessages = new ImprovedFile("test.messages.log");
+
+        if (messagesLog.exists()) {
+            messagesBackup.delete();
+            messagesLog.copyTo(messagesBackup);
+        }
+
+        messagesLog.delete();
+        testMessages.copyTo(messagesLog);
+        try {
+            Miranda miranda = new Miranda();
+            miranda.loadProperties();
+            miranda.setMyUuid(UUID.randomUUID());
+            miranda.setMyHost("192.168.0.12");
+            miranda.setMyPort(2020);
+
+            ImprovedFile messageLog = new ImprovedFile("messages.log");
+            ImprovedFile ownersLog = new ImprovedFile("owner.log");
+            MessageLog.defineStatics(messageLog, 1000000, ownersLog);
+
+            UUID auctionID = UUID.randomUUID();
+            IoSession mockIoSession = mock(IoSession.class);
+            Node node = new Node(auctionID, "192.168.0.12", 2020, mockIoSession);
+            node.auction = new Auction(auctionID);
+            node.sendAuctionStart(mockIoSession);
+
+            synchronized (this) {
+                wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_AUCTION_TIMEOUT));
+            }
+        } finally {
+            messagesLog.delete();
+            if (messagesBackup.exists()) {
+                messagesBackup.copyTo(messagesLog);
+                messagesBackup.delete();
+            }
+        }
+    }
+
+
+    @Test
+    public void auctionTimeoutNot () throws LtsllcException, InterruptedException, IOException, CloneNotSupportedException {
+        ImprovedFile messagesLog = new ImprovedFile("message.log");
+        ImprovedFile messagesBackup = new ImprovedFile("messag.log.backup");
+        ImprovedFile testMessages = new ImprovedFile("test.messages.log");
+
+        if (messagesLog.exists()) {
+            messagesBackup.delete();
+            messagesLog.copyTo(messagesBackup);
+            messagesLog.delete();
+        }
+
+        testMessages.copyTo(messagesLog);
+        try {
+            Miranda miranda = new Miranda();
+            miranda.loadProperties();
+            miranda.setMyUuid(UUID.randomUUID());
+            miranda.setMyHost("192.168.0.12");
+            miranda.setMyPort(2020);
+
+            ImprovedFile messageLog = new ImprovedFile("messages.log");
+            ImprovedFile ownersLog = new ImprovedFile("owner.log");
+            MessageLog.defineStatics(messageLog, 1000000, ownersLog);
+
+            UUID auctionID = UUID.randomUUID();
+            IoSession mockIoSession = mock(IoSession.class);
+            Node node = new Node(auctionID, "192.168.0.12", 2020, mockIoSession);
+            node.auction = new Auction(auctionID);
+            node.setCache(MessageLog.getInstance().getCache());
+            node.sendAuctionStart(mockIoSession);
+            node.setState(ClusterConnectionStates.AUCTION);
+
+            StringBuffer stringBuffer = new StringBuffer();
+            stringBuffer.append(Node.AUCTION);
+            stringBuffer.append(" ");
+            stringBuffer.append(UUID.randomUUID());
+
+            node.messageReceived(mockIoSession, stringBuffer.toString());
+
+            synchronized (this) {
+                wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_AUCTION_TIMEOUT));
+            }
+            assert (node.getState() == ClusterConnectionStates.AUCTION);
+        } finally {
+            messagesLog.delete();
+            if (messagesBackup.exists()) {
+                messagesBackup.copyTo(messagesLog);
+                messagesBackup.delete();
+            }
+        }
+
+    }
+
+    @Test
+    public void bidTimeout () throws LtsllcException, IOException, InterruptedException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+        miranda.setMyUuid(UUID.randomUUID());
+        miranda.setMyHost("192.168.0.12");
+        miranda.setMyPort(2020);
+
+        IoSession mockIoSession = mock(IoSession.class);
+
+        Node node = new Node(UUID.randomUUID(), "192.168.0.1", 2020, mockIoSession);
+        node.sendBid(UUID.randomUUID());
+
+        synchronized (this) {
+            wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_BID_TIMEOUT));
+        }
+
+        assert (node.getState() == ClusterConnectionStates.START);
+        verify(mockIoSession, atLeastOnce()).write(any());
+    }
+
+    @Test
+    public void bidTimeoutNot () throws LtsllcException, IOException, InterruptedException, CloneNotSupportedException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
+        miranda.setMyUuid(UUID.randomUUID());
+        miranda.setMyHost("192.168.0.12");
+        miranda.setMyPort(2020);
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        ImprovedFile owners = new ImprovedFile("owners.log");
+        MessageLog.defineStatics(messages, 1000000, owners);
+
+        IoSession mockIoSession = mock(IoSession.class);
+
+        Node node = new Node(UUID.randomUUID(), "192.168.0.12",  2020, mockIoSession);
+
+        node.sendBid(UUID.randomUUID());
+        node.setState(ClusterConnectionStates.AUCTION);
+        node.setCache(MessageLog.getInstance().getCache());
+
+        ImprovedRandom mockImprovedRandom = mock(ImprovedRandom.class);
+        when(mockImprovedRandom.nextInt()).thenReturn(123);
+        Node.setOurRandom(mockImprovedRandom);
+
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append("BID ");
+        stringBuffer.append(UUID.randomUUID());
+        stringBuffer.append(" -1");
+
+        node.messageReceived(mockIoSession, stringBuffer.toString());
+
+        synchronized (this) {
+            wait (2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_BID_TIMEOUT));
+        }
+
+        assert (ClusterConnectionStates.MESSAGE == node.getState());
     }
 
 }

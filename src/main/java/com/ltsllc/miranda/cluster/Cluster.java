@@ -4,9 +4,7 @@ import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.commons.util.ImprovedRandom;
-import com.ltsllc.miranda.Message;
-import com.ltsllc.miranda.MessageLog;
-import com.ltsllc.miranda.Miranda;
+import com.ltsllc.miranda.*;
 import com.ltsllc.miranda.logging.LoggingCache;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -81,11 +79,7 @@ import java.util.concurrent.TimeUnit;
  * The other nodes make no reply.
  *
  */
-public class Cluster {
-    public static final long BID_WRITE_TIMEOUT = 1000;
-    public static final TimeUnit BID_WRITE_TIMEOUT_UNITS = TimeUnit.MILLISECONDS;
-    public static final long BID_READ_TIMEOUT = 1000;
-    public static final TimeUnit BID_READ_TIMEOUT_UNITS = TimeUnit.MILLISECONDS;
+public class Cluster implements Alarmable {
     public static final long IOD_TIMEOUT = 1000;
     public static final TimeUnit IOD_TIMEOUT_UNITS = TimeUnit.MILLISECONDS;
     public static final long IONM_TIMEOUT = 1000;
@@ -224,10 +218,9 @@ public class Cluster {
 
         boolean alreadyPresent = false;
         for (Node node2 : nodes) {
-            if (node2.getUuid().equals(node.getUuid())) {
+            if ((node.getUuid() != null) && (node2.getUuid() != null) && (node2.getUuid().equals(node.getUuid()))){
                 alreadyPresent = true;
                 logger.debug("node already present discarding");
-                node.stopHeartBeat();
                 node.closeSession();
             }
         }
@@ -247,7 +240,6 @@ public class Cluster {
     public synchronized void removeNode(Node node, IoSession ioSession) {
         logger.debug("removing node, " + node + " from nodes");
         nodes.remove(node);
-        node.stopHeartBeat();
         node.closeSession();
         clusterHandler.getIoSessionToNode().remove(ioSession);
     }
@@ -313,7 +305,7 @@ public class Cluster {
      * @see #listen()
      * @see #connectNodes(List)
      */
-    public void connect(List<SpecNode> list) throws LtsllcException {
+    public void start(List<SpecNode> list) throws LtsllcException {
         listen();
         connectNodes(list);
     }
@@ -408,7 +400,6 @@ public class Cluster {
                 ioSession = future.getSession();
                 ioSession.getConfig().setUseReadOperation(true);
                 node.setIoSession(ioSession);
-                node.setupHeartBeat();
                 clusterHandler.getIoSessionToNode().put(ioSession, node);
                 if (Miranda.getInstance().getSynchronizationFlag()) {
                     Miranda.getInstance().setSynchronizationFlag(false);
@@ -419,13 +410,10 @@ public class Cluster {
             } else {
                 logger.debug("failed to connect to " + node.getHost() + ":" + node.getPort());
                 returnValue = false;
-                node.stopHeartBeat();
-                Miranda.getInstance().setClusterAlarm(System.currentTimeMillis());
             }
         } catch (RuntimeIoException e) {
             logger.error("encountered exception", e);
             returnValue = false;
-            Miranda.getInstance().setClusterAlarm(System.currentTimeMillis() + Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_RETRY));
         }
         if (returnValue) {
             events.info ("Connected to " + node.getHost() + ":" + node.getPort());
@@ -434,9 +422,12 @@ public class Cluster {
         return returnValue;
     }
 
-    public synchronized static void defineStatics (UUID myID) {
+    public synchronized static void defineStatics () {
         instance = new Cluster();
-        instance.setUuid(myID);
+        instance.setUuid(Miranda.getInstance().getMyUuid());
+
+        AlarmClock.getInstance().schedule(getInstance(), Alarms.CLUSTER,
+                Miranda.getProperties().getLongProperty(Miranda.PROPERTY_CLUSTER_RETRY));
     }
 
     /**
@@ -449,27 +440,25 @@ public class Cluster {
         boolean returnValue = true;
 
         //
-        // if we're already connected to everyone then there is nothing to do
-        //
-        if (connectedToAll()){
-            Miranda.getInstance().setClusterAlarm(-1);
-            logger.debug("we're all connected, returning true");
-            return true;
-        }
-
-        //
         // if a node is not connected then try and connect it
         //
         for (Node node : nodes) {
             if (node.getIoSession() == null) {
                 if (!connectToNode(node,ioConnector)) {
-                    Miranda.getInstance().setClusterAlarm(System.currentTimeMillis() + Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_RETRY));
                     returnValue = false;
                 }
             }
         }
         logger.debug("leaving reconnect with " + returnValue);
         return returnValue;
+    }
+
+    public void reconnectIfNecessary () throws LtsllcException {
+        if (connectedToAll()) {
+            return;
+        } else {
+            reconnect();
+        }
     }
 
     /**
@@ -506,7 +495,7 @@ public class Cluster {
         List<Node> results = new ArrayList<>(nodes.size());
 
         for (Node node : nodes) {
-            if (node.getUuid() != null) {
+            if ((node.getUuid() != null) || ((node.getHost() != null) && (node.getPort() != -1))){
                 Node node2 = (Node) node.clone();
                 copy.add(node2);
             }
@@ -519,9 +508,8 @@ public class Cluster {
             while (!copy.isEmpty()) {
                 Node node2 = copy.get(0);
                 copy.remove(node2);
-                if (node1.uuid.equals(node2.uuid)) {
+                if (node1.pointsToTheSameThing(node2)) {
                     node1.merge(node2);
-                    node2.stopHeartBeat();
                     node2.closeSession();
                 } else {
                     results.add(node2);
@@ -536,4 +524,32 @@ public class Cluster {
     }
 
 
+    @Override
+    public void alarm(Alarms alarm) throws Throwable {
+        if (alarm == Alarms.CLUSTER) {
+            reconnectIfNecessary();
+        }
+    }
+
+    public synchronized void auction (UUID uuid) {
+        if (uuid == null) {
+            return;
+        }
+
+        for (Node node : nodes) {
+            if (node.getIoSession() != null) {
+                node.auction(uuid);
+            }
+        }
+    }
+
+    public synchronized boolean allConnected () {
+        for (Node node : nodes) {
+            if (node.getIoSession() == null) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }

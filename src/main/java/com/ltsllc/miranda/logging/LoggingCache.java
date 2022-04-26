@@ -3,6 +3,9 @@ package com.ltsllc.miranda.logging;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.Message;
+import com.ltsllc.miranda.Miranda;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.util.*;
@@ -17,6 +20,8 @@ import java.util.*;
  * </P>
  */
 public class LoggingCache {
+    public static final Logger logger = LogManager.getLogger();
+
     /**
      * The file where it logs to
      */
@@ -318,6 +323,16 @@ public class LoggingCache {
      * @throws IOException If there is a problem reading or writing a file.
      */
     public synchronized void compact () throws IOException {
+        logger.debug("entering compact");
+
+        ImprovedFile messages = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_MESSAGE_LOG));
+        if (!messages.exists()) {
+            logger.debug("message log, " +
+                    Miranda.getProperties().getProperty(Miranda.PROPERTY_MESSAGE_LOG)
+                    + " does not exist, returning");
+            return;
+        }
+
         FileReader fileReader = null;
         BufferedReader bufferedReader = null;
         FileWriter fileWriter = null;
@@ -363,6 +378,8 @@ public class LoggingCache {
 
         file.delete();
         outputFile.renameTo(file);
+
+        logger.debug("leaving compact");
     }
 
     /**

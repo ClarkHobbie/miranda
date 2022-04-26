@@ -79,8 +79,7 @@ public class ClusterHandler implements IoHandler {
         // This is a new connection add it to the cluster
         //
         if (node == null) {
-            node = new Node("Unknown", -1);
-            node.setupHeartBeat();
+            node = new Node(null, -1);
             node.setIoSession(ioSession);
 
             Cluster.getInstance().addNode(node, ioSession);
