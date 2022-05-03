@@ -6,6 +6,7 @@ import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.Message;
+import com.ltsllc.miranda.MessageLog;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.TestSuperclass;
 import org.apache.logging.log4j.Level;
@@ -32,13 +33,13 @@ import static org.mockito.Mockito.*;
 class ClusterTest extends TestSuperclass {
 
     @BeforeAll
-    public static void setup () {
+    public static void setup() {
         Configurator.setRootLevel(Level.DEBUG);
     }
 
 
     @Test
-    public void connect () throws LtsllcException, InterruptedException {
+    public void connect() throws LtsllcException, InterruptedException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
@@ -110,7 +111,7 @@ class ClusterTest extends TestSuperclass {
      */
 
     @Test
-    public void informOfDelivery () throws LtsllcException {
+    public void informOfDelivery() throws LtsllcException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
         miranda.setMyUuid(UUID.randomUUID());
@@ -123,7 +124,7 @@ class ClusterTest extends TestSuperclass {
         WriteFuture mockWriteFuture1 = mock(WriteFuture.class);
         when(mockIoSession1.write(any())).thenReturn(mockWriteFuture1);
 
-        Node node2 = new Node( "127.0.0.1", 2020);
+        Node node2 = new Node("127.0.0.1", 2020);
         IoSession mockIoSession2 = mock(IoSession.class);
         node2.setIoSession(mockIoSession2);
         WriteFuture mockWriteFuture2 = mock(WriteFuture.class);
@@ -145,12 +146,12 @@ class ClusterTest extends TestSuperclass {
         IODMessage.append(" ");
         IODMessage.append(messageUuid.toString());
 
-        verify(mockIoSession1,atLeastOnce()).write(IODMessage.toString());
-        verify(mockIoSession2,atLeastOnce()).write(IODMessage.toString());
+        verify(mockIoSession1, atLeastOnce()).write(IODMessage.toString());
+        verify(mockIoSession2, atLeastOnce()).write(IODMessage.toString());
     }
 
     @Test
-    void informOfNewMessage () throws LtsllcException {
+    void informOfNewMessage() throws LtsllcException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
@@ -160,63 +161,14 @@ class ClusterTest extends TestSuperclass {
         message.setStatusURL("http://goggle.com");
         UUID uuid = UUID.randomUUID();
         message.setMessageID(uuid);
-        byte[] contents = {1,2,3};
+        byte[] contents = {1, 2, 3};
         message.setContents(contents);
 
         Cluster.getInstance().informOfNewMessage(message);
     }
 
     @Test
-    public void testClustered () throws Exception {
-        Miranda miranda = new Miranda();
-        miranda.loadProperties();
-
-        ImprovedFile properties = new ImprovedFile("miranda.properties");
-        ImprovedFile backup = new ImprovedFile("miranda.backup");
-        ImprovedFile testProperties = new ImprovedFile("test02.properties");
-
-        try {
-            miranda.loadProperties();
-            miranda.parseNodes();
-
-            Cluster.defineStatics();
-
-            properties.copyTo(backup);
-            testProperties.copyTo(properties);
-
-            IoConnector mockIoConnector = mock(IoConnector.class);
-            Cluster.getInstance().setIoConnector(mockIoConnector);
-            when(mockIoConnector.getFilterChain()).thenReturn(new DefaultIoFilterChainBuilder());
-
-            InetSocketAddress temp = new InetSocketAddress("192.168.0.12", 2020);
-
-            ConnectFuture mockConnectFuture = mock(ConnectFuture.class);
-            when(mockIoConnector.connect(temp)).thenReturn(mockConnectFuture);
-
-            IoSession mockIoSession = mock(IoSession.class);
-            when(mockConnectFuture.getSession()).thenReturn(mockIoSession);
-
-            WriteFuture mockWriteFuture = mock(WriteFuture.class);
-            when(mockIoSession.write(any())).thenReturn(mockWriteFuture);
-            when(mockWriteFuture.getSession()).thenReturn(mockIoSession);
-
-            IoSessionConfig mockIoSessionConfig = mock(IoSessionConfig.class);
-            when(mockIoSession.getConfig()).thenReturn(mockIoSessionConfig);
-
-            List<SpecNode> list = miranda.getSpecNodes();
-            Cluster.getInstance().start(list);
-
-            verify(mockIoConnector, atLeastOnce()).connect(temp);
-        } finally {
-            if (backup.exists()) {
-                backup.copyTo(properties);
-                backup.delete();
-            }
-        }
-    }
-
-    @Test
-    public void listen () throws LtsllcException, IOException {
+    public void listen() throws LtsllcException, IOException {
         ImprovedFile events = new ImprovedFile("events.log");
 
         try {
@@ -250,7 +202,7 @@ class ClusterTest extends TestSuperclass {
     }
 
     @Test
-    public void connectToNode () throws LtsllcException {
+    public void connectToNode() throws LtsllcException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
@@ -284,7 +236,7 @@ class ClusterTest extends TestSuperclass {
     }
 
     @Test
-    public void reconnectFail () throws LtsllcException {
+    public void reconnectFail() throws LtsllcException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
@@ -323,7 +275,7 @@ class ClusterTest extends TestSuperclass {
     }
 
     @Test
-    public void reconnectSuccess () throws LtsllcException {
+    public void reconnectSuccess() throws LtsllcException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
@@ -356,6 +308,98 @@ class ClusterTest extends TestSuperclass {
         when(mockWriteFuture.getSession()).thenReturn(mockIoSession);
 
         Cluster.getInstance().reconnect();
-        assert(Cluster.getInstance().allConnected());
+        assert (Cluster.getInstance().allConnected());
+    }
+
+    @Test
+    public void deadNode() throws LtsllcException, IOException {
+        UUID uuid = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
+        Cluster.defineStatics();
+
+        ImprovedFile messages = new ImprovedFile("messages.log");
+        ImprovedFile owners = new ImprovedFile("owners.log");
+        MessageLog.defineStatics(messages, 1000000, owners);
+
+        IoSession mockIoSession = mock(IoSession.class);
+        UUID node1Uuid = UUID.fromString("00000000-0000-0000-0000-000000000000");
+
+        Node node1 = new Node(node1Uuid, "192.168.0.20", 2020, mockIoSession);
+        Cluster.getInstance().addNode(node1, mockIoSession);
+
+        mockIoSession = mock(IoSession.class);
+        UUID node2Uuid = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        Node node2 = new Node(node2Uuid, "192.168.0.12", 2020, mockIoSession);
+        Cluster.getInstance().addNode(node2, mockIoSession);
+
+        mockIoSession = mock(IoSession.class);
+        UUID node3Uuid = UUID.fromString("00000000-0000-0000-0000-000000000002");
+        Node node3 = new Node(node3Uuid, "192.168.0.30", 2020, mockIoSession);
+        Cluster.getInstance().addNode(node3, mockIoSession);
+
+        UUID message1Uuid = UUID.fromString("12345678-9abc-def0-1234-567890123456");
+        UUID message2Uuid = UUID.fromString("cdef0123-4567-89ab-cdef-0123456789ab");
+        UUID message3Uuid = UUID.fromString("cdef0123-5467-89ab-cdef-0123456789ab");
+
+        Message message1 = createTestMessage(message1Uuid);
+        MessageLog.getInstance().add(message1, node2Uuid);
+
+        Message message2 = createTestMessage(message2Uuid);
+        MessageLog.getInstance().add(message2, node2Uuid);
+
+        Message message3 = createTestMessage(message3Uuid);
+        MessageLog.getInstance().add(message3, node2Uuid);
+
+        Cluster.getInstance().deadNode(node2Uuid);
+
+        assert (!MessageLog.getInstance().getOwnerOf(message1Uuid).equals(node2Uuid));
+        assert (!MessageLog.getInstance().getOwnerOf(message2Uuid).equals(node2Uuid));
+        assert (!MessageLog.getInstance().getOwnerOf(message3Uuid).equals(node2Uuid));
+    }
+
+    @Test
+    public void divideUpMessages () throws LtsllcException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
+        Cluster.defineStatics();
+
+        List<UUID> list = new ArrayList<>();
+        for (int i = 0; i < 12; i++) {
+            UUID uuid = UUID.randomUUID();
+            list.add(uuid);
+        }
+
+        for (int i = 0; i < 3; i++) {
+            List<UUID> portion = Cluster.getInstance().divideUpMessages(4, i, list);
+            if (i != 3) {
+                assert (portion.size() == 13 / 4);
+            } else {
+                assert (portion.size() == 4);
+            }
+        }
+    }
+
+    @Test
+    public void takeOwnershipOf () throws LtsllcException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
+        Cluster.defineStatics();
+
+        IoSession mockIoSession = mock(IoSession.class);
+
+        for (int i = 0; i < 3; i++) {
+            Node node = new Node(UUID.randomUUID(), "192.168.0.20", 2020, mockIoSession);
+            Cluster.getInstance().addNode(node, mockIoSession);
+        }
+
+        UUID nodeUuid = UUID.randomUUID();
+        UUID messageUuid = UUID.randomUUID();
+        Cluster.getInstance().takeOwnershipOf(nodeUuid, messageUuid);
+
+        verify(mockIoSession, times(3)).write(any());
     }
 }

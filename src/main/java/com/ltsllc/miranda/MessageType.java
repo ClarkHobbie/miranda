@@ -11,6 +11,7 @@ public enum MessageType {
     AUCTION_OVER,
     BID,
     DEAD_NODE,
+    DEAD_NODE_START,
     ERROR,
     ERROR_START,
     GET_MESSAGE,
@@ -32,6 +33,7 @@ public enum MessageType {
     START_ACKNOWLEDGED,
     SYNCHRONIZE,
     SYNCHRONIZE_START,
+    TAKE,
     TIMEOUT,
     UNKNOWN
 }

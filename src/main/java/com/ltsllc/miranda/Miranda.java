@@ -6,6 +6,7 @@ import com.ltsllc.commons.UncheckedLtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.Cluster;
+import com.ltsllc.miranda.cluster.Node;
 import com.ltsllc.miranda.cluster.SpecNode;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -205,6 +206,16 @@ public class Miranda {
     public static final String PROPERTY_DEFAULT_HEART_BEAT_TIMEOUT = "500";
 
     /**
+     * The timeout for responding to a DEAD NODE START message.
+     */
+    public static final String PROPERTY_DEAD_NODE_TIMEOUT = "timeouts.deadNode";
+
+    /**
+     * The default timeout for a DEAD NODE START message is 1/2 a second
+     */
+    public static final String PROPERTY_DEFAULT_DEAD_NODE_TIMEOUT = "500";
+
+    /**
      * The logger to use
      */
     protected static final Logger logger = LogManager.getLogger();
@@ -314,6 +325,15 @@ public class Miranda {
         this.specNodes = specNodes;
     }
 
+    /**
+     * The constructor for the class
+     *
+     * <P>
+     *     This set the instance to the newly created instance and tries to load the properties for that instance.  If
+     *     there is a problem loading the properties the method throws an UncheckedLtsllcException.  It checks for the
+     *     existence of the myUuid property and throws an UncheckedLtsllcException if it is not defined.
+     * </P>
+     */
     public Miranda() {
         Miranda.instance = this;
 
@@ -326,15 +346,30 @@ public class Miranda {
             String msg = "Please specify a UUID for this node by setting the " + PROPERTY_UUID + " property";
             logger.error(msg);
             event.error(msg);
+            throw new UncheckedLtsllcException(msg);
         } else {
             myUuid = UUID.fromString(properties.getProperty(PROPERTY_UUID));
         }
     }
 
+    /**
+     * Get the jetty server
+     *
+     * <P>
+     *     The system uses a Jetty sever for messages.
+     * </P>
+     *
+     * @return The Jetty server
+     */
     public Server getServer() {
         return server;
     }
 
+    /**
+     * Set the Jetty server for the system
+     *
+     * @param server The Jetty server
+     */
     public void setServer(Server server) {
         this.server = server;
     }
@@ -363,7 +398,7 @@ public class Miranda {
      *     copy all the messages we are responsible for delivering
      *     foreach of those messages
      *         try and deliver the message
-     *     check if we need to try and connect to other nodes
+     *     check if we need to recover locally
      *     </PRE>
      *
      * <P>
@@ -596,8 +631,14 @@ public class Miranda {
         properties.setIfNull(PROPERTY_START_TIMEOUT, PROPERTY_DEFAULT_START_TIMEOUT);
         properties.setIfNull(PROPERTY_AUCTION_TIMEOUT, PROPERTY_DEFAULT_AUCTION_TIMEOUT);
         properties.setIfNull(PROPERTY_HEART_BEAT_TIMEOUT, PROPERTY_DEFAULT_HEART_BEAT_TIMEOUT);
+        properties.setIfNull(PROPERTY_DEAD_NODE_TIMEOUT, PROPERTY_DEFAULT_DEAD_NODE_TIMEOUT);
     }
 
+    /**
+     * Store the properties
+     *
+     * @throws IOException If there is a problem dealing with the properties files.
+     */
     public void storeProperties () throws IOException {
         FileWriter fileWriter = null;
 
@@ -713,19 +754,8 @@ public class Miranda {
     public void successfulMessage(Message message) throws IOException {
         logger.debug("entering successfulMessage with: " + message);
 
-/*
-        Cluster.getInstance().informOfDelivery(message);
+        Cluster.getInstance().notifyOfDelivery(message);
 
-        try {
-
-             MessageLog.getInstance().remove(message.getMessageID());
-
-        } catch (IOException e) {
-            logger.error ("Exception trying to remove message from the message log",e);
-            event.error("Exception trying to remove message from the message log",e);
-        }
-
-         */
         notifyClientOfDelivery(message);
         inflight.remove(message);
         MessageLog.getInstance().remove(message.getMessageID());
@@ -740,18 +770,24 @@ public class Miranda {
      * @param message The message that was delivered
      */
     public void notifyClientOfDelivery(Message message) {
-        logger.debug("entering notifyClientOfDelivery");
+        logger.debug("entering notifyClientOfDelivery with " + message);
         event.info("delivered " + message.getMessageID());
+
         AsyncHttpClient httpClient = Dsl.asyncHttpClient();
         BoundRequestBuilder
                 rb = httpClient.preparePost(message.getDeliveryURL());
-        rb.setBody("MESSAGE " + message.getMessageID() + " DELIVERED");
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(Node.MESSAGE_DELIVERED);
+        stringBuffer.append(" ");
+        stringBuffer.append(message.getMessageID());
+        rb.setBody(stringBuffer.toString());
         rb.execute(new AsyncCompletionHandler<Response>() {
             @Override
             public Response onCompleted(Response response) throws Exception {
                 return response;
             }
         });
+
         logger.debug("leaving notifyClientOfDelivery");
     }
 

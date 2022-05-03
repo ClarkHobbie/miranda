@@ -494,8 +494,6 @@ public class NodeTest {
     public void testGeneralDeadNode () throws LtsllcException, IOException, CloneNotSupportedException {
         Node node = new Node("192.168.0.12",2020);
 
-        ImprovedFile messages = new ImprovedFile("messages.log");
-        LoggingCache cache = new LoggingCache(messages,104857600);
         node.setState(ClusterConnectionStates.GENERAL);
 
         LoggingCache mockCache = mock(LoggingCache.class);
@@ -507,22 +505,25 @@ public class NodeTest {
         IoSession mockIoSession = mock(IoSession.class);
         when(mockIoSession.write(Node.AUCTION)).thenReturn(null);
 
-        String strMessage = Node.DEAD_NODE;
+        String strMessage = Node.DEAD_NODE_START;
         strMessage += " ";
         strMessage += uuid;
 
         node.messageReceived(mockIoSession, strMessage);
 
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(Node.DEAD_NODE);
+        stringBuffer.append(" ");
+        stringBuffer.append(uuid);
+
         assert(node.getState() == ClusterConnectionStates.GENERAL);
-        Mockito.verify(mockIoSession).write(strMessage.toUpperCase());
+        verify(mockIoSession, atLeastOnce()).write(stringBuffer.toString().toUpperCase());
     }
 
     @Test
     public void testGeneralGetMessageCacheMiss () throws LtsllcException, IOException, CloneNotSupportedException {
         Node node = new Node("192.168.0.12",2020);
 
-        ImprovedFile messages = new ImprovedFile("messages.log");
-        LoggingCache cache = new LoggingCache(messages,104857600);
         node.setState(ClusterConnectionStates.GENERAL);
 
         LoggingCache mockCache = mock(LoggingCache.class);
@@ -1265,11 +1266,12 @@ public class NodeTest {
     }
 
     @Test
-    public void heartBeatTimeout () throws LtsllcException, InterruptedException {
+    public void heartBeatTimeout () throws LtsllcException, InterruptedException, IOException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
         IoSession mockIoSession = mock(IoSession.class);
         UUID nodeUuid = UUID.randomUUID();
+
         Cluster.defineStatics();
         Cluster mockCluster = mock(Cluster.class);
         Cluster.setInstance(mockCluster);
@@ -1281,7 +1283,7 @@ public class NodeTest {
             wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_TIMEOUT));
         }
 
-        verify(mockCluster, atLeastOnce()).auction(any());
+        verify(mockCluster, atLeastOnce()).deadNode(any());
     }
 
     @Test
@@ -1308,7 +1310,7 @@ public class NodeTest {
             wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_TIMEOUT));
         }
 
-        verify(mockCluster, times(0)).auction(any());
+        verify(mockCluster, times(0)).deadNode(any());
     }
 
     @Test
@@ -1465,6 +1467,88 @@ public class NodeTest {
         }
 
         assert (ClusterConnectionStates.MESSAGE == node.getState());
+    }
+
+    @Test
+    public void sendDeadNode () throws LtsllcException {
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
+        IoSession mockIoSession = mock(IoSession.class);
+
+        UUID nodeUuid = UUID.randomUUID();
+
+        Node node = new Node(nodeUuid, "192.168.0.20", 2020, mockIoSession);
+        node.sendDeadNode (UUID.randomUUID());
+
+        verify(mockIoSession,  atLeastOnce()).write(any());
+    }
+
+    @Test
+    public void deadNodeTimeout () throws LtsllcException, InterruptedException {
+        UUID nodeUuid = UUID.randomUUID();
+
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+        miranda.setMyUuid(nodeUuid);
+        miranda.setMyHost("192.168.0.20");
+        miranda.setMyPort(2020);
+
+        IoSession mockIoSession = mock(IoSession.class);
+
+        Node node = new Node(nodeUuid, "192.168.0.20", 2020, mockIoSession);
+        node.sendDeadNodeStart(UUID.randomUUID());
+
+        synchronized (this) {
+            wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_DEAD_NODE_TIMEOUT));
+        }
+
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(Node.START);
+        stringBuffer.append(" ");
+        stringBuffer.append(nodeUuid);
+        stringBuffer.append(" 192.168.0.20 2020");
+
+        ArgumentCaptor<String> valueCaptor = ArgumentCaptor.forClass(String.class);
+
+        verify(mockIoSession, atLeastOnce()).write(valueCaptor.capture());
+        List<String> list = valueCaptor.getAllValues();
+
+        assert(list.get(1).equalsIgnoreCase(stringBuffer.toString()));
+    }
+
+    @Test
+    public void deadNodeTimeoutNot () throws InterruptedException, LtsllcException {
+        UUID nodeUuid = UUID.randomUUID();
+
+        Miranda miranda = new Miranda();
+        miranda.loadProperties();
+        miranda.setMyUuid(nodeUuid);
+        miranda.setMyHost("192.168.0.20");
+        miranda.setMyPort(2020);
+
+        IoSession mockIoSession = mock(IoSession.class);
+
+        Node node = new Node(nodeUuid, "192.168.0.20", 2020, mockIoSession);
+        node.sendDeadNodeStart(UUID.randomUUID());
+        sendDeadNode();
+
+        synchronized (this) {
+            wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_DEAD_NODE_TIMEOUT));
+        }
+
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(Node.START);
+        stringBuffer.append(" ");
+        stringBuffer.append(nodeUuid);
+        stringBuffer.append(" 192.168.0.20 2020");
+
+        ArgumentCaptor<String> valueCaptor = ArgumentCaptor.forClass(String.class);
+
+        verify(mockIoSession, atLeastOnce()).write(valueCaptor.capture());
+        List<String> list = valueCaptor.getAllValues();
+
+        assert(!list.get(1).equals(stringBuffer.toString()));
     }
 
 }

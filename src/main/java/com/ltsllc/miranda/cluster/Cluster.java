@@ -211,6 +211,16 @@ public class Cluster implements Alarmable {
         Cluster.randomNumberGenerator = randomNumberGenerator;
     }
 
+    /**
+     * Add another node to the list of nodes in the cluster
+     *
+     * <P>
+     *     If the node is a duplicate of another node in the cluster (i.e. if it has the same uuid) then the node is
+     *     not added and the node's session is closed.
+     * </P>
+     * @param node The node to add.
+     * @param ioSession The session the new node should use.
+     */
     public synchronized void addNode (Node node, IoSession ioSession) {
         logger.debug("adding node " + node + " to nodes");
 
@@ -422,6 +432,9 @@ public class Cluster implements Alarmable {
         return returnValue;
     }
 
+    /**
+     * Initialize the instance
+     */
     public synchronized static void defineStatics () {
         instance = new Cluster();
         instance.setUuid(Miranda.getInstance().getMyUuid());
@@ -453,7 +466,16 @@ public class Cluster implements Alarmable {
         return returnValue;
     }
 
-    public void reconnectIfNecessary () throws LtsllcException {
+    /**
+     * Reconnect if any nodes are offline
+     *
+     * <P>
+     *     This method checks to see if we are connected to every node in the cluster.  If we are then it returns
+     *     without doing anything.  If we are not, then it tries reconnect to the offline nodes.
+     * </P>
+     * @throws LtsllcException If there is a problem reconnecting.
+     */
+    public void reconnectIfNecessary () throws LtsllcException{
         if (connectedToAll()) {
             return;
         } else {
@@ -524,6 +546,12 @@ public class Cluster implements Alarmable {
     }
 
 
+    /**
+     * The alarm method required by the alarmable interface
+     *
+     * @param alarm The alarm.
+     * @throws Throwable If there is a problem reconnecting.
+     */
     @Override
     public void alarm(Alarms alarm) throws Throwable {
         if (alarm == Alarms.CLUSTER) {
@@ -531,18 +559,48 @@ public class Cluster implements Alarmable {
         }
     }
 
-    public synchronized void auction (UUID uuid) {
+    /**
+     * Divide up a node's messages among the still-connected nodes
+     *
+     * @param uuid The node whose messages we are dividing up
+     * @throws IOException If there is a problem taking ownership.
+     */
+    public synchronized void divideUpNodesMessages (UUID uuid) throws IOException {
         if (uuid == null) {
             return;
         }
 
+        //
+        // how many connected nodes do we have?
+        //
+        List<Node> connectedNodes = new ArrayList<>();
         for (Node node : nodes) {
             if (node.getIoSession() != null) {
-                node.auction(uuid);
+                connectedNodes.add(node);
+            }
+        }
+
+        //
+        // dived up the messages among the still-connected nodes
+        //
+        List<UUID> list = MessageLog.getInstance().getAllMessagesOwnedBy(uuid);
+        if (connectedNodes.size() == 1 || connectedNodes.size() == 0) {
+            Node node = connectedNodes.get(0);
+            node.takeOwnershipOf(list);
+        } else {
+            for (int i = 0; i < connectedNodes.size(); i++) {
+                Node node = connectedNodes.get(i);
+                List<UUID> nodeMessages = divideUpMessages(connectedNodes.size(), i, list);
+                node.takeOwnershipOf(nodeMessages);
             }
         }
     }
 
+    /**
+     * Are we connected to all nodes in the cluster?
+     *
+     * @return If we are connected to all the nodes in the cluster: true if we are false otherwise
+     */
     public synchronized boolean allConnected () {
         for (Node node : nodes) {
             if (node.getIoSession() == null) {
@@ -551,5 +609,96 @@ public class Cluster implements Alarmable {
         }
 
         return true;
+    }
+
+    /**
+     * Divide the list up into portions
+     *
+     * <P>
+     *     As far as this method is concerned all portions except the last one are of equal size. The last portion
+     *     contains the regular number plus the modulus of the size of the list modulo the number of portions.
+     * </P>
+     *
+     * @param numberOfPortions The number of ways messages will be split.
+     * @param myOrder Which portion we want.  Note that this is zero-relative so the order will be 0 for the first
+     *                portion, 1 for the second, and so on.
+     * @param messages The list to be divided into portions
+     * @return The portion of messages that "belong to" myOrder
+     */
+    public List<UUID> divideUpMessages(int numberOfPortions, int myOrder, List<UUID> messages) {
+        int numberOfMessages = messages.size()/numberOfPortions;
+        List<UUID> myPortion = new ArrayList<>();
+
+        int remainder = messages.size() % numberOfPortions;
+
+        int startIndex = myOrder * numberOfMessages;
+        if ((myOrder + 1) == numberOfPortions) {
+            numberOfMessages += remainder;
+        }
+
+        for (int i = 0; i < numberOfMessages; i++) {
+            UUID newUuid = new UUID(messages.get(i + startIndex).getMostSignificantBits(),
+                    messages.get(i + startIndex).getLeastSignificantBits());
+            myPortion.add(newUuid);
+        }
+
+        return myPortion;
+    }
+
+    /**
+     * Transfer the ownership of a message
+     *
+     * @param newOwner The new owner of the message.
+     * @param message The message whose ownership is to be transferred
+     */
+    public synchronized void takeOwnershipOf (UUID newOwner, UUID message) {
+        for (Node node : nodes) {
+            if (node.getIoSession() != null) {
+                node.sendTakeOwnershipOf(newOwner, message);
+            }
+        }
+    }
+
+    /**
+     * A node has been declared dead --- divide up its message among the connected survivors
+     *
+     * @param uuid The uuid of the node being declared dead.
+     * @throws IOException If there is a problem transferring ownership.
+     */
+    public synchronized void deadNode (UUID uuid) throws IOException {
+
+        List<Node> connectedNodes = new ArrayList<>();
+        for (Node node: nodes) {
+            if (node.getUuid().equals(uuid)) {
+                node.setIoSession(null);
+            }
+
+            if (node.getIoSession() != null) {
+                connectedNodes.add(node);
+            }
+        }
+
+        List<UUID> messages = MessageLog.getInstance().getAllMessagesOwnedBy(uuid);
+        for (int i = 0; i < connectedNodes.size(); i++) {
+            List<UUID> aPortion = divideUpMessages(connectedNodes.size(), i, messages);
+            Node node = connectedNodes.get(i);
+            node.takeOwnershipOf(aPortion);
+        }
+    }
+
+    /**
+     * Notify the cluster of a message delivery
+     * <P>
+     *     This consists of passing the message along to the nodes of the cluster.  This is to let the clients know that
+     *     they can stop tracking the message.
+     * </P>
+     * @param message The message that has been delivered
+     */
+    public synchronized void notifyOfDelivery (Message message) {
+        for (Node node : nodes) {
+            if (null != node.getIoSession()) {
+                node.notifyOfDelivery(message);
+            }
+        }
     }
 }

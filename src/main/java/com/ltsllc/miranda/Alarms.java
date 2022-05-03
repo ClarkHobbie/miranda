@@ -9,6 +9,7 @@ public enum Alarms {
     BID, // timeout waiting for a bid
     COMPACTION, // time for the MessageLog to compact
     CLUSTER, // time for the Cluster to reconnect
+    DEAD_NODE, // the dead node timeout
     HEART_BEAT, // time to send a heart beat
     HEART_BEAT_TIMEOUT, // timeout waiting for a heart beat response
     START // the start timeout

@@ -25,7 +25,7 @@ import static com.ltsllc.miranda.cluster.ClusterConnectionStates.SYNCHRONIZING;
  * <p>
  * This object represents a node in the cluster.  It contains a host, a port and the uuid of that node.  It also
  * represents the state of the connection as in have we just connected or are we in the middle of something.
- * Finally the class also serves as the container for many constants.  Generally these are constants that have to do
+ * Finally, the class also serves as the container for many constants.  Generally these are constants that have to do
  * with the connection such as "what does a bid look like?"
  * </P>
  */
@@ -41,6 +41,7 @@ public class Node implements Cloneable, Alarmable {
     public static final String AUCTION_OVER = "AUCTION OVER";
     public static final String BID = "BID";
     public static final String DEAD_NODE = "DEAD NODE";
+    public static final String DEAD_NODE_START = "DEAD NODE START";
     public static final String ERROR = "ERROR";
     public static final String ERROR_START = "ERROR_START";
     public static final String GET_MESSAGE = "GET MESSAGE";
@@ -62,6 +63,7 @@ public class Node implements Cloneable, Alarmable {
     public static final String START_ACKNOWLEDGED = "START ACKNOWLEDGED";
     public static final String SYNCHRONIZE = "SYNCHRONIZE";
     public static final String SYNCHRONIZE_START = "SYNCHRONIZE START";
+    public static final String TAKE = "TAKE";
     public static final String TIMEOUT = "TIMEOUT";
 
     public Node(UUID myUUID, String host, int port, IoSession ioSession) {
@@ -292,45 +294,7 @@ public class Node implements Cloneable, Alarmable {
                 Miranda.getProperties().getLongProperty(Miranda.PROPERTY_BID_TIMEOUT));
         timeoutsMet.put(Alarms.BID, false);
     }
-/*
-        ReadFuture readFuture = ioSession.read();
-        long timeout = Miranda.getProperties().getLongProperty(Miranda.PROPERTY_BID_TIMEOUT);
-        logger.debug("waiting " + timeout + " milliseconds for reply");
-        String reply = null;
 
-        if (readFuture.await(timeout, TimeUnit.MILLISECONDS)) {
-            logger.debug("timed out waiting for reply, keeping the message, sending timeout and setting the state to start");
-            ioSession.write(Node.TIMEOUT);
-            MessageLog.getInstance().setOwner(uuid, uuid);
-            returnValue = true;
-        } else {
-            reply = (String) readFuture.getMessage();
-            logger.debug("got a reply before the timeout, reply = " + reply);
-            Scanner scanner = new Scanner((String) readFuture.getMessage());
-            scanner.skip("BID");
-            UUID uuidOfMessage = UUID.fromString(scanner.next());
-            int theirBid = scanner.nextInt();
-
-            logger.debug("myBid = " + myBid + " theirBid = " + theirBid);
-            if (myBid > theirBid) {
-                logger.debug("won the bid, assigning the message to us");
-                MessageLog.getInstance().setOwner(uuidOfMessage, Miranda.getInstance().getMyUuid());
-                returnValue = true;
-            } else if (myBid == theirBid) {
-                logger.debug("a tie, reissuing bid");
-                returnValue = auctionMessage(message);
-            } else {
-                returnValue = false;
-                logger.debug("lost bid, turning over message to the other node");
-                undefineMessage(message);
-                MessageLog.getInstance().setOwner(uuidOfMessage, uuid);
-            }
-        }
-
-        logger.debug("leaving auctionMessage, returnValue = " + returnValue);
-        return returnValue;
-    }
-*/
     /**
      * Send a message to the node informing it that we created a message
      * <p>
@@ -363,6 +327,17 @@ public class Node implements Cloneable, Alarmable {
         ioSession.write(stringBuffer.toString());
     }
 
+    /**
+     * Process a message
+     * <P>
+     *     This method is really the "heart" of this class.  It is where most of the application logic lives.
+     * </P>
+     * @param ioSession The session on which the message came.
+     * @param o The message (expected to be a text string).
+     * @throws IOException If there is a problem opening or closing a file.
+     * @throws LtsllcException If there is an application error.
+     * @throws CloneNotSupportedException If a request is made to clone something that cloning is not supported.
+     */
     public void messageReceived(IoSession ioSession, Object o) throws IOException, LtsllcException, CloneNotSupportedException {
         setTimeOfLastActivity();
         logger.debug("entering messageReceived with state = " + state + " and message = " + o);
@@ -379,9 +354,10 @@ public class Node implements Cloneable, Alarmable {
                         break;
                     }
 
-                    case START_ACKNOWLEDGED:
+                    case START_ACKNOWLEDGED: {
                         handleStartAcknowledged();
                         break;
+                    }
 
                     case SYNCHRONIZE_START: {
                         handleSynchronizeStart(s, ioSession);
@@ -404,12 +380,32 @@ public class Node implements Cloneable, Alarmable {
                         break;
                     }
 
+                    case DEAD_NODE: {
+                        handleDeadNode();
+                        break;
+                    }
+
+                    case DEAD_NODE_START: {
+                        handleDeadNodeStart(s,ioSession);
+                        break;
+                    }
+
                     case ERROR_START: {
                         handleErrorStart(ioSession);
                         break;
                     }
 
                     case ERROR: {
+                        break;
+                    }
+
+                    case TAKE: {
+                        handleTake(s, ioSession);
+                        break;
+                    }
+
+                    case MESSAGE_DELIVERED: {
+                        handleMessageDelivered(s);
                         break;
                     }
 
@@ -454,6 +450,16 @@ public class Node implements Cloneable, Alarmable {
                         break;
                     }
 
+                    case DEAD_NODE_START: {
+                        handleDeadNodeStart(s, ioSession);
+                        break;
+                    }
+
+                    case DEAD_NODE: {
+                        handleDeadNode();
+                        break;
+                    }
+
                     case ERROR_START: {
                         handleErrorStart(ioSession);
                         break;
@@ -461,6 +467,15 @@ public class Node implements Cloneable, Alarmable {
 
                     case ERROR: {
                         handleErrorAuction(ioSession);
+                        break;
+                    }
+
+                    case MESSAGE_DELIVERED: {
+                        break;
+                    }
+
+                    case TAKE: {
+                        handleTake(s, ioSession);
                         break;
                     }
 
@@ -494,12 +509,31 @@ public class Node implements Cloneable, Alarmable {
                         break;
                     }
 
+                    case DEAD_NODE: {
+                        handleDeadNode();
+                        break;
+                    }
+
+                    case DEAD_NODE_START: {
+                        handleDeadNodeStart(s, ioSession);
+                        break;
+                    }
+
                     case ERROR_START: {
                         handleErrorStart(ioSession);
                         break;
                     }
 
                     case ERROR: {
+                        break;
+                    }
+
+                    case MESSAGE_DELIVERED: {
+                        break;
+                    }
+
+                    case TAKE: {
+                        handleTake(s, ioSession);
                         break;
                     }
 
@@ -526,8 +560,12 @@ public class Node implements Cloneable, Alarmable {
                     }
 
                     case DEAD_NODE: {
-                        ioSession.write(s);
-                        setTimeOfLastActivity();
+                        handleDeadNode();
+                        break;
+                    }
+
+                    case DEAD_NODE_START: {
+                        handleDeadNodeStart(s, ioSession);
                         break;
                     }
 
@@ -572,8 +610,14 @@ public class Node implements Cloneable, Alarmable {
                         break;
                     }
 
-                    case START_ACKNOWLEDGED:
+                    case START_ACKNOWLEDGED: {
                         break;
+                    }
+
+                    case TAKE: {
+                        handleTake(s, ioSession);
+                        break;
+                    }
 
                     default: {
                         handleError(ioSession);
@@ -638,6 +682,16 @@ public class Node implements Cloneable, Alarmable {
                         break;
                     }
 
+                    case DEAD_NODE: {
+                        handleDeadNode();
+                        break;
+                    }
+
+                    case DEAD_NODE_START: {
+                        handleDeadNodeStart(s, ioSession);
+                        break;
+                    }
+
                     case ERROR: {
                         break;
                     }
@@ -646,6 +700,16 @@ public class Node implements Cloneable, Alarmable {
                         handleStartSynchronizing(s, ioSession);
                         break;
                     }
+
+                    case TAKE: {
+                        handleTake(s, ioSession);
+                        break;
+                    }
+
+                    case MESSAGE_DELIVERED: {
+                        break;
+                    }
+
 
                     default: {
                         handleError(ioSession);
@@ -680,6 +744,8 @@ public class Node implements Cloneable, Alarmable {
             messageType = MessageType.AUCTION;
         } else if (s.startsWith(BID)) {
             messageType = MessageType.BID;
+        } else if (s.startsWith(DEAD_NODE_START)) {
+            messageType = MessageType.DEAD_NODE_START;
         } else if (s.startsWith(DEAD_NODE)) {
             messageType = MessageType.DEAD_NODE;
         } else if (s.startsWith(ERROR_START)) {
@@ -724,6 +790,8 @@ public class Node implements Cloneable, Alarmable {
             messageType = MessageType.SYNCHRONIZE_START;
         } else if (s.startsWith(SYNCHRONIZE)) {
             messageType = MessageType.SYNCHRONIZE;
+        } else if (s.startsWith(TAKE)) {
+            messageType = MessageType.TAKE;
         } else if (s.startsWith(TIMEOUT)) {
             messageType = MessageType.TIMEOUT;
         }
@@ -766,6 +834,11 @@ public class Node implements Cloneable, Alarmable {
         logger.debug("leaving handleStart");
     }
 
+    /**
+     * Send a start message complete with the uuid, host and port
+     *
+     * @param ioSession What to use when sending the start message
+     */
     public void sendStart(IoSession ioSession) {
         logger.debug("entering sendStart");
         StringBuffer stringBuffer = new StringBuffer();
@@ -788,7 +861,19 @@ public class Node implements Cloneable, Alarmable {
         logger.debug("leaving sendStart");
     }
 
-    public void handleSynchronizeStart(String input, IoSession ioSession) {
+    /**
+     * Handle a synchronization start message
+     *
+     * <P>
+     *     This consists of reading the uuid, host and port from the message sending a synchronize message of out own,
+     *     with our own uuid, host and port and switching to state.
+     * </P>
+     * @param input The synchronization start message
+     * @param ioSession The session with which to respond.
+     */
+    public void handleSynchronizeStart(String input, IoSession ioSession) throws LtsllcException, CloneNotSupportedException {
+        logger.debug("entering handleSynchronizeStart with input = " + input + " and ioSession = " + ioSession);
+
         state = SYNCHRONIZING;
 
         Scanner scanner = new Scanner(input);
@@ -812,9 +897,21 @@ public class Node implements Cloneable, Alarmable {
         ioSession.write(stringBuffer.toString());
         setTimeOfLastActivity();
 
+        Cluster.getInstance().coalesce();
+
         logger.debug("wrote " + stringBuffer);
+
+        logger.debug("leaving handleSynchronizeStart");
     }
 
+    /**
+     * Handle a heart beat start message
+     *
+     * <P>
+     *     This consists of sending a heart beat of our own and setting a time0out flag.
+     * </P>
+     * @param ioSession The IoSession to send the reply on.
+     */
     public void handleHeartBeatStart(IoSession ioSession) {
         logger.debug("entering handleHeartBeatStart");
 
@@ -826,6 +923,12 @@ public class Node implements Cloneable, Alarmable {
         logger.debug("leaving handleHeartBeatStart");
     }
 
+    /**
+     * Handle an error start message by sending out an error message returning to the start state, and sending a new
+     * start message
+     *
+     * @param ioSession The session over which to send the error message and the start message.
+     */
     public void handleErrorStart(IoSession ioSession) {
         logger.debug("entering handleErrorStart");
 
@@ -1076,7 +1179,7 @@ public class Node implements Cloneable, Alarmable {
         scanner.skip(MESSAGE_DELIVERED);
         String strUuid = scanner.next();
         UUID uuid = UUID.fromString(strUuid);
-        cache.remove(uuid);
+        MessageLog.getInstance().remove(uuid);
     }
 
     /**
@@ -1425,6 +1528,9 @@ public class Node implements Cloneable, Alarmable {
         logger.debug("wrote " + stringBuffer);
     }
 
+    /**
+     * Close the session associated with this node
+     */
     public void closeSession() {
         if (ioSession != null) {
             ioSession.closeNow();
@@ -1438,6 +1544,8 @@ public class Node implements Cloneable, Alarmable {
      * @param other The other node to merge with
      */
     public void merge(Node other) throws LtsllcException {
+        logger.debug("entering merge");
+
         if ((null == uuid) && (null != other.uuid)) {
             uuid = other.uuid;
         }
@@ -1460,9 +1568,23 @@ public class Node implements Cloneable, Alarmable {
         if (cache == null) {
             cache = MessageLog.getInstance().getCache();
         }
+
+        logger.debug("leaving merge");
     }
 
-    public void handleStartSynchronizing(String input, IoSession ioSession) throws LtsllcException, CloneNotSupportedException {
+    /**
+     * Handle a start message
+     *
+     * <P>
+     *     This consists of sending a start acknowledged message, and the sending a start of our own.
+     * </P>
+     *
+     * @param input A string containing the start message.
+     * @param ioSession The IoSession to respond with.
+     * @throws LtsllcException Coalesce throws this.
+     * @throws CloneNotSupportedException Coalesce also throws this.
+     */
+    public void handleStartSynchronizing(String input, IoSession ioSession) throws CloneNotSupportedException, LtsllcException {
         Scanner scanner = new Scanner(input);
         scanner.next(); // START
         uuid = UUID.fromString(scanner.next());
@@ -1475,6 +1597,16 @@ public class Node implements Cloneable, Alarmable {
         Cluster.getInstance().coalesce();
     }
 
+    /**
+     * This method returns true if two nodes "point" to the same thing
+     *
+     * <P>
+     *     Two nodes are considered to point to the same thing if their uuids are the same or their host and ports are
+     *     equal.
+     * </P>
+     * @param other The other node to compare with.
+     * @return true if both nodes point to the same thing, false otherwise.
+     */
     public boolean pointsToTheSameThing(Node other) {
         if ((uuid != null) && (other.uuid != null) && uuid.equals(other.uuid)) {
             return true;
@@ -1495,6 +1627,9 @@ public class Node implements Cloneable, Alarmable {
         return false;
     }
 
+    /**
+     * The node timed out waiting for a reply to its start message
+     */
     public void startTimeout() {
         logger.debug("entering startTimeout");
 
@@ -1504,8 +1639,13 @@ public class Node implements Cloneable, Alarmable {
         logger.debug("leaving startTimeout");
     }
 
+    /**
+     * The node received some sort of alarm
+     *
+     * @param alarm The alarm.
+     */
     @Override
-    public void alarm(Alarms alarm) {
+    public void alarm(Alarms alarm) throws IOException {
         switch (alarm) {
             case START : {
                 if (!timeoutsMet.get(Alarms.START)) {
@@ -1553,6 +1693,15 @@ public class Node implements Cloneable, Alarmable {
                 break;
             }
 
+            case DEAD_NODE: {
+                if (!timeoutsMet.get(Alarms.DEAD_NODE)) {
+                    deadNodeTimeout();
+                } else {
+                    timeoutsMet.put(Alarms.DEAD_NODE, false);
+                }
+                break;
+            }
+
             default: {
                 logger.error("received an unrecognized alarm:" + alarm);
                 break;
@@ -1563,37 +1712,15 @@ public class Node implements Cloneable, Alarmable {
     /**
      * A heart beat has timed out waiting for a response
      */
-    public void heartBeatTimeout() {
+    public void heartBeatTimeout() throws IOException {
         logger.debug("entering heartBeatTimeout");
 
         closeSession();
-        Cluster.getInstance().auction(uuid);
+        Cluster.getInstance().deadNode(uuid);
 
         logger.debug("leaving heartBeatTimeout");
     }
 
-    /**
-     * Auction off the messages of a node
-     *
-     * @param uuid The uuid of the node to be auctioned.
-     */
-    public void auction (UUID uuid) {
-        logger.debug("entering auction");
-
-        if (uuid == null) {
-            return;
-        }
-
-        if (state != GENERAL || ioSession == null) {
-            auction = new Auction(uuid);
-            return;
-        }
-
-        ioSession.write(AUCTION);
-        // TODO: when a node wins an auction it needs to tell the cluster that it won.
-
-        logger.debug("leaving auction");
-    }
 
     /**
      * The partner node has sent an auction start message.
@@ -1706,7 +1833,7 @@ public class Node implements Cloneable, Alarmable {
      * @param ioSession The IO session to send the message on.
      */
     public void sendAuctionStart (IoSession ioSession) {
-        logger.debug("entering sendAuction");
+        logger.debug("entering sendAuctionStart");
 
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append(AUCTION_START);
@@ -1718,6 +1845,8 @@ public class Node implements Cloneable, Alarmable {
         AlarmClock.getInstance().scheduleOnce(this, Alarms.AUCTION,
                 Miranda.getProperties().getLongProperty(Miranda.PROPERTY_AUCTION_TIMEOUT));
         timeoutsMet.put(Alarms.AUCTION, false);
+
+        logger.debug("leaving sendAuctionStart");
     }
 
     /**
@@ -1743,5 +1872,176 @@ public class Node implements Cloneable, Alarmable {
 
         logger.debug("leaving handleHeartBeat");
     }
+
+    /**
+     * Handles a dead node start message by sending back a dead node message of it own
+     *
+     * @param input The dead node start message.
+     * @param ioSession The session on which to make a reply
+     */
+    public void handleDeadNodeStart (String input, IoSession ioSession) {
+        logger.debug("entering handleDeadNodeStart");
+
+        Scanner scanner = new Scanner(input);
+        scanner.next();scanner.next();scanner.next(); // DEAD NODE START
+        String strUuid = scanner.next();
+
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(DEAD_NODE);
+        stringBuffer.append(" ");
+        stringBuffer.append(strUuid);
+
+        ioSession.write(stringBuffer.toString());
+
+        logger.debug("leaving handleDeadNodeStart");
+    }
+
+    /**
+     * Handle a dead node message
+     *
+     * <P>
+     *     This consists of setting a timeoutsMet flag.
+     * </P>
+     */
+    public void handleDeadNode () {
+        logger.debug("entering handleDeadNode");
+
+        timeoutsMet.put(Alarms.DEAD_NODE, true);
+
+        logger.debug("leaving handleDeadNode");
+    }
+
+    /**
+     * Send a DEAD NODE START message
+     *
+     * @param uuid The uuid of the dead node
+     */
+    public void sendDeadNodeStart (UUID uuid) {
+        logger.debug("entering sendDeadNode with " + uuid);
+
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(DEAD_NODE_START);
+        stringBuffer.append(" ");
+        stringBuffer.append(uuid);
+
+        ioSession.write(stringBuffer.toString());
+        logger.debug("wrote " + stringBuffer);
+        AlarmClock.getInstance().scheduleOnce(this, Alarms.DEAD_NODE,
+                Miranda.getProperties().getLongProperty(Miranda.PROPERTY_DEAD_NODE_TIMEOUT));
+        timeoutsMet.put(Alarms.DEAD_NODE, false);
+
+        logger.debug("leaving sendDeadNode");
+    }
+
+    /**
+     * The node has timed out waiting for a reply to a dead node start message
+     */
+    public void deadNodeTimeout () {
+        logger.debug("entering deadNodeTimeout");
+
+        state = ClusterConnectionStates.START;
+        sendStart(ioSession);
+
+        logger.debug("leaving deadNodeTimeout");
+    }
+
+    /**
+     * We have been asked to send a dead node message
+     */
+    public void sendDeadNode (UUID uuid) {
+        logger.debug("entering sendDeadNode");
+
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(DEAD_NODE);
+        stringBuffer.append(" ");
+        stringBuffer.append(uuid);
+
+        ioSession.write(stringBuffer.toString());
+        setTimeOfLastActivity();
+
+        logger.debug("leaving sendDeadNode");
+    }
+
+    /**
+     * Take ownership of the specified messages
+     *
+     * @param messages A list of uuids that the node "owns."
+     * @throws IOException If the MessageLog throws this exception
+     */
+    public void takeOwnershipOf (List<UUID> messages) throws IOException {
+        logger.debug("entering takeOwnershipOf");
+
+        for (UUID uuid : messages) {
+            MessageLog.getInstance().setOwner(uuid, this.uuid);
+            Cluster.getInstance().takeOwnershipOf(Miranda.getInstance().getMyUuid(), uuid);
+        }
+
+        logger.debug("leaving takeOwnershipOf");
+    }
+
+    /**
+     * Send a take message to the node
+     *
+     * @param owner The (new) owner of the message.
+     * @param message The message whose ownership will be changed.
+     */
+    public void sendTakeOwnershipOf (UUID owner, UUID message) {
+        logger.debug("entering sendTakeOwnershipOf with owner = " + owner + " and message = " + message);
+
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(TAKE);
+        stringBuffer.append(" ");
+        stringBuffer.append(owner);
+        stringBuffer.append(" ");
+        stringBuffer.append(message);
+
+        ioSession.write(stringBuffer.toString());
+        logger.debug("wrote " + stringBuffer);
+
+        logger.debug("leaving sendTakeOwnershipOf");
+    }
+
+    /**
+     * Handle a take message
+     *
+     * @param input A string containing the take message.
+     * @param ioSession The IoSession over which to send it.
+     * @throws IOException If there is a problem transferring ownership
+     */
+    public void handleTake (String input, IoSession ioSession) throws IOException {
+        logger.debug("entering handleTake");
+
+        Scanner scanner = new Scanner(input);
+        scanner.next(); // TAKE
+
+        UUID owner = UUID.fromString(scanner.next());
+        UUID message = UUID.fromString(scanner.next());
+
+        MessageLog.getInstance().setOwner(message, owner);
+
+        logger.debug("leaving handleTake");
+    }
+
+    /**
+     * Tell the node about a message delivery
+     *
+     * @param message The message that was delivered
+     */
+    public void notifyOfDelivery (Message message) {
+        logger.debug("entering notifyOfDelivery");
+
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(MESSAGE_DELIVERED);
+        stringBuffer.append(" ");
+        stringBuffer.append(message.getMessageID());
+
+        ioSession.write (stringBuffer.toString());
+
+        logger.debug("wrote " + stringBuffer);
+
+        logger.debug("leaving notifyOfDelivery");
+    }
+
+    // TODO: connect to anonymous nodes if they disconnect
 }
 
