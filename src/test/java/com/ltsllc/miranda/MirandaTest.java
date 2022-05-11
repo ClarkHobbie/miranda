@@ -69,7 +69,7 @@ class MirandaTest extends TestSuperclass {
         Miranda miranda = new Miranda();
         try {
             miranda.loadProperties();
-            miranda.startMessagePort(1234);
+            miranda.startMessagePort();
         } finally {
             miranda.getServer().stop();
         }
@@ -179,50 +179,7 @@ class MirandaTest extends TestSuperclass {
 
      */
 
-    public void newNode () throws Exception {
-        Miranda miranda = new Miranda();
 
-        try {
-            miranda.loadProperties();
-            String[] args = new String[0];
-            miranda.startUp(args);
-
-            MirandaThread mirandaThread = new MirandaThread();
-            mirandaThread.setMiranda(miranda);
-            mirandaThread.setSleepTime(500);
-
-            mirandaThread.start();
-
-            Socket socket = null;
-            InputStream inputStream = null;
-
-            try {
-                socket = new Socket("localhost", miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
-                inputStream = socket.getInputStream();
-
-                logger.debug("MirandaThread running");
-                synchronized (this) {
-                    wait(1000);
-                }
-                List<Node> nodes = Cluster.getInstance().getNodes();
-                System.out.println(nodes.size());
-                assert (nodes.size() > 0);
-            } finally {
-                if (inputStream != null) {
-                    inputStream.close();
-                }
-                if (socket != null) {
-                    socket.close();
-                }
-                if (mirandaThread != null) {
-                    mirandaThread.setKeepRunning(false);
-                }
-            }
-        } finally {
-
-        }
-
-    }
 
     @Test
     public void mainLoopNotRunning () throws LtsllcException, IOException {
@@ -326,7 +283,7 @@ class MirandaTest extends TestSuperclass {
         miranda.loadProperties();
 
         try {
-            miranda.startMessagePort(3030);
+            miranda.startMessagePort();
             miranda.releasePorts();
 
             miranda.getServer().start();

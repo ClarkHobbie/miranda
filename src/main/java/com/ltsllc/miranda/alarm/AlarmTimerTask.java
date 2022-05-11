@@ -1,5 +1,7 @@
-package com.ltsllc.miranda;
+package com.ltsllc.miranda.alarm;
 
+import com.ltsllc.miranda.alarm.Alarmable;
+import com.ltsllc.miranda.alarm.Alarms;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

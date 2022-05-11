@@ -1,22 +1,20 @@
 package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.commons.LtsllcException;
-import com.ltsllc.commons.io.ImprovedFile;
-import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.commons.util.Utils;
 import com.ltsllc.miranda.*;
+import com.ltsllc.miranda.alarm.AlarmClock;
+import com.ltsllc.miranda.alarm.Alarmable;
+import com.ltsllc.miranda.alarm.Alarms;
 import com.ltsllc.miranda.logging.LoggingCache;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.mina.core.future.ReadFuture;
 import org.apache.mina.core.session.IoSession;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
-import static com.ltsllc.miranda.cluster.ClusterConnectionStates.GENERAL;
 import static com.ltsllc.miranda.cluster.ClusterConnectionStates.SYNCHRONIZING;
 
 /**
@@ -133,19 +131,6 @@ public class Node implements Cloneable, Alarmable {
             AlarmClock.getInstance().schedule(this, Alarms.HEART_BEAT,
                     Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL));
         }
-    }
-
-    /**
-     * An auction the node is involved in.
-     */
-    protected Auction auction;
-
-    public Auction getAuction() {
-        return auction;
-    }
-
-    public void setAuction(Auction auction) {
-        this.auction = auction;
     }
 
     /**
@@ -354,11 +339,6 @@ public class Node implements Cloneable, Alarmable {
                         break;
                     }
 
-                    case START_ACKNOWLEDGED: {
-                        handleStartAcknowledged();
-                        break;
-                    }
-
                     case SYNCHRONIZE_START: {
                         handleSynchronizeStart(s, ioSession);
                         break;
@@ -419,10 +399,6 @@ public class Node implements Cloneable, Alarmable {
 
             case AUCTION: {
                 switch (messageType) {
-                    case AUCTION: {
-                        handleAuction(s, ioSession);
-                        break;
-                    }
                     case BID: {
                         handleBid(s, ioSession, uuid);
                         break;
@@ -549,16 +525,6 @@ public class Node implements Cloneable, Alarmable {
 
             case GENERAL: {
                 switch (messageType) {
-                    case AUCTION_START: {
-                        handleAuctionStart(s, ioSession);
-                        break;
-                    }
-
-                    case AUCTION: {
-                        handleAuction(s, ioSession);
-                        break;
-                    }
-
                     case DEAD_NODE: {
                         handleDeadNode();
                         break;
@@ -1398,7 +1364,6 @@ public class Node implements Cloneable, Alarmable {
      */
     public void sessionCreated(IoSession ioSession) {
         this.ioSession = ioSession;
-        checkAuction();
 
         Cluster.getInstance().addNode(this, ioSession);
     }
@@ -1675,15 +1640,6 @@ public class Node implements Cloneable, Alarmable {
                 break;
             }
 
-            case AUCTION: {
-                if (!timeoutsMet.get(Alarms.AUCTION)) {
-                    auctionTimeout();
-                } else {
-                    timeoutsMet.put(Alarms.AUCTION, false);
-                }
-                break;
-            }
-
             case BID: {
                 if (!timeoutsMet.get(Alarms.BID)) {
                     bidTimeout();
@@ -1722,96 +1678,6 @@ public class Node implements Cloneable, Alarmable {
     }
 
 
-    /**
-     * The partner node has sent an auction start message.
-     */
-    public void handleStartAcknowledged () {
-        timeoutsMet.put(Alarms.START, true);
-
-        state = GENERAL;
-
-        if (auction != null) {
-            state = ClusterConnectionStates.AUCTION;
-            StringBuffer stringBuffer = new StringBuffer();
-            stringBuffer.append(AUCTION);
-            stringBuffer.append(" ");
-            stringBuffer.append(auction.uuid);
-
-            ioSession.write(stringBuffer.toString());
-            setTimeOfLastActivity();
-
-            AlarmClock.getInstance().scheduleOnce(this, Alarms.AUCTION,
-                    Miranda.getProperties().getLongProperty(Miranda.PROPERTY_AUCTION_TIMEOUT));
-            timeoutsMet.put(Alarms.AUCTION, false);
-        }
-    }
-
-    /**
-     * See if there is an auction pending and if there is, then send an auction message
-     */
-    public void checkAuction () {
-        if (auction != null) {
-            state = ClusterConnectionStates.AUCTION;
-            sendAuctionStart(ioSession);
-        }
-    }
-
-    /**
-     * We have received an auction message from the node, switch to the auction state
-     *
-     * @param input The auction message.
-     * @param ioSession (ignored) The io session to use
-     */
-    public void handleAuction (String input, IoSession ioSession) {
-        timeoutsMet.put(Alarms.AUCTION, true);
-
-        Scanner scanner = new Scanner(input);
-        scanner.next(); // AUCTION
-        auction = new Auction(UUID.fromString(scanner.next()));
-
-        state = ClusterConnectionStates.AUCTION;
-    }
-
-    /**
-     * We have timed out waiting for a response to an auction message
-     */
-    public void auctionTimeout () {
-        logger.error("auction timed out");
-        ioSession.write(TIMEOUT);
-        state = ClusterConnectionStates.START;
-        sendStart(ioSession);
-
-        AlarmClock.getInstance().scheduleOnce(this, Alarms.START,
-                Miranda.getProperties().getLongProperty(Miranda.PROPERTY_START_TIMEOUT));
-        timeoutsMet.put(Alarms.START,false);
-    }
-
-    /**
-     * The other node has started an auction --- send an auction message of our own
-     *
-     * @param input The auction start message.
-     * @param ioSession The IO session to the node.
-     */
-    public void handleAuctionStart (String input, IoSession ioSession) {
-        logger.debug("entering handleAuctionStart");
-
-        Scanner scanner = new Scanner(input);
-        scanner.next();scanner.next();// AUCTION START
-        UUID auctionUuid = UUID.fromString(scanner.next());
-
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(AUCTION);
-        stringBuffer.append(" ");
-        stringBuffer.append(auctionUuid);
-        ioSession.write(stringBuffer.toString());
-        setTimeOfLastActivity();
-
-        this.auction = new Auction(auctionUuid);
-
-        state = ClusterConnectionStates.AUCTION;
-
-        logger.debug("leaving handleAuctionStart");
-    }
 
     /**
      * The other node has signaled an error --- go back to the start state and send a start message
@@ -1823,31 +1689,6 @@ public class Node implements Cloneable, Alarmable {
         sendStart(ioSession);
     }
 
-    /**
-     * Send an auction start message
-     *
-     * <P>
-     *     This method also sets a timeout for the other node
-     * </P>
-     *
-     * @param ioSession The IO session to send the message on.
-     */
-    public void sendAuctionStart (IoSession ioSession) {
-        logger.debug("entering sendAuctionStart");
-
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(AUCTION_START);
-        stringBuffer.append(" ");
-        stringBuffer.append(auction.uuid);
-        ioSession.write(stringBuffer.toString());
-        setTimeOfLastActivity();
-
-        AlarmClock.getInstance().scheduleOnce(this, Alarms.AUCTION,
-                Miranda.getProperties().getLongProperty(Miranda.PROPERTY_AUCTION_TIMEOUT));
-        timeoutsMet.put(Alarms.AUCTION, false);
-
-        logger.debug("leaving sendAuctionStart");
-    }
 
     /**
      * We have timed out waiting for a reply to our bid --- send a timeout and return to the start state

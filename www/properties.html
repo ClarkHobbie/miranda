@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>System Properties</title>
+</head>
+<style>
+    table {
+     border: 1px solid black;
+     }
+</style>
+<body>
+<TABLE border=1 id="table">
+<TR>
+    <TH>Name</TH><TH>Value</TH>
+</TR>
+</TABLE>
+
+<SCRIPT>
+function loadDoc() {
+      var nerts=document.getElementById("table");
+
+      const xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+          if (this.readyState == 4 && this.status == 200) {
+              var table=JSON.parse(this.responseText);
+              table.sort();
+              for (row =0; row < table.length; row++) {
+                  nerts.innerHTML += "<TR>"
+                  nerts.innerHTML += '<TD>' + table[row][0] + '</TD><TD><INPUT value="' + table[row][1] + '"></INPUT>'
+                  nerts.innerHTML += "</TR>"
+              }
+
+          }
+      };
+      xhttp.open("GET", "/api/properties");
+      xhttp.send();
+
+}
+
+function storeProperties() {
+    table=document.getElementById("table");
+    var numberOfRows=table.rows.length;
+    var numRows = 0;
+    var temp = [];
+    for (var i = 1; i < numberOfRows; i++) {
+        temp[numRows] = [];
+        var cells = table.rows.item(i).cells;
+        var numberOfCells = cells.length;
+
+        if (numberOfCells > 1) {
+            temp[numRows][0] = cells.item(0).innerHTML;
+            temp[numRows][1] = cells[1].children[0].value;
+            numRows++;
+        }
+    }
+    jsonTemp = JSON.stringify(temp)
+
+    xhttp = new XMLHttpRequest();
+    xhttp.open("POST", "/api/saveProperties");
+    xhttp.send(jsonTemp);
+}
+
+loadDoc()
+</SCRIPT>
+
+<BUTTON onClick="storeProperties()">Update</BUTTON>
+
+</body>
+</html>

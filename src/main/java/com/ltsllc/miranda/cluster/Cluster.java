@@ -1,11 +1,11 @@
 package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.commons.LtsllcException;
-import com.ltsllc.commons.io.ImprovedFile;
-import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.*;
-import com.ltsllc.miranda.logging.LoggingCache;
+import com.ltsllc.miranda.alarm.AlarmClock;
+import com.ltsllc.miranda.alarm.Alarmable;
+import com.ltsllc.miranda.alarm.Alarms;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.mina.core.RuntimeIoException;
@@ -700,5 +700,16 @@ public class Cluster implements Alarmable {
                 node.notifyOfDelivery(message);
             }
         }
+    }
+
+    public synchronized int getNumberOfConnections () {
+        int count = 0;
+        for (Node node : nodes) {
+            if (null != node.getIoSession()) {
+                count++;
+            }
+        }
+
+        return count;
     }
 }

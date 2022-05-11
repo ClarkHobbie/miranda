@@ -5,7 +5,6 @@ import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.commons.util.Utils;
-import com.ltsllc.miranda.Auction;
 import com.ltsllc.miranda.Message;
 import com.ltsllc.miranda.MessageLog;
 import com.ltsllc.miranda.Miranda;
@@ -1311,102 +1310,6 @@ public class NodeTest {
         }
 
         verify(mockCluster, times(0)).deadNode(any());
-    }
-
-    @Test
-    public void auctionTimeout () throws LtsllcException, InterruptedException {
-        ImprovedFile messagesLog = new ImprovedFile("message.log");
-        ImprovedFile messagesBackup = new ImprovedFile("messag.log.backup");
-        ImprovedFile testMessages = new ImprovedFile("test.messages.log");
-
-        if (messagesLog.exists()) {
-            messagesBackup.delete();
-            messagesLog.copyTo(messagesBackup);
-        }
-
-        messagesLog.delete();
-        testMessages.copyTo(messagesLog);
-        try {
-            Miranda miranda = new Miranda();
-            miranda.loadProperties();
-            miranda.setMyUuid(UUID.randomUUID());
-            miranda.setMyHost("192.168.0.12");
-            miranda.setMyPort(2020);
-
-            ImprovedFile messageLog = new ImprovedFile("messages.log");
-            ImprovedFile ownersLog = new ImprovedFile("owner.log");
-            MessageLog.defineStatics(messageLog, 1000000, ownersLog);
-
-            UUID auctionID = UUID.randomUUID();
-            IoSession mockIoSession = mock(IoSession.class);
-            Node node = new Node(auctionID, "192.168.0.12", 2020, mockIoSession);
-            node.auction = new Auction(auctionID);
-            node.sendAuctionStart(mockIoSession);
-
-            synchronized (this) {
-                wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_AUCTION_TIMEOUT));
-            }
-        } finally {
-            messagesLog.delete();
-            if (messagesBackup.exists()) {
-                messagesBackup.copyTo(messagesLog);
-                messagesBackup.delete();
-            }
-        }
-    }
-
-
-    @Test
-    public void auctionTimeoutNot () throws LtsllcException, InterruptedException, IOException, CloneNotSupportedException {
-        ImprovedFile messagesLog = new ImprovedFile("message.log");
-        ImprovedFile messagesBackup = new ImprovedFile("messag.log.backup");
-        ImprovedFile testMessages = new ImprovedFile("test.messages.log");
-
-        if (messagesLog.exists()) {
-            messagesBackup.delete();
-            messagesLog.copyTo(messagesBackup);
-            messagesLog.delete();
-        }
-
-        testMessages.copyTo(messagesLog);
-        try {
-            Miranda miranda = new Miranda();
-            miranda.loadProperties();
-            miranda.setMyUuid(UUID.randomUUID());
-            miranda.setMyHost("192.168.0.12");
-            miranda.setMyPort(2020);
-
-            ImprovedFile messageLog = new ImprovedFile("messages.log");
-            ImprovedFile ownersLog = new ImprovedFile("owner.log");
-            MessageLog.defineStatics(messageLog, 1000000, ownersLog);
-
-            UUID auctionID = UUID.randomUUID();
-            IoSession mockIoSession = mock(IoSession.class);
-            Node node = new Node(auctionID, "192.168.0.12", 2020, mockIoSession);
-            node.auction = new Auction(auctionID);
-            node.setCache(MessageLog.getInstance().getCache());
-            node.sendAuctionStart(mockIoSession);
-            node.setState(ClusterConnectionStates.AUCTION);
-
-            StringBuffer stringBuffer = new StringBuffer();
-            stringBuffer.append(Node.AUCTION);
-            stringBuffer.append(" ");
-            stringBuffer.append(UUID.randomUUID());
-
-            node.messageReceived(mockIoSession, stringBuffer.toString());
-
-            synchronized (this) {
-                wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_AUCTION_TIMEOUT));
-            }
-            assert (node.getState() == ClusterConnectionStates.AUCTION);
-        } finally {
-            messagesLog.delete();
-            if (messagesBackup.exists()) {
-                messagesBackup.copyTo(messagesLog);
-                messagesBackup.delete();
-            }
-        }
-
     }
 
     @Test

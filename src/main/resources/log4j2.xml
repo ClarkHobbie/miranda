@@ -2,6 +2,8 @@
 <Configuration status="DEBUG">
 
     <RegexFilter regex=".*mainLoop.*" onMatch="DENY" onMismatch="NEUTRAL"/>
+    <RegexFilter regex=".*connectToNode.*" onMatch="DENY" onMismatch="NEUTRAL"/>
+    <RegexFilter regex=".*reconnect.*" onMatch="DENY" onMismatch="NEUTRAL"/>
 
     <Appenders>
         <Console name="Console" target="SYSTEM_OUT">
@@ -16,6 +18,7 @@
     <Loggers>
         <!-- Don't log anything from commons unless it is at error level -->
         <Logger name="com.ltsllc.commons" level="ERROR"/>
+        <Logger name="com.ltsllc.miranda.Miranda" level="ERROR"/>
         <Logger name="events" additivity="false">
             <AppenderRef ref="events"/>
         </Logger>

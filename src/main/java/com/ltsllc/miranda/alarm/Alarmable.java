@@ -1,6 +1,4 @@
-package com.ltsllc.miranda;
-
-import com.ltsllc.miranda.Alarms;
+package com.ltsllc.miranda.alarm;
 
 public interface Alarmable {
     public void alarm (Alarms alarm) throws Throwable;

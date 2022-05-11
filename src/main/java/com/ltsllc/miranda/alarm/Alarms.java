@@ -1,4 +1,4 @@
-package com.ltsllc.miranda;
+package com.ltsllc.miranda.alarm;
 
 /**
  * The alarms that AlarmClock can use

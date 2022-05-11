@@ -2,13 +2,15 @@ package com.ltsllc.miranda;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
+import com.ltsllc.miranda.alarm.AlarmClock;
+import com.ltsllc.miranda.alarm.Alarmable;
+import com.ltsllc.miranda.alarm.Alarms;
 import com.ltsllc.miranda.logging.LoggingCache;
 import com.ltsllc.miranda.logging.LoggingMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
@@ -84,7 +86,8 @@ public class MessageLog implements Alarmable {
      */
     public static void defineStatics (ImprovedFile logfile, int loadLimit, ImprovedFile ownerLogfile) {
         instance = new MessageLog(logfile, loadLimit, ownerLogfile);
-        AlarmClock.getInstance().schedule(instance, Alarms.COMPACTION, Miranda.properties.getLongProperty(Miranda.PROPERTY_COMPACTION_TIME));
+        AlarmClock.getInstance().schedule(instance, Alarms.COMPACTION, Miranda.properties.getLongProperty(
+                Miranda.PROPERTY_COMPACTION_TIME));
     }
 
     /**
@@ -354,6 +357,13 @@ public class MessageLog implements Alarmable {
      * Compact the various log files
      */
     public void compact () throws IOException {
+        ImprovedFile messages = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_MESSAGE_LOG));
+        ImprovedFile owners = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_OWNER_FILE));
+        if (!messages.exists() || !owners.exists()) {
+            logger.debug("message file or owners file does not exist aborting compaction");
+            events.info("Messages file or owners file does not exist aborting compaction");
+            return;
+        }
         cache.compact();
         uuidToOwner.compact();
     }

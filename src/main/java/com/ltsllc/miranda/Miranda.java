@@ -8,20 +8,27 @@ import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.cluster.Node;
 import com.ltsllc.miranda.cluster.SpecNode;
+import com.ltsllc.miranda.servlets.NumberOfConnectionsServlet;
+import com.ltsllc.miranda.servlets.NumberOfMessages;
+import com.ltsllc.miranda.servlets.PropertiesServlet;
+import com.ltsllc.miranda.servlets.SavePropertiesServlet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.asynchttpclient.*;
+import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.handler.HandlerList;
+import org.eclipse.jetty.server.handler.ResourceHandler;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+
 
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
-
-import static com.ltsllc.miranda.Alarms.COMPACTION;
 
 
 public class Miranda {
@@ -173,7 +180,7 @@ public class Miranda {
     /**
      * The default value for PROPERTY_COMPACTION_TIME is 10 seconds
      */
-    public static final String PROPERTY_DEFAULT_COMPACTION_TIME = "10000";
+    public static final String PROPERTY_DEFAULT_COMPACTION_TIME = "100000";
 
     /**
      * The amount of time to wait in between heart beat start messages
@@ -460,14 +467,10 @@ public class Miranda {
 
 
         logger.debug("parsing arguments");
-        properties = new ImprovedProperties();
         processArguments(args);
 
         logger.debug("initializing MessageLog");
         MessageLog.defineStatics(messageLogfile, messageLoadLimit, ownersFile);
-
-        logger.debug("loading properties");
-        loadProperties();
 
         logger.debug("Parsing nodes");
         parseNodes();
@@ -477,18 +480,16 @@ public class Miranda {
         Cluster.getInstance().start(specNodes);
 
         logger.debug("starting the message port");
-        startMessagePort(properties.getIntProperty(PROPERTY_MESSAGE_PORT));
+        startMessagePort();
 
         logger.debug("Leaving startup");
     }
 
-    /*
+    /**
      * listen for new messages
-     *
-     * @param portNumber The TCP port that we should listen at
      */
-    protected void startMessagePort (int portNumber) throws Exception {
-        logger.debug("entering startMessagePort with portNumber = " + portNumber);
+    protected void startMessagePort () throws Exception {
+        logger.debug("entering startMessagePort");
 
         // Create and configure a ThreadPool.
         QueuedThreadPool threadPool = new QueuedThreadPool();
@@ -503,10 +504,27 @@ public class Miranda {
         serverConnector.setHost("localhost");
 
         server.addConnector(serverConnector);
+        ResourceHandler resource_handler = new ResourceHandler();
+        resource_handler.setDirectoriesListed(true);
+        resource_handler.setWelcomeFiles(new String[]{ "index.html" });
+
+        ResourceHandler rh0 = new ResourceHandler();
+        rh0.setWelcomeFiles(new String[]{"index.html"});
+        rh0.setResourceBase("www");
+
+        ServletContextHandler servletContextHandler = new ServletContextHandler();
+        servletContextHandler.addServlet(NumberOfConnectionsServlet.class, "/api/numberOfConnections");
+        servletContextHandler.addServlet(PropertiesServlet.class, "/api/properties");
+        servletContextHandler.addServlet(SavePropertiesServlet.class, "/api/saveProperties");
+        servletContextHandler.addServlet(NumberOfMessages.class, "/api/numberOfMessages" );
+        HandlerList handlers = new HandlerList();
+        handlers.setHandlers(new Handler[] { rh0, servletContextHandler
+                });
+        server.setHandler(handlers);
 
         // Set a simple Handler to handle requests/responses.
 
-        server.setHandler(new MessageHandler(myUuid));
+        // server.setHandler(new MessageHandler(myUuid));
 
         // Start the Server, so it starts accepting connections from clients.
         server.start();
@@ -546,16 +564,6 @@ public class Miranda {
         return temp;
     }
 
-    /*
-     * process a single argument
-     *
-     * This method takes care of removing the "-" character and breaking a "block" of arguments
-     * (like -abc) into single arguments ("a," "b," "c").
-     *
-     * @param argument The argument to process
-     * @param map      The arguments and parameters of the arguments
-     * @param prev     The previous argument in case this is a parameter
-     */
     protected void processArgument (String prev, String argument, Properties map) {
         logger.debug("processing argument with argument = " + argument + ", prev = " + prev + " and map = " + map);
 

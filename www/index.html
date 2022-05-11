@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+
+<SCRIPT>
+function refresh() {
+    refreshNumberOfConnections();
+    refreshNumberOfMessages();
+}
+
+function refreshNumberOfConnections() {
+    const xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+            NumberOfConnections=document.getElementById("numberOfConnections");
+            NumberOfConnections.innerHTML=this.responseText;
+        }
+    };
+    xhttp.open("GET", "/api/numberOfConnections");
+    xhttp.send();
+}
+function refreshNumberOfMessages() {
+    const xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+            NumberOfMessages=document.getElementById("numberOfMessages");
+            NumberOfMessages.innerHTML=this.responseText;
+        }
+    };
+    xhttp.open("GET", "/api/numberOfMessages");
+    xhttp.send();
+}
+</SCRIPT>
+
+<TABLE>
+<TR>
+    <TD>Number of connections:</TD>
+    <TD></TD><DIV id="numberOfConnections" ></DIV></TD>
+</TR>
+
+<TR>
+    <TD>Number of messages in queue:</TD>
+    <TD></TD><DIV id="numberOfMessages" ></DIV></TD>
+</TR>
+<TR>
+    <TD><A href="properties.html">Properties</A></TD>
+</TR>
+</TABLE>
+<BUTTON onClick="refresh()">Refresh</BUTTON>
+
+
+</body>
+</html>

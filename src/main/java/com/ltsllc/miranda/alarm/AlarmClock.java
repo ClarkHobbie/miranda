@@ -1,4 +1,4 @@
-package com.ltsllc.miranda;
+package com.ltsllc.miranda.alarm;
 
 import java.util.Timer;
 

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<style>
+    table {
+     border: 1px solid black;
+     }
+</style>
+<body>
+Number of connections:
+<BUTTON onClick="refresh()"
+
+<SCRIPT>
+function refresh() {
+      var nerts=document.getElementById("nerts");
+
+      const xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+          if (this.readyState == 4 && this.status == 200) {
+              var table=JSON.parse(this.responseText);
+              table.sort();
+              for (row = 0; row < table.length; row++) {
+                  nerts.innerHTML += "<tr>";
+                  nerts.innerHTML += '<td>' + table[row][0] + '</td><td><input value="' + table[row][1] + '"></input></td>';
+                  nerts.innerHTML += "</tr>";
+              }
+
+          }
+      };
+      xhttp.open("GET", "/api/numberOfConnections");
+      xhttp.send();
+
+}
+
+</SCRIPT>
+
+</P>
+</body>
+</html>
