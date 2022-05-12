@@ -3,6 +3,7 @@ package com.ltsllc.miranda;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.Message;
 import com.ltsllc.miranda.Miranda;
+import com.ltsllc.miranda.properties.PropertiesHolder;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.bouncycastle.util.IPAddress;
@@ -27,7 +28,7 @@ public class TestSuperclass {
     }
 
     public InetSocketAddress parseAddr (int i) {
-        ImprovedProperties p = Miranda.getProperties();
+        PropertiesHolder p = Miranda.getProperties();
         String host = p.getProperty("cluster." + i + ".host");
         int port = p.getIntProperty("cluster." + i + ".port");
 

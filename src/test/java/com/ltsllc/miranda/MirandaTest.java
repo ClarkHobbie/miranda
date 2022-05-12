@@ -5,6 +5,7 @@ import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.cluster.Node;
+import com.ltsllc.miranda.properties.PropertiesHolder;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -40,7 +41,7 @@ class MirandaTest extends TestSuperclass {
     }
 
     @Test
-    public void connectToOtherNodes () throws LtsllcException, InterruptedException {
+    public void connectToOtherNodes () throws Throwable {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
         miranda.setMyUuid(UUID.randomUUID());
@@ -296,7 +297,7 @@ class MirandaTest extends TestSuperclass {
     public void shouldRecover () throws LtsllcException, IOException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
-        ImprovedProperties p = Miranda.getProperties();
+        PropertiesHolder p = Miranda.getProperties();
 
         ImprovedFile messages = new ImprovedFile(p.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
         ImprovedFile owners = new ImprovedFile(p.getProperty(Miranda.PROPERTY_OWNER_FILE));
@@ -325,7 +326,7 @@ class MirandaTest extends TestSuperclass {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        ImprovedProperties p = Miranda.getProperties();
+        PropertiesHolder p = Miranda.getProperties();
         ImprovedFile messages = new ImprovedFile(p.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
         ImprovedFile owners = new ImprovedFile(p.getProperty(Miranda.PROPERTY_OWNER_FILE));
         MessageLog.defineStatics(messages, p.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT), owners);

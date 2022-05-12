@@ -1,11 +1,15 @@
 package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.commons.UncheckedLtsllcException;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.*;
 import com.ltsllc.miranda.alarm.AlarmClock;
 import com.ltsllc.miranda.alarm.Alarmable;
 import com.ltsllc.miranda.alarm.Alarms;
+import com.ltsllc.miranda.properties.Properties;
+import com.ltsllc.miranda.properties.PropertyChangedEvent;
+import com.ltsllc.miranda.properties.PropertyListener;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.mina.core.RuntimeIoException;
@@ -27,11 +31,9 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 
-
-
 /**
  * A Miranda cluster
- *
+ * <p>
  * A group of nodes exchanging heart beet messages. A heart beet message consists of:
  * <PRE>
  * HEARTBEET &lt;node UUID&gt;
@@ -54,7 +56,7 @@ import java.util.concurrent.TimeUnit;
  * there is no tie the winning node doesn't respond with a message: it merely takes possession
  * of the message and goes onto the next bid.  When the survivors have auctioned off all the
  * messages, they go back to heart beets.
- * <P>
+ * <p>
  * When a new node joins the cluster it announces itself to all the cluster members via:
  * <PRE>
  * NEW NODE &lt;UUID of new node&gt;
@@ -63,7 +65,7 @@ import java.util.concurrent.TimeUnit;
  * <PRE>
  * CONFIRM NEW NODE &lt;UUID of new node&gt;
  * </PRE>
- * <P>
+ * <p>
  * When a node creates a new message it informs the other node via:
  * <PRE>
  * NEW MESSAGE &lt;UUID of new message&gt; STATUS: &lt;URL of status URL&gt; DELIVERY: &lt;URL of delivery URL&gt;
@@ -71,15 +73,14 @@ import java.util.concurrent.TimeUnit;
  * &lt;Contents of the message&gt;
  * </PRE>
  * The other nodes make no reply.
- * <P>
+ * <p>
  * When a node delivers a message, it tells the rest of the cluster via:
  * <PRE>
  * MESSAGE DELIVERED &lt;UUID of message&gt;
  * </PRE>
  * The other nodes make no reply.
- *
  */
-public class Cluster implements Alarmable {
+public class Cluster implements Alarmable, PropertyListener {
     public static final long IOD_TIMEOUT = 1000;
     public static final TimeUnit IOD_TIMEOUT_UNITS = TimeUnit.MILLISECONDS;
     public static final long IONM_TIMEOUT = 1000;
@@ -203,8 +204,8 @@ public class Cluster implements Alarmable {
     /**
      * Set the random number generator that this node uses
      *
-     * <P>
-     *     The random number generator is used mostly in bidding
+     * <p>
+     * The random number generator is used mostly in bidding
      * </P>
      */
     public static void setRandomNumberGenerator(ImprovedRandom randomNumberGenerator) {
@@ -214,21 +215,22 @@ public class Cluster implements Alarmable {
     /**
      * Add another node to the list of nodes in the cluster
      *
-     * <P>
-     *     If the node is a duplicate of another node in the cluster (i.e. if it has the same uuid) then the node is
-     *     not added and the node's session is closed.
+     * <p>
+     * If the node is a duplicate of another node in the cluster (i.e. if it has the same uuid) then the node is
+     * not added and the node's session is closed.
      * </P>
-     * @param node The node to add.
+     *
+     * @param node      The node to add.
      * @param ioSession The session the new node should use.
      */
-    public synchronized void addNode (Node node, IoSession ioSession) {
+    public synchronized void addNode(Node node, IoSession ioSession) {
         logger.debug("adding node " + node + " to nodes");
 
         node.setIoSession(ioSession);
 
         boolean alreadyPresent = false;
         for (Node node2 : nodes) {
-            if ((node.getUuid() != null) && (node2.getUuid() != null) && (node2.getUuid().equals(node.getUuid()))){
+            if ((node.getUuid() != null) && (node2.getUuid() != null) && (node2.getUuid().equals(node.getUuid()))) {
                 alreadyPresent = true;
                 logger.debug("node already present discarding");
                 node.closeSession();
@@ -243,8 +245,8 @@ public class Cluster implements Alarmable {
 
     /**
      * remove a node from the cluster
-     * <P>
-     *     This method does so synchronously, so it is thread safe.
+     * <p>
+     * This method does so synchronously, so it is thread safe.
      * </P>
      */
     public synchronized void removeNode(Node node, IoSession ioSession) {
@@ -280,8 +282,8 @@ public class Cluster implements Alarmable {
 
     /**
      * Tell the cluster that we delivered a message
-     * <P>
-     *     When another node is told of a message delivery, it can free up memory it was using to record the message.
+     * <p>
+     * When another node is told of a message delivery, it can free up memory it was using to record the message.
      * </P>
      *
      * @param message The message that we delivered.
@@ -316,6 +318,7 @@ public class Cluster implements Alarmable {
      * @see #connectNodes(List)
      */
     public void start(List<SpecNode> list) throws LtsllcException {
+        Miranda.getProperties().listen(this, Properties.cluster);
         listen();
         connectNodes(list);
     }
@@ -335,6 +338,7 @@ public class Cluster implements Alarmable {
         ioAcceptor.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory(Charset.forName("UTF-8"))));
 
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
+        Miranda.getProperties().listen(this, Properties.clusterPort);
 
         SocketAddress socketAddress = new InetSocketAddress(port);
 
@@ -362,6 +366,7 @@ public class Cluster implements Alarmable {
         logger.debug("entering connectNodes");
         events.info("Trying to connect to other nodes");
 
+        Miranda.getProperties().listen(this, Properties.cluster);
         if (Miranda.getProperties().getProperty(Miranda.PROPERTY_CLUSTER).equals("off")) {
             logger.debug("clustering is off returning");
             events.info("Clustering is off, aborting connect");
@@ -371,7 +376,7 @@ public class Cluster implements Alarmable {
         ioConnector = getIoConnector();
         ioConnector.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory()));
 
-        for (SpecNode specNode: list) {
+        for (SpecNode specNode : list) {
             Node node = new Node(specNode.getHost(), specNode.getPort());
             nodes.add(node);
         }
@@ -382,7 +387,7 @@ public class Cluster implements Alarmable {
             if (node.getIoSession() != null) {
                 tempAllNodesFailed = false;
             }
-            tempAllNodesFailed = !connectToNode(node,ioConnector);
+            tempAllNodesFailed = !connectToNode(node, ioConnector);
         }
 
         if (tempAllNodesFailed) {
@@ -393,7 +398,7 @@ public class Cluster implements Alarmable {
     /**
      * Try to connect to a Node
      *
-     * @param node The node to try and connect to.
+     * @param node        The node to try and connect to.
      * @param ioConnector Over what to make the connection.
      * @return true if we were able to connect to the node, false otherwise.
      */
@@ -426,7 +431,7 @@ public class Cluster implements Alarmable {
             returnValue = false;
         }
         if (returnValue) {
-            events.info ("Connected to " + node.getHost() + ":" + node.getPort());
+            events.info("Connected to " + node.getHost() + ":" + node.getPort());
         }
         logger.debug("leaving connectToNode with " + returnValue);
         return returnValue;
@@ -435,7 +440,7 @@ public class Cluster implements Alarmable {
     /**
      * Initialize the instance
      */
-    public synchronized static void defineStatics () {
+    public synchronized static void defineStatics() {
         instance = new Cluster();
         instance.setUuid(Miranda.getInstance().getMyUuid());
 
@@ -448,7 +453,7 @@ public class Cluster implements Alarmable {
      *
      * @return Whether we are connected to all the other nodes.
      */
-    public synchronized boolean reconnect () throws LtsllcException {
+    public synchronized boolean reconnect() throws LtsllcException {
         logger.debug("entering reconnect");
         boolean returnValue = true;
 
@@ -457,7 +462,7 @@ public class Cluster implements Alarmable {
         //
         for (Node node : nodes) {
             if (node.getIoSession() == null) {
-                if (!connectToNode(node,ioConnector)) {
+                if (!connectToNode(node, ioConnector)) {
                     returnValue = false;
                 }
             }
@@ -469,13 +474,14 @@ public class Cluster implements Alarmable {
     /**
      * Reconnect if any nodes are offline
      *
-     * <P>
-     *     This method checks to see if we are connected to every node in the cluster.  If we are then it returns
-     *     without doing anything.  If we are not, then it tries reconnect to the offline nodes.
+     * <p>
+     * This method checks to see if we are connected to every node in the cluster.  If we are then it returns
+     * without doing anything.  If we are not, then it tries reconnect to the offline nodes.
      * </P>
+     *
      * @throws LtsllcException If there is a problem reconnecting.
      */
-    public void reconnectIfNecessary () throws LtsllcException{
+    public void reconnectIfNecessary() throws LtsllcException {
         if (connectedToAll()) {
             return;
         } else {
@@ -495,7 +501,7 @@ public class Cluster implements Alarmable {
         //
         // create a list of the other nodes we know about
         //
-        for (Node node : nodes ) {
+        for (Node node : nodes) {
             if (node.getIoSession() == null) {
                 returnValue = false;
             }
@@ -507,17 +513,17 @@ public class Cluster implements Alarmable {
     /**
      * Merge nodes that point to the same thing.
      *
-     * <P>
-     *     Two nodes point to the same thing when the hosts of the two nodes are the (without case) same, and the ports
-     *     are the same.
+     * <p>
+     * Two nodes point to the same thing when the hosts of the two nodes are the (without case) same, and the ports
+     * are the same.
      * </P>
      */
-    public synchronized void coalesce () throws LtsllcException, CloneNotSupportedException {
+    public synchronized void coalesce() throws LtsllcException, CloneNotSupportedException {
         List<Node> copy = new ArrayList<>(nodes.size());
         List<Node> results = new ArrayList<>(nodes.size());
 
         for (Node node : nodes) {
-            if ((node.getUuid() != null) || ((node.getHost() != null) && (node.getPort() != -1))){
+            if ((node.getUuid() != null) || ((node.getHost() != null) && (node.getPort() != -1))) {
                 Node node2 = (Node) node.clone();
                 copy.add(node2);
             }
@@ -565,7 +571,7 @@ public class Cluster implements Alarmable {
      * @param uuid The node whose messages we are dividing up
      * @throws IOException If there is a problem taking ownership.
      */
-    public synchronized void divideUpNodesMessages (UUID uuid) throws IOException {
+    public synchronized void divideUpNodesMessages(UUID uuid) throws IOException {
         if (uuid == null) {
             return;
         }
@@ -601,7 +607,7 @@ public class Cluster implements Alarmable {
      *
      * @return If we are connected to all the nodes in the cluster: true if we are false otherwise
      */
-    public synchronized boolean allConnected () {
+    public synchronized boolean allConnected() {
         for (Node node : nodes) {
             if (node.getIoSession() == null) {
                 return false;
@@ -614,19 +620,19 @@ public class Cluster implements Alarmable {
     /**
      * Divide the list up into portions
      *
-     * <P>
-     *     As far as this method is concerned all portions except the last one are of equal size. The last portion
-     *     contains the regular number plus the modulus of the size of the list modulo the number of portions.
+     * <p>
+     * As far as this method is concerned all portions except the last one are of equal size. The last portion
+     * contains the regular number plus the modulus of the size of the list modulo the number of portions.
      * </P>
      *
      * @param numberOfPortions The number of ways messages will be split.
-     * @param myOrder Which portion we want.  Note that this is zero-relative so the order will be 0 for the first
-     *                portion, 1 for the second, and so on.
-     * @param messages The list to be divided into portions
+     * @param myOrder          Which portion we want.  Note that this is zero-relative so the order will be 0 for the first
+     *                         portion, 1 for the second, and so on.
+     * @param messages         The list to be divided into portions
      * @return The portion of messages that "belong to" myOrder
      */
     public List<UUID> divideUpMessages(int numberOfPortions, int myOrder, List<UUID> messages) {
-        int numberOfMessages = messages.size()/numberOfPortions;
+        int numberOfMessages = messages.size() / numberOfPortions;
         List<UUID> myPortion = new ArrayList<>();
 
         int remainder = messages.size() % numberOfPortions;
@@ -649,9 +655,9 @@ public class Cluster implements Alarmable {
      * Transfer the ownership of a message
      *
      * @param newOwner The new owner of the message.
-     * @param message The message whose ownership is to be transferred
+     * @param message  The message whose ownership is to be transferred
      */
-    public synchronized void takeOwnershipOf (UUID newOwner, UUID message) {
+    public synchronized void takeOwnershipOf(UUID newOwner, UUID message) {
         for (Node node : nodes) {
             if (node.getIoSession() != null) {
                 node.sendTakeOwnershipOf(newOwner, message);
@@ -665,10 +671,10 @@ public class Cluster implements Alarmable {
      * @param uuid The uuid of the node being declared dead.
      * @throws IOException If there is a problem transferring ownership.
      */
-    public synchronized void deadNode (UUID uuid) throws IOException {
+    public synchronized void deadNode(UUID uuid) throws IOException {
 
         List<Node> connectedNodes = new ArrayList<>();
-        for (Node node: nodes) {
+        for (Node node : nodes) {
             if (node.getUuid().equals(uuid)) {
                 node.setIoSession(null);
             }
@@ -688,13 +694,14 @@ public class Cluster implements Alarmable {
 
     /**
      * Notify the cluster of a message delivery
-     * <P>
-     *     This consists of passing the message along to the nodes of the cluster.  This is to let the clients know that
-     *     they can stop tracking the message.
+     * <p>
+     * This consists of passing the message along to the nodes of the cluster.  This is to let the clients know that
+     * they can stop tracking the message.
      * </P>
+     *
      * @param message The message that has been delivered
      */
-    public synchronized void notifyOfDelivery (Message message) {
+    public synchronized void notifyOfDelivery(Message message) {
         for (Node node : nodes) {
             if (null != node.getIoSession()) {
                 node.notifyOfDelivery(message);
@@ -702,7 +709,7 @@ public class Cluster implements Alarmable {
         }
     }
 
-    public synchronized int getNumberOfConnections () {
+    public synchronized int getNumberOfConnections() {
         int count = 0;
         for (Node node : nodes) {
             if (null != node.getIoSession()) {
@@ -711,5 +718,33 @@ public class Cluster implements Alarmable {
         }
 
         return count;
+    }
+
+    @Override
+    public void propertyChanged(PropertyChangedEvent propertyChangedEvent) {
+        try {
+            switch (propertyChangedEvent.getProperty()) {
+                case clusterPort: {
+                    listen();
+                    break;
+                }
+
+                case cluster: {
+                    start(Miranda.getInstance().getSpecNodes());
+                    break;
+                }
+
+                default: {
+                    throw new UncheckedLtsllcException("propertyChanged called with " + propertyChangedEvent.getProperty());
+                }
+            }
+        } catch (LtsllcException e) {
+            throw new UncheckedLtsllcException(e);
+        }
+    }
+
+    @Override
+    public Set<Properties> listeningTo() {
+        return null;
     }
 }

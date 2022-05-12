@@ -8,6 +8,9 @@ import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.cluster.Node;
 import com.ltsllc.miranda.cluster.SpecNode;
+import com.ltsllc.miranda.properties.PropertiesHolder;
+import com.ltsllc.miranda.properties.PropertyChangedEvent;
+import com.ltsllc.miranda.properties.PropertyListener;
 import com.ltsllc.miranda.servlets.NumberOfConnectionsServlet;
 import com.ltsllc.miranda.servlets.NumberOfMessages;
 import com.ltsllc.miranda.servlets.PropertiesServlet;
@@ -31,7 +34,7 @@ import java.io.IOException;
 import java.util.*;
 
 
-public class Miranda {
+public class Miranda implements PropertyListener {
     /**
      * The property for specifying what port number to use for cluster connections
      */
@@ -245,7 +248,7 @@ public class Miranda {
     /**
      * The system properties
      */
-    protected static ImprovedProperties properties;
+    protected static PropertiesHolder properties;
 
     /**
      * The jetty server that receives new messages
@@ -349,6 +352,7 @@ public class Miranda {
         } catch (LtsllcException e) {
             throw new UncheckedLtsllcException(e);
         }
+        properties.listen(this, com.ltsllc.miranda.properties.Properties.uuid);
         if (null == properties.getProperty(PROPERTY_UUID)) {
             String msg = "Please specify a UUID for this node by setting the " + PROPERTY_UUID + " property";
             logger.error(msg);
@@ -389,11 +393,11 @@ public class Miranda {
         Miranda.instance = instance;
     }
 
-    public static ImprovedProperties getProperties() {
+    public static PropertiesHolder getProperties() {
         return properties;
     }
 
-    public static void setProperties(ImprovedProperties properties) {
+    public static void setProperties(PropertiesHolder properties) {
         Miranda.properties = properties;
     }
 
@@ -453,6 +457,10 @@ public class Miranda {
 
         myHost = properties.getProperty(PROPERTY_HOST);
         myPort = properties.getIntProperty(PROPERTY_PORT);
+        myUuid = UUID.fromString(properties.getProperty(PROPERTY_UUID));
+        properties.listen(this, com.ltsllc.miranda.properties.Properties.uuid);
+        properties.listen(this, com.ltsllc.miranda.properties.Properties.hostName);
+        properties.listen(this, com.ltsllc.miranda.properties.Properties.clusterPort);
         if (myHost == null || myPort == -1 || myUuid == null) {
             System.err.println("UUID, host and port must be set in the properties file");
             System.exit(-1);
@@ -464,6 +472,7 @@ public class Miranda {
         if (shouldRecover()) {
             recover();
         }
+
 
 
         logger.debug("parsing arguments");
@@ -600,7 +609,7 @@ public class Miranda {
     public void loadProperties() throws LtsllcException {
         FileInputStream in = null;
         if (properties ==  null) {
-            properties = new ImprovedProperties();
+            properties = new PropertiesHolder();
         }
         try {
             if (properties.getProperty(PROPERTY_PROPERTIES_FILE) != null) {
@@ -608,7 +617,7 @@ public class Miranda {
             } else {
                 in = new FileInputStream(PROPERTY_DEFAULT_PROPERTIES_FILE);
             }
-            ImprovedProperties temp = new ImprovedProperties();
+            PropertiesHolder temp = new PropertiesHolder();
             temp.load(in);
             properties = temp;
         } catch (IOException ioException) {
@@ -841,7 +850,7 @@ public class Miranda {
      * @return Whether the system should recover.
      */
     public static boolean shouldRecover () {
-        ImprovedProperties p = getProperties();
+        PropertiesHolder p = getProperties();
         ImprovedFile messageFile = new ImprovedFile(p.getProperty(PROPERTY_MESSAGE_LOG));
         ImprovedFile ownersFile = new ImprovedFile(p.getProperty(PROPERTY_OWNER_FILE));
         return MessageLog.shouldRecover(messageFile, ownersFile);
@@ -860,7 +869,7 @@ public class Miranda {
     public void recover () throws IOException, LtsllcException {
         logger.debug("entering recovery");
         event.info("Recovering");
-        ImprovedProperties p = properties;
+        PropertiesHolder p = properties;
         ImprovedFile messageFile = new ImprovedFile(p.getProperty(PROPERTY_MESSAGE_LOG));
         int loadLimit = p.getIntProperty(PROPERTY_CACHE_LOAD_LIMIT);
         ImprovedFile ownerFile = new ImprovedFile(p.getProperty(PROPERTY_OWNER_FILE));
@@ -888,7 +897,7 @@ public class Miranda {
         logger.debug("entering recoverLocally");
         event.warn("The other nodes in the cluster are not responding, recovering locally.");
 
-        ImprovedProperties p = properties;
+        PropertiesHolder p = properties;
         ImprovedFile messages = new ImprovedFile(p.getProperty(PROPERTY_MESSAGE_LOG));
         ImprovedFile messagesBackup = new ImprovedFile(p.getProperty(PROPERTY_MESSAGE_LOG) + ".backup");
         ImprovedFile owners = new ImprovedFile(p.getProperty(PROPERTY_OWNER_FILE));
@@ -915,4 +924,44 @@ public class Miranda {
         logger.debug("leaving recoverLocally");
     }
 
+    public void setUuid () {
+        myUuid = UUID.fromString(properties.getProperty(PROPERTY_UUID));
+    }
+
+    public void setHost () {
+        myHost = properties.getProperty(PROPERTY_HOST);
+    }
+
+    public void setClusterPort () {
+        myPort = properties.getIntProperty(PROPERTY_PORT);
+    }
+
+    @Override
+    public void propertyChanged(PropertyChangedEvent propertyChangedEvent) throws Throwable {
+        switch (propertyChangedEvent.getProperty()) {
+            case uuid : {
+                setUuid();
+                break;
+            }
+
+            case hostName: {
+                setHost();
+                break;
+            }
+
+            case clusterPort: {
+                setClusterPort();
+                break;
+            }
+
+            default: {
+                throw new LtsllcException("propertyChanged called for " + propertyChangedEvent.getProperty());
+            }
+        }
+    }
+
+    @Override
+    public Set<com.ltsllc.miranda.properties.Properties> listeningTo() {
+        return null;
+    }
 }

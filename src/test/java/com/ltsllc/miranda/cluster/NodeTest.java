@@ -9,6 +9,7 @@ import com.ltsllc.miranda.Message;
 import com.ltsllc.miranda.MessageLog;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.logging.LoggingCache;
+import com.ltsllc.miranda.properties.PropertiesHolder;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -1026,7 +1027,7 @@ public class NodeTest {
         Node node = new Node("192.168.0.12", 2020);
         node.setUuid(UUID.randomUUID());
 
-        ImprovedProperties p = Miranda.getProperties();
+        PropertiesHolder p = Miranda.getProperties();
         ImprovedFile messages = new ImprovedFile(p.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
         int loadLimit = p.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
         LoggingCache cache = new LoggingCache(messages, loadLimit);
@@ -1054,7 +1055,7 @@ public class NodeTest {
         UUID partnerID = UUID.randomUUID();
         node.setUuid(partnerID);
 
-        ImprovedProperties p = Miranda.getProperties();
+        PropertiesHolder p = Miranda.getProperties();
         ImprovedFile messages = new ImprovedFile(p.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
         int loadLimit = p.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
 

@@ -9,6 +9,7 @@ import com.ltsllc.miranda.Message;
 import com.ltsllc.miranda.MessageLog;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.TestSuperclass;
+import com.ltsllc.miranda.properties.PropertiesHolder;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.mina.core.RuntimeIoException;
@@ -185,7 +186,7 @@ class ClusterTest extends TestSuperclass {
 
             Cluster.getInstance().listen();
 
-            ImprovedProperties p = Miranda.getProperties();
+            PropertiesHolder p = Miranda.getProperties();
             int port = p.getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
 
             InetSocketAddress inetSocketAddress = new InetSocketAddress("0.0.0.0", port);

@@ -44,4 +44,5 @@ public class AlarmClock {
         AlarmTimerTask alarmTimerTask = new AlarmTimerTask(receiver, alarm);
         timer.schedule(alarmTimerTask, time);
     }
+
 }

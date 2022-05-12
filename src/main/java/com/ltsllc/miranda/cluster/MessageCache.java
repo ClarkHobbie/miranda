@@ -9,6 +9,7 @@ import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.Message;
 import com.ltsllc.miranda.Miranda;
+import com.ltsllc.miranda.properties.PropertiesHolder;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
@@ -496,7 +497,7 @@ public class MessageCache {
      */
     public synchronized List<Message> copyAllMessages() throws IOException, LtsllcException {
         logger.debug("entering copyAllMessages");
-        ImprovedProperties p = Miranda.getProperties();
+        PropertiesHolder p = Miranda.getProperties();
 
         List<Message> list = new ArrayList<>(uuidToOnline.size());
 

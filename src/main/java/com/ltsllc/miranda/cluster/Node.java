@@ -8,6 +8,9 @@ import com.ltsllc.miranda.alarm.AlarmClock;
 import com.ltsllc.miranda.alarm.Alarmable;
 import com.ltsllc.miranda.alarm.Alarms;
 import com.ltsllc.miranda.logging.LoggingCache;
+import com.ltsllc.miranda.properties.Properties;
+import com.ltsllc.miranda.properties.PropertyChangedEvent;
+import com.ltsllc.miranda.properties.PropertyListener;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.mina.core.session.IoSession;
@@ -27,7 +30,7 @@ import static com.ltsllc.miranda.cluster.ClusterConnectionStates.SYNCHRONIZING;
  * with the connection such as "what does a bid look like?"
  * </P>
  */
-public class Node implements Cloneable, Alarmable {
+public class Node implements Cloneable, Alarmable, PropertyListener {
     public static final Logger logger = LogManager.getLogger();
     public static final Logger events = LogManager.getLogger("events");
 
@@ -71,8 +74,8 @@ public class Node implements Cloneable, Alarmable {
         this.port = port;
 
         if (ioSession != null) {
-            AlarmClock.getInstance().schedule(this, Alarms.HEART_BEAT,
-                    Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL));
+            setupHeartBeat();
+            Miranda.getProperties().listen(this, Properties.heartBeat);
         }
 
     }
@@ -1881,6 +1884,30 @@ public class Node implements Cloneable, Alarmable {
         logger.debug("wrote " + stringBuffer);
 
         logger.debug("leaving notifyOfDelivery");
+    }
+
+    public void setupHeartBeat () {
+        long interval = Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL);
+        AlarmClock.getInstance().schedule(this,Alarms.HEART_BEAT,interval);
+    }
+
+    @Override
+    public void propertyChanged(PropertyChangedEvent propertyChangedEvent) throws Throwable {
+        switch (propertyChangedEvent.getProperty()) {
+            case heartBeat : {
+                setupHeartBeat();
+                break;
+            }
+
+            default: {
+                throw new LtsllcException("propertyChanged call for " + propertyChangedEvent.getProperty());
+            }
+        }
+    }
+
+    @Override
+    public Set<Properties> listeningTo() {
+        return null;
     }
 
     // TODO: connect to anonymous nodes if they disconnect

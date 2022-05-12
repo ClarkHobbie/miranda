@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.Miranda;
+import com.ltsllc.miranda.properties.PropertiesHolder;
 import jakarta.servlet.*;
 
 import java.io.IOException;
@@ -23,7 +24,7 @@ public class PropertiesServlet implements Servlet {
     @Override
     public void service(ServletRequest req, ServletResponse res) throws ServletException, IOException {
         String[][] table;
-        ImprovedProperties p = Miranda.getProperties();
+        PropertiesHolder p = Miranda.getProperties();
 
         table = new String[p.keySet().size()][2];
 
