@@ -1,12 +1,16 @@
 package com.ltsllc.miranda;
 
 import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.commons.UncheckedLtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.alarm.AlarmClock;
 import com.ltsllc.miranda.alarm.Alarmable;
 import com.ltsllc.miranda.alarm.Alarms;
 import com.ltsllc.miranda.logging.LoggingCache;
 import com.ltsllc.miranda.logging.LoggingMap;
+import com.ltsllc.miranda.properties.Properties;
+import com.ltsllc.miranda.properties.PropertyChangedEvent;
+import com.ltsllc.miranda.properties.PropertyListener;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -29,7 +33,7 @@ import java.util.*;
  *     referenced message is "forgotten" until enough space is freed up to store the new message.
  * </P>
  */
-public class MessageLog implements Alarmable {
+public class MessageLog implements Alarmable, PropertyListener {
     public static final Logger logger = LogManager.getLogger();
     public static final Logger events = LogManager.getLogger("events");
 
@@ -68,6 +72,8 @@ public class MessageLog implements Alarmable {
         uuidToOwner = new LoggingMap(ownersFile);
     }
 
+    protected MessageLog () {}
+
     public static MessageLog getInstance() {
         return instance;
     }
@@ -78,16 +84,10 @@ public class MessageLog implements Alarmable {
 
     /**
      * Essentially an equivalent to an initialize method for static variables
-     *
-     * @param logfile Where the class will put the messages that are added to it.
-     * @param loadLimit The max bytes of content that the class will hold in memory.  This is required because Java
-     *                  does not have the equivalent of C/C++'s sizeof function.
-     * @param ownerLogfile The file where the ownership data of a message is stored.
      */
-    public static void defineStatics (ImprovedFile logfile, int loadLimit, ImprovedFile ownerLogfile) {
-        instance = new MessageLog(logfile, loadLimit, ownerLogfile);
-        AlarmClock.getInstance().schedule(instance, Alarms.COMPACTION, Miranda.properties.getLongProperty(
-                Miranda.PROPERTY_COMPACTION_TIME));
+    public static void defineStatics () {
+        instance = new MessageLog();
+        instance.setupMessageLog();
     }
 
     /**
@@ -372,6 +372,9 @@ public class MessageLog implements Alarmable {
     public void alarm(Alarms alarm) throws IOException {
         if (alarm == Alarms.COMPACTION) {
             compact();
+            setupCompaction();
+        } else {
+            throw new UncheckedLtsllcException("alarm called with " + alarm);
         }
     }
 
@@ -392,5 +395,54 @@ public class MessageLog implements Alarmable {
         }
 
         return results;
+    }
+
+    public void setupMessageLog () {
+        ImprovedFile messageLog = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_MESSAGE_LOG));
+        ImprovedFile ownersFile = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_OWNER_FILE));
+        int cacheLoadLimit = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
+        instance = new MessageLog(messageLog, cacheLoadLimit, ownersFile);
+        Miranda.getProperties().listen(this, com.ltsllc.miranda.properties.Properties.messageLogfile);
+        Miranda.getProperties().listen(this, com.ltsllc.miranda.properties.Properties.cacheLoadLimit);
+        Miranda.getProperties().listen(this, com.ltsllc.miranda.properties.Properties.ownerFile);
+        setupCompaction();
+    }
+
+    public void setupCompaction() {
+        AlarmClock.getInstance().scheduleOnce(this, Alarms.COMPACTION,
+                Miranda.getProperties().getLongProperty(Miranda.PROPERTY_COMPACTION_TIME));
+    }
+
+    public void propertyChanged (PropertyChangedEvent propertyChangedEvent) throws LtsllcException {
+        switch (propertyChangedEvent.getProperty()) {
+            case messageLogfile : {
+                setupMessageLog();
+                break;
+            }
+
+            case cacheLoadLimit: {
+                setupMessageLog();
+                break;
+            }
+
+            case ownerFile: {
+                setupMessageLog();
+                break;
+            }
+
+            case compaction: {
+                setupCompaction();
+                break;
+            }
+
+            default: {
+                throw new LtsllcException("propertyChanged called with " + propertyChangedEvent.getProperty());
+            }
+        }
+    }
+
+    @Override
+    public Set<Properties> listeningTo() {
+        return null;
     }
 }

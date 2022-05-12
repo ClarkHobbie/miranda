@@ -466,9 +466,7 @@ public class Miranda implements PropertyListener {
             System.exit(-1);
         }
 
-        ImprovedFile messageLogfile = new ImprovedFile(properties.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
-        int messageLoadLimit = properties.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
-        ImprovedFile ownersFile = new ImprovedFile(properties.getProperty(Miranda.PROPERTY_OWNER_FILE));
+        setupMessageLog();
         if (shouldRecover()) {
             recover();
         }
@@ -479,7 +477,7 @@ public class Miranda implements PropertyListener {
         processArguments(args);
 
         logger.debug("initializing MessageLog");
-        MessageLog.defineStatics(messageLogfile, messageLoadLimit, ownersFile);
+        MessageLog.defineStatics();
 
         logger.debug("Parsing nodes");
         parseNodes();
@@ -880,7 +878,7 @@ public class Miranda implements PropertyListener {
             ownerFile.backup(".backup");
             setSynchronizationFlag(true);
         } else {
-            MessageLog.defineStatics(messageFile, loadLimit, ownerFile);
+            MessageLog.defineStatics();
             MessageLog.recover(messageFile, loadLimit, ownerFile);
         }
 
@@ -936,6 +934,12 @@ public class Miranda implements PropertyListener {
         myPort = properties.getIntProperty(PROPERTY_PORT);
     }
 
+    public void setupMessageLog () {
+        ImprovedFile messageLogfile = new ImprovedFile(properties.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
+        int messageLoadLimit = properties.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
+        ImprovedFile ownersFile = new ImprovedFile(properties.getProperty(Miranda.PROPERTY_OWNER_FILE));
+
+    }
     @Override
     public void propertyChanged(PropertyChangedEvent propertyChangedEvent) throws Throwable {
         switch (propertyChangedEvent.getProperty()) {

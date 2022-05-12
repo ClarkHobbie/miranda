@@ -119,9 +119,7 @@ public class NodeTest {
 
         Cluster.defineStatics();
 
-        ImprovedFile messages = new ImprovedFile("messages.log");
-        ImprovedFile owners = new ImprovedFile("owners.log");
-        MessageLog.defineStatics(messages, 1000000, owners);
+        MessageLog.defineStatics();
 
         Message newMessage = createTestMessage(UUID.randomUUID());
 
@@ -146,9 +144,7 @@ public class NodeTest {
         Node node = new Node(UUID.randomUUID(), "192.168.0.12", 2020);
         node.setIoSession(mockIoSession);
 
-        ImprovedFile messages = new ImprovedFile("messages.log");
-        ImprovedFile owners = new ImprovedFile("owners.log");
-        MessageLog.defineStatics(messages, 1000000, owners);
+        MessageLog.defineStatics();
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append(Node.AUCTION);
         stringBuffer.append(" ");
@@ -197,7 +193,7 @@ public class NodeTest {
             Message message = createTestMessage(UUID.randomUUID());
             stringBuffer.append(message.longToString());
 
-            MessageLog.defineStatics(messages, 1000000, owners);
+            MessageLog.defineStatics();
 
             Node node = new Node("localhost", 2020);
 
@@ -282,7 +278,7 @@ public class NodeTest {
     public void testAuctionBidWonNotInCache () throws LtsllcException, IOException, CloneNotSupportedException {
         ImprovedFile messages = new ImprovedFile("messages.log");
         ImprovedFile owners = new ImprovedFile("owners.log");
-        MessageLog.defineStatics(messages, 1000000, owners);
+        MessageLog.defineStatics();
         try {
             String strMessage = Node.BID;
             strMessage += " ";
@@ -323,7 +319,7 @@ public class NodeTest {
         ImprovedFile messages = new ImprovedFile("messages.log");
         ImprovedFile owners = new ImprovedFile("owners.log");
         try {
-            MessageLog.defineStatics(messages, 1000000, owners);
+            MessageLog.defineStatics();
 
             UUID theirUuid = UUID.randomUUID();
             Node node = new Node(theirUuid, "localhost", 2020);
@@ -750,7 +746,7 @@ public class NodeTest {
         ImprovedFile messagesLog = new ImprovedFile("messages.log");
         ImprovedFile owners = new ImprovedFile("owner.log");
         try {
-            MessageLog.defineStatics(messagesLog, 1000000, owners);
+            MessageLog.defineStatics();
             UUID messageUuid = UUID.randomUUID();
             UUID ourUuid = UUID.randomUUID();
 
@@ -924,9 +920,7 @@ public class NodeTest {
         node.setUuid(UUID.randomUUID());
         StringBuffer stringBuffer = new StringBuffer();
 
-        LoggingCache cache = new LoggingCache(messages,104857600);
-
-        MessageLog.defineStatics(messages, 104857600, ownersLog);
+        MessageLog.defineStatics();
 
         Message message = createTestMessage(UUID.randomUUID());
 
@@ -1078,7 +1072,7 @@ public class NodeTest {
             miranda.setMyHost("198.162.0.18");
             miranda.setMyPort(2020);
 
-            MessageLog.defineStatics(messages, 1000000, owners);
+            MessageLog.defineStatics();
 
             String strUuid1 = "00000000-0000-0000-0000-000000000001";
             String strUuid2 = "00000000-0000-0000-0000-000000000002";
@@ -1130,7 +1124,7 @@ public class NodeTest {
             Miranda miranda = new Miranda();
             miranda.loadProperties();
 
-            MessageLog.defineStatics(messages, 1000000, owners);
+            MessageLog.defineStatics();
 
             UUID uuid1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
             UUID uuid2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
@@ -1189,7 +1183,7 @@ public class NodeTest {
             String string1 = createTestMessage(uuid).longToString();
             Message message = Message.readLongFormat(string1);
 
-            MessageLog.defineStatics(messages, 1000000, owners);
+            MessageLog.defineStatics();
 
             Node node = new Node("localhost", 2020);
 
@@ -1343,9 +1337,7 @@ public class NodeTest {
         miranda.setMyHost("192.168.0.12");
         miranda.setMyPort(2020);
 
-        ImprovedFile messages = new ImprovedFile("messages.log");
-        ImprovedFile owners = new ImprovedFile("owners.log");
-        MessageLog.defineStatics(messages, 1000000, owners);
+        MessageLog.defineStatics();
 
         IoSession mockIoSession = mock(IoSession.class);
 

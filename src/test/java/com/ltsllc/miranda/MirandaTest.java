@@ -326,10 +326,7 @@ class MirandaTest extends TestSuperclass {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        PropertiesHolder p = Miranda.getProperties();
-        ImprovedFile messages = new ImprovedFile(p.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
-        ImprovedFile owners = new ImprovedFile(p.getProperty(Miranda.PROPERTY_OWNER_FILE));
-        MessageLog.defineStatics(messages, p.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT), owners);
+        MessageLog.defineStatics();
 
         Message message = createTestMessage(UUID.randomUUID());
         MessageLog.getInstance().add(message, UUID.randomUUID());

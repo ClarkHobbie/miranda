@@ -320,9 +320,8 @@ class ClusterTest extends TestSuperclass {
 
         Cluster.defineStatics();
 
-        ImprovedFile messages = new ImprovedFile("messages.log");
-        ImprovedFile owners = new ImprovedFile("owners.log");
-        MessageLog.defineStatics(messages, 1000000, owners);
+
+        MessageLog.defineStatics();
 
         IoSession mockIoSession = mock(IoSession.class);
         UUID node1Uuid = UUID.fromString("00000000-0000-0000-0000-000000000000");
