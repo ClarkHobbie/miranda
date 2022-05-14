@@ -2,6 +2,7 @@ package com.ltsllc.miranda.servlets;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.ltsllc.miranda.Miranda;
 import jakarta.servlet.*;
 
 import java.io.IOException;
@@ -20,15 +21,20 @@ public class SavePropertiesServlet implements Servlet {
 
     @Override
     public void service(ServletRequest req, ServletResponse res) throws ServletException, IOException {
-
-
         String json = req.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
         GsonBuilder gsonBuilder = new GsonBuilder();
         gsonBuilder.setPrettyPrinting();
         Gson gson = gsonBuilder.create();
 
         String[][] table = gson.fromJson(json, String[][].class);
-        System.out.println(json);
+        if (Miranda.getProperties().isDifferentFrom(table)) {
+            for (int i = 0; i < table.length; i++) {
+                if (Miranda.getProperties().propertyIsDifferent(table[i])) {
+                    Miranda.getProperties().setProperty(table[i][0], table[i][1]);
+                }
+            }
+        }
+
     }
 
     @Override

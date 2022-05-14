@@ -38,14 +38,11 @@ public class PropertiesServlet implements Servlet {
 
         }
 
-
-
         GsonBuilder gsonBuilder = new GsonBuilder();
         gsonBuilder.setPrettyPrinting();
         Gson gson = gsonBuilder.create();
         String html = gson.toJson(table);
         res.getWriter().write(html);
-
     }
 
     @Override

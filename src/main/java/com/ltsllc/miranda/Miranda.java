@@ -347,6 +347,8 @@ public class Miranda implements PropertyListener {
     public Miranda() {
         Miranda.instance = this;
 
+        properties = new PropertiesHolder();
+
         try {
             loadProperties();
         } catch (LtsllcException e) {
@@ -360,6 +362,26 @@ public class Miranda implements PropertyListener {
             throw new UncheckedLtsllcException(msg);
         } else {
             myUuid = UUID.fromString(properties.getProperty(PROPERTY_UUID));
+        }
+
+        properties.listen(this, com.ltsllc.miranda.properties.Properties.hostName);
+        if (null == properties.getProperty(PROPERTY_HOST)) {
+            String msg = "Please specify a host for this node by setting the " + PROPERTY_HOST + " property";
+            logger.error(msg);
+            event.error(msg);
+            throw new UncheckedLtsllcException(msg);
+        } else {
+            myHost = properties.getProperty(PROPERTY_HOST);
+        }
+
+        properties.listen(this, com.ltsllc.miranda.properties.Properties.clusterPort);
+        if (null == properties.getProperty(PROPERTY_PORT)) {
+            String msg = "Please specify a port for this node by setting the " + PROPERTY_PORT + " property";
+            logger.error(msg);
+            event.error(msg);
+            throw new UncheckedLtsllcException(msg);
+        } else {
+            myPort = properties.getIntProperty(PROPERTY_PORT);
         }
     }
 
