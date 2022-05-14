@@ -10,6 +10,11 @@ import jakarta.servlet.*;
 import java.io.IOException;
 import java.util.Set;
 
+/**
+ * A servlet that gathers up the system properties and ships them off as a JSON object.  The object takes the form of a
+ * 2-dimensional table where the first column is always the property name and the second column of a row is always that
+ * properties value.
+ */
 public class PropertiesServlet implements Servlet {
     @Override
     public void init(ServletConfig config) throws ServletException {

@@ -368,6 +368,13 @@ public class MessageLog implements Alarmable, PropertyListener {
         uuidToOwner.compact();
     }
 
+    /**
+     * An alarm which the class previously registered for went off
+     *
+     * @param alarm The alarm that the class previously registered for.
+     * @throws IOException If the method (this method calls the compact method) this method calls throws an
+     * exception.
+     */
     @Override
     public void alarm(Alarms alarm) throws IOException {
         if (alarm == Alarms.COMPACTION) {
@@ -397,6 +404,12 @@ public class MessageLog implements Alarmable, PropertyListener {
         return results;
     }
 
+    /**
+     * Setup the messageLog
+     * <H>
+     *     Calling this method sets up the compaction alarm via setupCompaction.
+     * </H>
+     */
     public void setupMessageLog () {
         ImprovedFile messageLog = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_MESSAGE_LOG));
         ImprovedFile ownersFile = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_OWNER_FILE));
@@ -413,6 +426,41 @@ public class MessageLog implements Alarmable, PropertyListener {
                 Miranda.getProperties().getLongProperty(Miranda.PROPERTY_COMPACTION_TIME));
     }
 
+    /**
+     * This method calls another method to deal with a property being changed.
+     *
+     * <H>
+     *     The different types of property change that this method can deal with are:
+     *     <TABLE border="1">
+     *         <TR>
+     *             <TH>Property changed</TH>
+     *             <TH>method</TH>
+     *         </TR>
+     *         <TR>
+     *             <TD>messageLogfile</TD>
+     *             <TD>setupMessageLog</TD>
+     *         </TR>
+     *         <TR>
+     *             <TD>cacheLoadLimit</TD>
+     *             <TD>setupMessageLog</TD>
+     *         </TR>
+     *         <TR>
+     *             <TD>ownerLog</TD>
+     *             <TD>setupMessageLog</TD>
+     *         </TR>
+     *         <TR>
+     *             <TD>compaction</TD>
+     *             <TD>setupCompaction</TD>
+     *         </TR>
+     *         <TR>
+     *             <TD>anything else</TD>
+     *             <TD>throw an LtsllcException
+     *         </TR>
+     *     </TABLE>
+     * </H>
+     * @param propertyChangedEvent The property which has changed.
+     * @throws LtsllcException If an unrecognized property is passed to the method.
+     */
     public void propertyChanged (PropertyChangedEvent propertyChangedEvent) throws LtsllcException {
         switch (propertyChangedEvent.getProperty()) {
             case messageLogfile : {

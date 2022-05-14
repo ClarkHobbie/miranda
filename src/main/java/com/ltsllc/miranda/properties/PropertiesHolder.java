@@ -9,6 +9,9 @@ import java.io.Reader;
 import java.util.*;
 import java.util.Properties;
 
+/**
+ * A class that manages some properties and notifies classes of changes to those properties.
+ */
 public class PropertiesHolder extends Properties {
     protected ImprovedProperties properties = new ImprovedProperties();
     protected Map<com.ltsllc.miranda.properties.Properties, List<PropertyListener>> listeners = new HashMap<>();

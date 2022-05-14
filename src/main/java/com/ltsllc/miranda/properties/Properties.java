@@ -1,5 +1,8 @@
 package com.ltsllc.miranda.properties;
 
+/**
+ * An enum that represents the properties that a class can listen to for changes.
+ */
 public enum Properties {
     unknown,
     uuid,

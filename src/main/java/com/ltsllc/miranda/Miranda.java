@@ -341,7 +341,8 @@ public class Miranda implements PropertyListener {
      * <P>
      *     This set the instance to the newly created instance and tries to load the properties for that instance.  If
      *     there is a problem loading the properties the method throws an UncheckedLtsllcException.  It checks for the
-     *     existence of the myUuid property and throws an UncheckedLtsllcException if it is not defined.
+     *     existence of the myUuid, the myHost and the myPort properties and throws an UncheckedLtsllcException if the
+     *     property is not defined.
      * </P>
      */
     public Miranda() {

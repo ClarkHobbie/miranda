@@ -61,20 +61,10 @@ function storeProperties() {
     xhttp.send(jsonTemp);
 }
 
-function testLoad() {
-   xhttp = new XMLHttpRequest();
-   xhttp.onReadyStateChange = function () {
-      alert("readyState = " + this.readyState + " status = " + xhttp.status);
-   }
-   xhttp.open("GET", "/api/properties");
-   xhttp.send();
-}
-
-testLoad();
 loadDoc()
 </SCRIPT>
 
-<BUTTON onClick="storeProperties()">Update</BUTTON>
+<BUTTON onClick="storeProperties();loadTable()">Update</BUTTON>
 
 </body>
 </html>

@@ -1,5 +1,10 @@
 package com.ltsllc.miranda.properties;
 
+/**
+ * A class that is past to a PropertyListen
+ *
+ * @see PropertyListener
+ */
 public class PropertyChangedEvent {
     protected Object source;
     protected Properties property;

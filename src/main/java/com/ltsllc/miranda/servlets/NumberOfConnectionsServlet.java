@@ -7,6 +7,9 @@ import jakarta.servlet.*;
 import java.io.IOException;
 import java.io.Writer;
 
+/**
+ * A servlet that returns the number of connections that the node currently has to other nodes.
+ */
 public class NumberOfConnectionsServlet implements Servlet {
     public NumberOfConnectionsServlet() {
 

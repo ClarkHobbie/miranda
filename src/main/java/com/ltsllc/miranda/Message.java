@@ -14,6 +14,10 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * A class that represents a POST to the message port.  The caller is expected to supply a status URL and a delivery
+ * URL to which this instance will be delivered to.
+ */
 public class Message implements Comparable<Message> {
     protected static Logger logger = LogManager.getLogger();
 

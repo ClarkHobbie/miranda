@@ -7116,3 +7116,7 @@
 14:50:15.658 [main] INFO  events - Trying to connect to other nodes
 14:52:07.625 [Timer-0] INFO  events - Messages file or owners file does not exist aborting compaction
 14:54:13.882 [Timer-0] INFO  events - Messages file or owners file does not exist aborting compaction
+18:43:03.952 [main] INFO  events - Miranda starting up
+18:43:04.152 [main] INFO  events - Trying to connect to other nodes
+18:45:10.430 [Timer-0] INFO  events - Messages file or owners file does not exist aborting compaction
+18:47:16.715 [Timer-0] INFO  events - Messages file or owners file does not exist aborting compaction
