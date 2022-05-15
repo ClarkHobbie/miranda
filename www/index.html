@@ -5,51 +5,78 @@
 
 <SCRIPT>
 function refresh() {
+    getStatus();
     refreshNumberOfConnections();
     refreshNumberOfMessages();
+    refreshHostPort();
+    refreshUuid();
 }
 
-function refreshNumberOfConnections() {
+function getStatus() {
     const xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function() {
         if (this.readyState == 4 && this.status == 200) {
-            NumberOfConnections=document.getElementById("numberOfConnections");
-            NumberOfConnections.innerHTML=this.responseText;
+            table = JSON.parse(this.responseText);
         }
     };
-    xhttp.open("GET", "/api/numberOfConnections");
+    xhttp.open("GET", "/api/status", false);
     xhttp.send();
 }
 function refreshNumberOfMessages() {
-    const xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = function() {
-        if (this.readyState == 4 && this.status == 200) {
-            NumberOfMessages=document.getElementById("numberOfMessages");
-            NumberOfMessages.innerHTML=this.responseText;
-        }
-    };
-    xhttp.open("GET", "/api/numberOfMessages");
-    xhttp.send();
+    var numberOfMessages = document.getElementById("numberOfMessages");
+    numberOfMessages.innerHTML=getProperty("numberOfMessages");
 }
-refresh()
+function refreshNumberOfConnections() {
+    var numberOfConnections = document.getElementById("numberOfConnections");
+    numberOfConnections.innerHTML=getProperty("numberOfConnections");
+}
+function getProperty(name) {
+    for (var i = 0; i < table.length; i++) {
+        if (table[i][0] == name) {
+            return table[i][1];
+        }
+    }
+    return null;
+}
+function refreshHostPort() {
+    var host=getProperty("host");
+    var port=getProperty("port");
+    var hostPort=document.getElementById("hostPort");
+    hostPort.innerHTML = host + ":" + port;
+}
+function refreshUuid() {
+    var uuid=document.getElementById("uuid");
+    uuid.innerHTML=getProperty("UUID");
+}
 </SCRIPT>
+<H1>System Status</H1>
 
 <TABLE>
 <TR>
     <TD>Number of connections:</TD>
-    <TD></TD><DIV id="numberOfConnections" ></DIV></TD>
+    <TD><DIV id="numberOfConnections" ></DIV></TD>
 </TR>
 
 <TR>
     <TD>Number of messages in queue:</TD>
-    <TD></TD><DIV id="numberOfMessages" ></DIV></TD>
+    <TD><DIV id="numberOfMessages" ></DIV></TD>
 </TR>
 <TR>
     <TD><A href="properties.html">Properties</A></TD>
 </TR>
+<TR>
+    <TD>Host:port</TD>
+    <TD><DIV id="hostPort"></DIV></TD>
+</TR>
+<TR>
+    <TD>uuid</TD>
+    <TD><DIV id="uuid"></DIV></TD>
+</TR>
 </TABLE>
 <BUTTON onClick="refresh()">Refresh</BUTTON>
-
+<SCRIPT>
+   refresh();
+</SCRIPT>
 
 </body>
 </html>

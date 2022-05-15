@@ -2,11 +2,10 @@ package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
-import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.commons.util.Utils;
-import com.ltsllc.miranda.Message;
-import com.ltsllc.miranda.MessageLog;
+import com.ltsllc.miranda.message.Message;
+import com.ltsllc.miranda.message.MessageLog;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.logging.LoggingCache;
 import com.ltsllc.miranda.properties.PropertiesHolder;

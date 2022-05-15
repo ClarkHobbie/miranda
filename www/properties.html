@@ -10,6 +10,7 @@
      }
 </style>
 <body>
+<H1>System Properties</H1>
 <TABLE border=1 id="table">
 <TR>
     <TH>Name</TH><TH>Value</TH>
@@ -33,7 +34,7 @@ function loadDoc() {
 
           }
       };
-      xhttp.open("GET", "/api/properties");
+      xhttp.open("GET", "/api/properties", false);
       xhttp.send();
 
 }

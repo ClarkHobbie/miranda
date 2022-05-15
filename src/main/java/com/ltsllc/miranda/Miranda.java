@@ -4,17 +4,16 @@ package com.ltsllc.miranda;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.UncheckedLtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
-import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.cluster.Node;
 import com.ltsllc.miranda.cluster.SpecNode;
+import com.ltsllc.miranda.message.Message;
+import com.ltsllc.miranda.message.MessageLog;
 import com.ltsllc.miranda.properties.PropertiesHolder;
 import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import com.ltsllc.miranda.properties.PropertyListener;
-import com.ltsllc.miranda.servlets.NumberOfConnectionsServlet;
-import com.ltsllc.miranda.servlets.NumberOfMessages;
-import com.ltsllc.miranda.servlets.PropertiesServlet;
-import com.ltsllc.miranda.servlets.SavePropertiesServlet;
+import com.ltsllc.miranda.servlets.Properties;
+import com.ltsllc.miranda.servlets.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.asynchttpclient.*;
@@ -24,9 +23,8 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
-import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.eclipse.jetty.servlet.ServletContextHandler;
-
+import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
 import java.io.FileInputStream;
 import java.io.FileWriter;
@@ -543,13 +541,13 @@ public class Miranda implements PropertyListener {
         rh0.setResourceBase("www");
 
         ServletContextHandler servletContextHandler = new ServletContextHandler();
-        servletContextHandler.addServlet(NumberOfConnectionsServlet.class, "/api/numberOfConnections");
-        servletContextHandler.addServlet(PropertiesServlet.class, "/api/properties");
-        servletContextHandler.addServlet(SavePropertiesServlet.class, "/api/saveProperties");
+        servletContextHandler.addServlet(NumberOfConnections.class, "/api/numberOfConnections");
+        servletContextHandler.addServlet(Properties.class, "/api/properties");
+        servletContextHandler.addServlet(SaveProperties.class, "/api/saveProperties");
         servletContextHandler.addServlet(NumberOfMessages.class, "/api/numberOfMessages" );
+        servletContextHandler.addServlet(Status.class, "/api/status");
         HandlerList handlers = new HandlerList();
-        handlers.setHandlers(new Handler[] { rh0, servletContextHandler
-                });
+        handlers.setHandlers(new Handler[] { rh0, servletContextHandler });
         server.setHandler(handlers);
 
         // Set a simple Handler to handle requests/responses.
@@ -567,10 +565,10 @@ public class Miranda implements PropertyListener {
      *
      * process the arguments to the program --- at this point this consists of the logging level.
      */
-    protected Properties processArguments (String[] arguments) {
+    protected java.util.Properties processArguments (String[] arguments) {
         logger.debug("starting processArguments with arguments = " + arguments);
 
-        Properties temp = new Properties();
+        java.util.Properties temp = new java.util.Properties();
 
         String prev = null;
 
@@ -594,7 +592,7 @@ public class Miranda implements PropertyListener {
         return temp;
     }
 
-    protected void processArgument (String prev, String argument, Properties map) {
+    protected void processArgument (String prev, String argument, java.util.Properties map) {
         logger.debug("processing argument with argument = " + argument + ", prev = " + prev + " and map = " + map);
 
         if (argument.startsWith("-")) {

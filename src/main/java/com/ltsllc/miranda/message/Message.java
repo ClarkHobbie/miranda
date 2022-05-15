@@ -1,18 +1,12 @@
-package com.ltsllc.miranda;
+package com.ltsllc.miranda.message;
 
 import com.ltsllc.commons.util.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.Arrays;
 import java.util.Scanner;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 /**
  * A class that represents a POST to the message port.  The caller is expected to supply a status URL and a delivery

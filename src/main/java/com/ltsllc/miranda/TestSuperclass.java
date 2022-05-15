@@ -1,12 +1,9 @@
 package com.ltsllc.miranda;
 
-import com.ltsllc.commons.util.ImprovedProperties;
-import com.ltsllc.miranda.Message;
-import com.ltsllc.miranda.Miranda;
+import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.properties.PropertiesHolder;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
-import org.bouncycastle.util.IPAddress;
 import org.junit.jupiter.api.BeforeAll;
 
 import java.net.InetSocketAddress;

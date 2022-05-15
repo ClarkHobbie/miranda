@@ -1,13 +1,10 @@
 package com.ltsllc.miranda.cluster;
 
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 
-import com.ltsllc.commons.util.ImprovedProperties;
-import com.ltsllc.miranda.Message;
+import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.properties.PropertiesHolder;
 import org.apache.logging.log4j.Logger;

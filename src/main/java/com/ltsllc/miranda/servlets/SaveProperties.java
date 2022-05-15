@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  *     the properties page.
  * </H>
  */
-public class SavePropertiesServlet implements Servlet {
+public class SaveProperties implements Servlet {
     @Override
     public void init(ServletConfig config) throws ServletException {
 

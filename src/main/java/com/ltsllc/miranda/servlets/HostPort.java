@@ -1,14 +1,14 @@
 package com.ltsllc.miranda.servlets;
 
-import com.ltsllc.miranda.message.MessageLog;
+import com.ltsllc.miranda.Miranda;
 import jakarta.servlet.*;
 
 import java.io.IOException;
 
 /**
- * A servlet that returns the number of messages in the message log.
+ * A servlet that gets the host and port properties,
  */
-public class NumberOfMessages implements Servlet {
+public class HostPort implements Servlet {
     @Override
     public void init(ServletConfig config) throws ServletException {
 
@@ -21,8 +21,10 @@ public class NumberOfMessages implements Servlet {
 
     @Override
     public void service(ServletRequest req, ServletResponse res) throws ServletException, IOException {
+        String host = Miranda.getProperties().getProperty(Miranda.PROPERTY_HOST);
+        String port = Miranda.getProperties().getProperty(Miranda.PROPERTY_PORT);
         res.setContentType("HTML");
-        res.getWriter().write("" + MessageLog.getInstance().getAllMessages().size());
+        res.getWriter().write("" + host + ":" + port);
     }
 
     @Override

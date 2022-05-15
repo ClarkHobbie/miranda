@@ -350,7 +350,7 @@ implements org.apache.mina.core.service.IoHandler</span></div>
 <div class="block">Convert a message message into a Message</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>protected void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#sendMessage(com.ltsllc.miranda.Message,org.apache.mina.core.session.IoSession)" class="member-name-link">sendMessage</a><wbr>(<a href="../Message.html" title="class in com.ltsllc.miranda">Message</a>&nbsp;message,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#sendMessage(com.ltsllc.miranda.message.Message,org.apache.mina.core.session.IoSession)" class="member-name-link">sendMessage</a><wbr>(<a href="../Message.html" title="class in com.ltsllc.miranda">Message</a>&nbsp;message,
  org.apache.mina.core.session.IoSession&nbsp;ioSession)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Send a message message over an IoSession</div>
@@ -396,7 +396,7 @@ implements org.apache.mina.core.service.IoHandler</span></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setUuid(java.util.UUID)" class="member-name-link">setUuid</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/UUID.html" title="class or interface in java.util" class="external-link">UUID</a>&nbsp;uuid)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#undefineMessage(com.ltsllc.miranda.Message,java.util.UUID)" class="member-name-link">undefineMessage</a><wbr>(<a href="../Message.html" title="class in com.ltsllc.miranda">Message</a>&nbsp;message,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#undefineMessage(com.ltsllc.miranda.message.Message,java.util.UUID)" class="member-name-link">undefineMessage</a><wbr>(<a href="../Message.html" title="class in com.ltsllc.miranda">Message</a>&nbsp;message,
  <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/UUID.html" title="class or interface in java.util" class="external-link">UUID</a>&nbsp;owner)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Tell the cache to discard the message, and set the owner of a message to the specified owner</div>
@@ -997,7 +997,7 @@ com.ltsllc.commons.LtsllcException</span></div>
 com.ltsllc.commons.LtsllcException</span></div>
 <div class="block">Send a Message over an IoSession
  <P>
-     This method sends a com.ltsllc.miranda.Message over an IoSession.
+     This method sends a com.ltsllc.miranda.message.Message over an IoSession.
  </P></div>
 <dl class="notes">
 <dt>Parameters:</dt>
@@ -1023,7 +1023,7 @@ com.ltsllc.commons.LtsllcException</span></div>
 </section>
 </li>
 <li>
-<section class="detail" id="sendMessage(com.ltsllc.miranda.Message,org.apache.mina.core.session.IoSession)">
+<section class="detail" id="sendMessage(com.ltsllc.miranda.message.Message,org.apache.mina.core.session.IoSession)">
 <h3>sendMessage</h3>
 <div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">sendMessage</span><wbr><span class="parameters">(<a href="../Message.html" title="class in com.ltsllc.miranda">Message</a>&nbsp;message,
  org.apache.mina.core.session.IoSession&nbsp;ioSession)</span></div>
@@ -1121,7 +1121,7 @@ com.ltsllc.commons.LtsllcException</span></div>
 </section>
 </li>
 <li>
-<section class="detail" id="undefineMessage(com.ltsllc.miranda.Message,java.util.UUID)">
+<section class="detail" id="undefineMessage(com.ltsllc.miranda.message.Message,java.util.UUID)">
 <h3>undefineMessage</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">undefineMessage</span><wbr><span class="parameters">(<a href="../Message.html" title="class in com.ltsllc.miranda">Message</a>&nbsp;message,
  <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/UUID.html" title="class or interface in java.util" class="external-link">UUID</a>&nbsp;owner)</span></div>

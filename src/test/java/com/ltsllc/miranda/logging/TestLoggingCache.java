@@ -2,8 +2,7 @@ package com.ltsllc.miranda.logging;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
-import com.ltsllc.miranda.Message;
-import com.ltsllc.miranda.MessageLog;
+import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.TestSuperclass;
 import org.apache.logging.log4j.Level;

@@ -10,8 +10,8 @@ import java.io.Writer;
 /**
  * A servlet that returns the number of connections that the node currently has to other nodes.
  */
-public class NumberOfConnectionsServlet implements Servlet {
-    public NumberOfConnectionsServlet() {
+public class NumberOfConnections implements Servlet {
+    public NumberOfConnections() {
 
     }
 
@@ -28,12 +28,9 @@ public class NumberOfConnectionsServlet implements Servlet {
 
     @Override
     public void service(ServletRequest servletRequest, ServletResponse servletResponse) throws ServletException, IOException {
-        servletResponse.setContentType("html");
         Writer writer = servletResponse.getWriter();
-        writer.write("<html>");
-        writer.write(" " + Cluster.getInstance().getNumberOfConnections());
-        writer.write("</html>");
-
+        servletResponse.setContentType("HTML");
+        writer.write("" + Cluster.getInstance().getNumberOfConnections());
     }
 
     @Override

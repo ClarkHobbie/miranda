@@ -7,6 +7,8 @@ import com.ltsllc.miranda.*;
 import com.ltsllc.miranda.alarm.AlarmClock;
 import com.ltsllc.miranda.alarm.Alarmable;
 import com.ltsllc.miranda.alarm.Alarms;
+import com.ltsllc.miranda.message.Message;
+import com.ltsllc.miranda.message.MessageLog;
 import com.ltsllc.miranda.properties.Properties;
 import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import com.ltsllc.miranda.properties.PropertyListener;
@@ -709,7 +711,7 @@ public class Cluster implements Alarmable, PropertyListener {
         }
     }
 
-    public synchronized int getNumberOfConnections() {
+    public int getNumberOfConnections() {
         int count = 0;
         for (Node node : nodes) {
             if (null != node.getIoSession()) {

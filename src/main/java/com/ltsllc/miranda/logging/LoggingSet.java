@@ -1,7 +1,7 @@
 package com.ltsllc.miranda.logging;
 
 import com.ltsllc.commons.io.ImprovedFile;
-import com.ltsllc.miranda.Message;
+import com.ltsllc.miranda.message.Message;
 
 import java.io.*;
 import java.util.*;
