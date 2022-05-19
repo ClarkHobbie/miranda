@@ -24,7 +24,7 @@ public class SaveServletTest {
                 {Miranda.PROPERTY_CLUSTER + ".1.port", "2020"},
                 {Miranda.PROPERTY_CLUSTER_RETRY, "10000"},
                 {Miranda.PROPERTY_COMPACTION_TIME, "100000"},
-                {Miranda.PROPERTY_HEART_BEAT_INTERVAL, "120000"},
+                {Miranda.PROPERTY_HEART_BEAT_INTERVAL, "5000"},
                 {Miranda.PROPERTY_HOST, "192.168.0.20"},
                 {Miranda.PROPERTY_LONG_LOGGING_LEVEL, "error"},
                 {Miranda.PROPERTY_MESSAGE_LOG, "messages.log"},
@@ -35,7 +35,7 @@ public class SaveServletTest {
                 {Miranda.PROPERTY_PROPERTIES_FILE, "miranda.properties"},
                 {Miranda.PROPERTY_DEAD_NODE_TIMEOUT, "500"},
                 {Miranda.PROPERTY_HEART_BEAT_TIMEOUT, "500"},
-                {Miranda.PROPERTY_START_TIMEOUT, "500"}
+                {Miranda.PROPERTY_START_TIMEOUT, "100000"}
         };
 
         assert (!Miranda.getProperties().isDifferentFrom(table));

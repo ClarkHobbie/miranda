@@ -6,6 +6,7 @@
 <SCRIPT>
 function refresh() {
     getStatus();
+    refreshNumberOfNodes();
     refreshNumberOfConnections();
     refreshNumberOfMessages();
     refreshHostPort();
@@ -30,6 +31,10 @@ function refreshNumberOfConnections() {
     var numberOfConnections = document.getElementById("numberOfConnections");
     numberOfConnections.innerHTML=getProperty("numberOfConnections");
 }
+function refreshNumberOfNodes() {
+    var numberOfNodes = document.getElementById("numberOfNodes");
+    numberOfNodes.innerHTML = getProperty("numberOfNodes");
+}
 function getProperty(name) {
     for (var i = 0; i < table.length; i++) {
         if (table[i][0] == name) {
@@ -48,19 +53,45 @@ function refreshUuid() {
     var uuid=document.getElementById("uuid");
     uuid.innerHTML=getProperty("UUID");
 }
+function coalesce() {
+    var xhttp = new XMLHttpRequest();
+    var coalesce=document.getElementById("coalesce");
+    coalesce.innerHTML="Waiting";
+    xhttp.onReadyStateChanged = function () {
+        if (this.readyState==4 && this.status==200) {
+            coalesce.innerHTML="<BUTTON onClick='coalesce'></BUTTON>";
+        }
+    }
+    xhttp.open("GET", "/api/coalesce", false);
+    xhttp.send();
+}
+
 </SCRIPT>
 <H1>System Status</H1>
 
 <TABLE>
 <TR>
+    <TD>Number of nodes</TD>
+    <TD>
+        <DIV id="numberOfNodes"></DIV>
+    </TD>
+</TR>
+<TR>
     <TD>Number of connections:</TD>
-    <TD><DIV id="numberOfConnections" ></DIV></TD>
+    <TD>
+        <DIV id="numberOfConnections" ></DIV>
+    </TD>
+    <TD>
+        <DIV id="coalesce"></DIV><BUTTON onclick="coalesce()">Coalesce</BUTTON></DIV>
+        <DIV id="details"></DIV><A HREF="/connections/details.html">Details...</A>
+    </TD>
 </TR>
 
 <TR>
     <TD>Number of messages in queue:</TD>
     <TD><DIV id="numberOfMessages" ></DIV></TD>
 </TR>
+
 <TR>
     <TD><A href="properties.html">Properties</A></TD>
 </TR>

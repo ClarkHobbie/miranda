@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Connection Details</title>
+</head>
+<body>
+<H1>Connection Details</H1>
+<TABLE id="table" border="1" >
+    <TR>
+        <TH>Connections</TH>
+        <TH>ioSession</TH>
+        <TH>hostname</TH>
+        <TH>uuid</TH>
+        <TH>State</TH>
+    </TR>
+</TABLE>
+<BUTTON onClick="loadTable()">Refresh</BUTTON>
+
+<SCRIPT>
+function loadTable() {
+    xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function()
+    {
+        var tableElement = document.getElementById("table");
+        if (this.readyState == 4 && this.status == 200) {
+            var table = JSON.parse(this.responseText);
+
+            for (var rowCount = 0; rowCount < table.length; rowCount++) {
+                var msg = '<TR><TD>' + table[rowCount][0] + '</TD><TD>' + table[rowCount][1] + "</TD><TD>"
+                    + table[rowCount][2] + "</TD><TD>" + table[rowCount][3] + "</TD>"
+                    + "<TD>" + table[rowCount][4] + "</TD></TR>";
+                tableElement.innerHTML += msg;
+            }
+
+        }
+    };
+    xhttp.open("GET", "/api/connections/details", false);
+    xhttp.send();
+}
+
+loadTable()
+</SCRIPT>
+</body>
+</html>

@@ -186,7 +186,7 @@ public class Miranda implements PropertyListener {
     /**
      * The amount of time to wait in between heart beat start messages
      */
-    public static final String PROPERTY_HEART_BEAT_INTERVAL = "heartBeatInterval";
+    public static final String PROPERTY_HEART_BEAT_INTERVAL = "periods.heartBeat";
 
     /**
      * The default period to wait between heart beat start messages is 5 sec
@@ -222,6 +222,27 @@ public class Miranda implements PropertyListener {
      * The default timeout for a DEAD NODE START message is 1/2 a second
      */
     public static final String PROPERTY_DEFAULT_DEAD_NODE_TIMEOUT = "500";
+
+    /**
+     * The period to wait to coalesce the cluster
+     */
+    public static final String PROPERTY_COALESCE_PERIOD = "periods.coalesce";
+
+    /**
+     * Defaults to 10 minuets
+     */
+    public static final String PROPERTY_DEFAULT_COALESCE_PERIOD = "600000";
+
+    /**
+     * How large a chunk of memory to use when copying messages to be delivered.  Is the size of the body of the message
+     * in bytes
+     */
+    public static final String PROPERTY_COPY_SIZE = "copySize";
+
+    /**
+     * Defaults to 100,000,000
+     */
+    public static final String PROPERTY_DEFAULT_COPY_SIZE = "100000000";
 
     /**
      * The logger to use
@@ -307,6 +328,37 @@ public class Miranda implements PropertyListener {
 
     public void setMyUuid(UUID myUuid) {
         this.myUuid = myUuid;
+    }
+
+    /**
+     * The time when the node started
+     */
+    protected long myStart = System.currentTimeMillis();
+
+    public long getMyStart() {
+        return myStart;
+    }
+
+    public void setMyStart(long myStart) {
+        this.myStart = myStart;
+    }
+
+    /**
+     * What was the time when the oldest node started?
+     *
+     * <H>
+     *     This is used when first starting to determine if the node should sync with another node.  A value of -1
+     *     signifies that we're not currently connected to any other nodes.
+     * </H>
+     */
+    protected long eldest = -1;
+
+    public long getEldest() {
+        return eldest;
+    }
+
+    public void setEldest(long eldest) {
+        this.eldest = eldest;
     }
 
     public boolean isKeepRunning() {
@@ -546,6 +598,11 @@ public class Miranda implements PropertyListener {
         servletContextHandler.addServlet(SaveProperties.class, "/api/saveProperties");
         servletContextHandler.addServlet(NumberOfMessages.class, "/api/numberOfMessages" );
         servletContextHandler.addServlet(Status.class, "/api/status");
+        servletContextHandler.addServlet(Coalesce.class, "/api/coalesce");
+        servletContextHandler.addServlet(ConnectionDetails.class, "/api/connections/details");
+        servletContextHandler.addServlet(com.ltsllc.miranda.servlets.Message.class, "/api/newMessage");
+
+
         HandlerList handlers = new HandlerList();
         handlers.setHandlers(new Handler[] { rh0, servletContextHandler });
         server.setHandler(handlers);
@@ -668,6 +725,8 @@ public class Miranda implements PropertyListener {
         properties.setIfNull(PROPERTY_AUCTION_TIMEOUT, PROPERTY_DEFAULT_AUCTION_TIMEOUT);
         properties.setIfNull(PROPERTY_HEART_BEAT_TIMEOUT, PROPERTY_DEFAULT_HEART_BEAT_TIMEOUT);
         properties.setIfNull(PROPERTY_DEAD_NODE_TIMEOUT, PROPERTY_DEFAULT_DEAD_NODE_TIMEOUT);
+        properties.setIfNull(PROPERTY_COALESCE_PERIOD, PROPERTY_DEFAULT_COALESCE_PERIOD);
+        properties.setIfNull(PROPERTY_COPY_SIZE, PROPERTY_DEFAULT_COPY_SIZE);
     }
 
     /**

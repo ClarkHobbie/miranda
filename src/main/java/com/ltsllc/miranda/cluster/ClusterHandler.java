@@ -48,6 +48,8 @@ public class ClusterHandler implements IoHandler {
      */
     @Override
     public void sessionCreated(IoSession session) {
+        int i =7;
+        i++;
     }
 
     /**
@@ -68,7 +70,7 @@ public class ClusterHandler implements IoHandler {
         // This is a new connection add it to the cluster
         //
         if (node == null) {
-            node = new Node(null, -1);
+            node = new Node(null,null, -1, ioSession);
             node.setIoSession(ioSession);
 
             Cluster.getInstance().addNode(node, ioSession);
@@ -105,6 +107,10 @@ public class ClusterHandler implements IoHandler {
      */
     @Override
     public void sessionIdle(IoSession session, IdleStatus status) {
+        Node node = ioSessionToNode.get(session);
+        if (node != null) {
+            // node.sendHeartBeat();
+        }
     }
 
     /**
@@ -166,7 +172,10 @@ public class ClusterHandler implements IoHandler {
      */
     @Override
     public void inputClosed(IoSession ioSession) {
+        int i =7;
+        i++;
     }
+
 
     /**
      * Ignore the event event.
@@ -176,5 +185,7 @@ public class ClusterHandler implements IoHandler {
      */
     @Override
     public void event(IoSession session, FilterEvent event) {
+        int i =7;
+        i++;
     }
 }

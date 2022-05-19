@@ -29,12 +29,13 @@ public class Status implements Servlet {
         String[][] table;
         PropertiesHolder p = Miranda.getProperties();
 
-        table = new String[p.keySet().size() + 2][2];
+        table = new String[p.keySet().size() + 3][2];
 
-        String[] names = new String[p.keySet().size() + 2];
+        String[] names = new String[p.keySet().size() + 3];
         p.keySet().toArray(names);
         names[p.keySet().size()] = "numberOfConnections";
         names[p.keySet().size() + 1] = "numberOfMessages";
+        names[p.keySet().size() + 2] = "numberOfNodes";
 
 
         for (int i = 0; i < names.length; i++) {
@@ -44,12 +45,17 @@ public class Status implements Servlet {
 
         String name = "numberOfConnections";
         String value = "" + Cluster.getInstance().getNumberOfConnections();
-        int numberOfRows = p.keySet().size() + 2;
-        table[numberOfRows - 2][0] = name;
-        table[numberOfRows - 2][1] = value;
+        int numberOfRows = p.keySet().size() + 3;
+        table[numberOfRows - 3][0] = name;
+        table[numberOfRows - 3][1] = value;
 
         name = "numberOfMessages";
         value = "" + MessageLog.getInstance().getAllMessages().size();
+        table[numberOfRows - 2][0] = name;
+        table[numberOfRows - 2][1] = value;
+
+        name = "numberOfNodes";
+        value = "" + Cluster.getInstance().getNumberOfNodes();
         table[numberOfRows - 1][0] = name;
         table[numberOfRows - 1][1] = value;
 

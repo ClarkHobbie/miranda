@@ -103,7 +103,7 @@ public class NodeTest {
         stringBuffer.append(" ");
         stringBuffer.append(newMessage.getMessageID());
 
-        Node node = new Node(UUID.randomUUID(),"192.168.0.12",2020);
+        Node node = new Node(UUID.randomUUID(),"192.168.0.12",2020, null);
         node.setIoSession(mockIoSession);
         node.informOfMessageDelivery(newMessage);
 
@@ -129,7 +129,7 @@ public class NodeTest {
 
         IoSession mockIoSession = Mockito.mock(IoSession.class);
 
-        Node node = new Node(UUID.randomUUID(), "192.168.0.12", 2020);
+        Node node = new Node(UUID.randomUUID(), "192.168.0.12", 2020, null);
         node.setIoSession(mockIoSession);
 
         node.informOfMessageCreation(newMessage);
@@ -140,7 +140,7 @@ public class NodeTest {
     @Test
     public void informOfStartOfAuction () {
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Node node = new Node(UUID.randomUUID(), "192.168.0.12", 2020);
+        Node node = new Node(UUID.randomUUID(), "192.168.0.12", 2020, null);
         node.setIoSession(mockIoSession);
 
         MessageLog.defineStatics();
@@ -157,7 +157,7 @@ public class NodeTest {
     @Test
     public void informOfEndOfAuction () {
         IoSession mockIoSession = Mockito.mock(IoSession.class);
-        Node node = new Node(UUID.randomUUID(), "192.168.0.12", 2020);
+        Node node = new Node(UUID.randomUUID(), "192.168.0.12", 2020, null);
         node.setIoSession(mockIoSession);
 
         StringBuffer stringBuffer = new StringBuffer();
@@ -194,7 +194,7 @@ public class NodeTest {
 
             MessageLog.defineStatics();
 
-            Node node = new Node("localhost", 2020);
+            Node node = new Node(null, "localhost", 2020, null);
 
 
             IoSession mockIoSession = mock(IoSession.class);
@@ -215,7 +215,7 @@ public class NodeTest {
 
     @Test
     public void testStartStart () throws LtsllcException, IOException, CloneNotSupportedException {
-        Node node = new Node("localhost", 2020);
+        Node node = new Node(null, "localhost", 2020, null);
         node.setUuid(UUID.randomUUID());
 
         ImprovedFile messageLog = new ImprovedFile("messages.log");
@@ -240,7 +240,7 @@ public class NodeTest {
     @Test
     public void testStartBid () throws LtsllcException, IOException, CloneNotSupportedException {
         String strMessage = "BID 123e4567-e89b-42d3-a456-556642440000 123456";
-        Node node = new Node("192.168.0.12", 2020);
+        Node node = new Node(null,"192.168.0.12", 2020, null);
         node.setState(ClusterConnectionStates.START);
 
         ImprovedFile messageLog = new ImprovedFile("messages.log");
@@ -256,7 +256,7 @@ public class NodeTest {
 
     @Test
     public void testAuctionHeartBeat () throws LtsllcException, IOException, CloneNotSupportedException {
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null, "192.168.0.12",2020, null);
         node.setState(ClusterConnectionStates.AUCTION);
 
         Miranda.getInstance().setMyHost("192.168.0.18");
@@ -286,7 +286,7 @@ public class NodeTest {
             strMessage += " ";
             strMessage += "1234";
 
-            Node node = new Node("192.168.0.12", 2020);
+            Node node = new Node(null,"192.168.0.12", 2020, null);
             node.setCache(MessageLog.getInstance().getCache());
 
             node.setState(ClusterConnectionStates.AUCTION);
@@ -321,7 +321,7 @@ public class NodeTest {
             MessageLog.defineStatics();
 
             UUID theirUuid = UUID.randomUUID();
-            Node node = new Node(theirUuid, "localhost", 2020);
+            Node node = new Node(theirUuid, "localhost", 2020, null);
 
             node.setState(ClusterConnectionStates.AUCTION);
 
@@ -353,7 +353,7 @@ public class NodeTest {
 
     @Test
     public void testAuctionGetMessageInCache () throws LtsllcException, IOException, CloneNotSupportedException {
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null,"192.168.0.12",2020, null);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         LoggingCache cache = new LoggingCache(messages,104857600);
@@ -400,7 +400,7 @@ public class NodeTest {
 
     @Test
     public void testAuctionGetMessageCacheMiss () throws LtsllcException, IOException, CloneNotSupportedException {
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null,"192.168.0.12",2020, null);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         LoggingCache cache = new LoggingCache(messages,104857600);
@@ -425,9 +425,9 @@ public class NodeTest {
         Mockito.verify(mockIoSession, Mockito.atLeastOnce()).write(Node.MESSAGE_NOT_FOUND);
     }
 
-    @Test
+
     public void testAuctionAuctionOver () throws LtsllcException, IOException, CloneNotSupportedException {
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null,"192.168.0.12",2020, null);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         LoggingCache cache = new LoggingCache(messages,104857600);
@@ -445,9 +445,9 @@ public class NodeTest {
 
     }
 
-    @Test
+
     public void testGeneralAuction () throws LtsllcException, IOException, CloneNotSupportedException {
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null,"192.168.0.12",2020, null);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         node.setState(ClusterConnectionStates.GENERAL);
@@ -487,7 +487,7 @@ public class NodeTest {
 
     @Test
     public void testGeneralDeadNode () throws LtsllcException, IOException, CloneNotSupportedException {
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null,"192.168.0.12",2020, null);
 
         node.setState(ClusterConnectionStates.GENERAL);
 
@@ -517,7 +517,7 @@ public class NodeTest {
 
     @Test
     public void testGeneralGetMessageCacheMiss () throws LtsllcException, IOException, CloneNotSupportedException {
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null,"192.168.0.12",2020, null);
 
         node.setState(ClusterConnectionStates.GENERAL);
 
@@ -542,7 +542,7 @@ public class NodeTest {
 
     @Test
     public void testGeneralGetMessageCacheHit () throws LtsllcException, IOException, CloneNotSupportedException {
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null,"192.168.0.12",2020, null);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         LoggingCache cache = new LoggingCache(messages,104857600);
@@ -574,10 +574,9 @@ public class NodeTest {
 
     @Test
     public void testGeneralHeartBeat () throws LtsllcException, IOException, CloneNotSupportedException {
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null,"192.168.0.12",2020, null);
+        Cluster.defineStatics();
 
-        ImprovedFile messages = new ImprovedFile("messages.log");
-        LoggingCache cache = new LoggingCache(messages,104857600);
         node.setState(ClusterConnectionStates.GENERAL);
 
         IoSession mockIoSession = mock(IoSession.class);
@@ -591,7 +590,7 @@ public class NodeTest {
 
     @Test
     public void testGeneralMessageDelivered () throws LtsllcException, IOException, CloneNotSupportedException {
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null,"192.168.0.12",2020, null);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         LoggingCache cache = new LoggingCache(messages,104857600);
@@ -630,7 +629,7 @@ public class NodeTest {
         Message message = createTestMessage(uuid);
         strMessage.append(message.longToString());
 
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null,"192.168.0.12",2020, null);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         LoggingCache cache = new LoggingCache(messages,104857600);
@@ -664,7 +663,7 @@ public class NodeTest {
         strMessage += uuid;
         strMessage += " 1234 ";
 
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null,"192.168.0.12",2020, null);
 
         node.setState(ClusterConnectionStates.GENERAL);
 
@@ -693,7 +692,7 @@ public class NodeTest {
 
         Cluster.getInstance().setNodes(new ArrayList<>());
 
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null,"192.168.0.12",2020, null);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         LoggingCache cache = new LoggingCache(messages,104857600);
@@ -713,7 +712,7 @@ public class NodeTest {
         Cluster.getInstance().setClusterHandler(new ClusterHandler());
         IoSession mockIoSession = mock(IoSession.class);
         List<Node> nodeList = new ArrayList<>();
-        Node node = new Node(UUID.randomUUID(), "localhost", 2020);
+        Node node = new Node(UUID.randomUUID(), "localhost", 2020, null);
         nodeList.add(node);
 
         Cluster cluster = Cluster.getInstance();
@@ -727,7 +726,7 @@ public class NodeTest {
 
     @Test
     public void exceptionCaught () throws LtsllcException {
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null, "192.168.0.12",2020, null);
 
         ImprovedFile messagesLog = new ImprovedFile("messages.log");
         LoggingCache cache = new LoggingCache(messagesLog,104857600);
@@ -763,7 +762,7 @@ public class NodeTest {
 
             LoggingCache mockMessageCache = mock(LoggingCache.class);
             when(mockMessageCache.contains(messageUuid)).thenReturn(true);
-            Node node = new Node("192.168.0.12", 2020);
+            Node node = new Node(null,"192.168.0.12", 2020, null);
 
             ImprovedFile messages = new ImprovedFile("messages.log");
             LoggingCache cache = new LoggingCache(messages, 104857600);
@@ -799,7 +798,7 @@ public class NodeTest {
         when(mockMessageCache.contains(messageUuid)).thenReturn(true);
         when(mockMessageCache.get(messageUuid)).thenReturn(testMessage);
 
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null,"192.168.0.12",2020, null);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         LoggingCache cache = new LoggingCache(messages,104857600);
@@ -827,7 +826,7 @@ public class NodeTest {
 
     @Test
     public void handleGetMessageAuction () throws IOException, LtsllcException {
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null, "192.168.0.12",2020, null);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         LoggingCache cache = new LoggingCache(messages,104857600);
@@ -864,7 +863,7 @@ public class NodeTest {
 
     @Test
     public void handleMessage () throws LtsllcException, IOException {
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null,"192.168.0.12",2020, null);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         LoggingCache cache = new LoggingCache(messages,104857600);
@@ -887,14 +886,18 @@ public class NodeTest {
 
     @Test
     public void handleMessageDelivered () throws LtsllcException, IOException {
-        Node node = new Node("192.168.0.12",2020);
+        Miranda miranda = new Miranda();
+        Node node = new Node(null,"192.168.0.12",2020, null);
         node.setUuid(UUID.randomUUID());
+
+        MessageLog.defineStatics();
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         LoggingCache cache = new LoggingCache(messages,104857600);
 
-        LoggingCache mockMessageCache = mock(LoggingCache.class);
-        node.setCache(mockMessageCache);
+        MessageLog.defineStatics();
+        MessageLog mockMessageLog = mock(MessageLog.class);
+        MessageLog.setInstance(mockMessageLog);
 
         Message message = createTestMessage(UUID.randomUUID());
 
@@ -905,7 +908,7 @@ public class NodeTest {
 
         node.handleMessageDelivered(stringBuffer.toString());
 
-        Mockito.verify(mockMessageCache, Mockito.atLeastOnce()).remove(message.getMessageID());
+        Mockito.verify(mockMessageLog, Mockito.atLeastOnce()).remove(message.getMessageID());
     }
 
     @Test
@@ -915,7 +918,7 @@ public class NodeTest {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        Node node = new Node("localhost", 2020);
+        Node node = new Node(null,"localhost", 2020, null);
         node.setUuid(UUID.randomUUID());
         StringBuffer stringBuffer = new StringBuffer();
 
@@ -943,7 +946,7 @@ public class NodeTest {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
         Cluster.defineStatics();
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null,"192.168.0.12",2020, null);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         LoggingCache cache = new LoggingCache(messages,104857600);
@@ -979,7 +982,7 @@ public class NodeTest {
     @Test
     public void popState () throws LtsllcException {
         Cluster.defineStatics();
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null,"192.168.0.12",2020, null);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         LoggingCache cache = new LoggingCache(messages,104857600);
@@ -996,7 +999,7 @@ public class NodeTest {
 
     @Test
     public void sendMessage () throws LtsllcException {
-        Node node = new Node("192.168.0.12",2020);
+        Node node = new Node(null,"192.168.0.12",2020, null);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         LoggingCache cache = new LoggingCache(messages,104857600);
@@ -1017,7 +1020,7 @@ public class NodeTest {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        Node node = new Node("192.168.0.12", 2020);
+        Node node = new Node(null, "192.168.0.12", 2020, null);
         node.setUuid(UUID.randomUUID());
 
         PropertiesHolder p = Miranda.getProperties();
@@ -1044,7 +1047,7 @@ public class NodeTest {
 
         IoSession mockIoSession = mock(IoSession.class);
 
-        Node node = new Node("192.168.0.12", 2020);
+        Node node = new Node(null, "192.168.0.12", 2020, null);
         UUID partnerID = UUID.randomUUID();
         node.setUuid(partnerID);
 
@@ -1084,7 +1087,7 @@ public class NodeTest {
 
             IoSession mockIoSession = mock(IoSession.class);
 
-            Node node = new Node("localhost", 2020);
+            Node node = new Node(null,"localhost", 2020, null);
             node.setIoSession(mockIoSession);
 
             node.handleSendOwners(mockIoSession);
@@ -1145,7 +1148,7 @@ public class NodeTest {
             message2.setContents(contents2);
             MessageLog.getInstance().add(message2, null);
 
-            Node node = new Node("localhost", 2020);
+            Node node = new Node(null,"localhost", 2020, null);
 
             IoSession mockIoSession = mock(IoSession.class);
 
@@ -1184,7 +1187,7 @@ public class NodeTest {
 
             MessageLog.defineStatics();
 
-            Node node = new Node("localhost", 2020);
+            Node node = new Node(null, "localhost", 2020, null);
 
             node.handleReceiveMessage(string1);
 
@@ -1207,14 +1210,16 @@ public class NodeTest {
         miranda.setMyUuid(UUID.randomUUID());
         miranda.setMyHost("192.168.0.20");
         miranda.setMyPort(2020);
+        Miranda.getProperties().setProperty(Miranda.PROPERTY_START_TIMEOUT, Miranda.PROPERTY_DEFAULT_START_TIMEOUT);
 
-        Node node = new Node("192.168.0.12", 2020);
+        Node node = new Node(null,"192.168.0.12", 2020, null);
         IoSession mockIoSession = mock(IoSession.class);
         node.setIoSession(mockIoSession);
 
         node.sendStart(mockIoSession);
 
         synchronized (this) {
+System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_START_TIMEOUT));
             wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_START_TIMEOUT));
         }
 
@@ -1226,11 +1231,13 @@ public class NodeTest {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        miranda.setMyUuid(UUID.randomUUID());
+        UUID uuid = UUID.randomUUID();
+        Miranda.getProperties().setProperty(Miranda.PROPERTY_START_TIMEOUT, Miranda.PROPERTY_DEFAULT_START_TIMEOUT);
+        miranda.setMyUuid(uuid);
         miranda.setMyHost("192.168.0.20");
         miranda.setMyPort(2020);
 
-        Node node = new Node("192.168.0.12", 2020);
+        Node node = new Node(null,"192.168.0.12", 2020, null);
         IoSession mockIoSession = mock(IoSession.class);
         IoSessionConfig mockIoSessionConfig = mock(IoSessionConfig.class);
         when(mockIoSession.getConfig()).thenReturn(mockIoSessionConfig);
@@ -1250,11 +1257,18 @@ public class NodeTest {
 
         node.messageReceived(mockIoSession, stringBuffer.toString());
 
+        StringBuffer stringBuffer2 = new StringBuffer();
+        stringBuffer2.append(Node.START);
+        stringBuffer2.append(" ");
+        stringBuffer2.append(uuid);
+        stringBuffer2.append(" 192.168.0.20 2020");
+
         synchronized (this) {
             wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_START_TIMEOUT));
         }
 
-        verify (mockIoSession, times(0)).write(any());
+
+        verify (mockIoSession, atLeastOnce()).write(stringBuffer2.toString());
 
     }
 

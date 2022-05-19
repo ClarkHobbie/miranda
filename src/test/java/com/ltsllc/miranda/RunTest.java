@@ -11,13 +11,13 @@ import org.junit.jupiter.api.Test;
 
 public class RunTest {
     public static final Logger logger = LogManager.getLogger();
-     @BeforeAll
-     public static void setUp () {
-        Configurator.setRootLevel(Level.DEBUG);
-     }
 
-    @Test
-    public void go () throws Exception {
+    @BeforeAll
+    public static void setUp() {
+        Configurator.setRootLevel(Level.DEBUG);
+    }
+
+    public void go() throws Exception {
         Miranda miranda = Miranda.getInstance();
         miranda.loadProperties();
         String[] args = {};

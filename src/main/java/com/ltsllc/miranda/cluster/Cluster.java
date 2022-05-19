@@ -337,7 +337,8 @@ public class Cluster implements Alarmable, PropertyListener {
         }
 
         IoAcceptor ioAcceptor = getIoAcceptor();
-        ioAcceptor.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory(Charset.forName("UTF-8"))));
+        ioAcceptor.getFilterChain().addLast("codec",
+                new ProtocolCodecFilter(new TextLineCodecFactory(Charset.forName("UTF-8"))));
 
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
         Miranda.getProperties().listen(this, Properties.clusterPort);
@@ -348,7 +349,8 @@ public class Cluster implements Alarmable, PropertyListener {
             logger.debug("listening at port " + port);
             ioAcceptor.bind(socketAddress);
         } catch (IOException e) {
-            logger.error("exception binding to cluster port, " + Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT), e);
+            logger.error("exception binding to cluster port, " + Miranda.getProperties()
+                    .getIntProperty(Miranda.PROPERTY_CLUSTER_PORT), e);
             throw new LtsllcException(
                     "exception binding to cluster port, "
                             + Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT),
@@ -379,7 +381,7 @@ public class Cluster implements Alarmable, PropertyListener {
         ioConnector.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory()));
 
         for (SpecNode specNode : list) {
-            Node node = new Node(specNode.getHost(), specNode.getPort());
+            Node node = new Node(null,specNode.getHost(), specNode.getPort(), null);
             nodes.add(node);
         }
 
@@ -406,7 +408,13 @@ public class Cluster implements Alarmable, PropertyListener {
      */
     public boolean connectToNode(Node node, IoConnector ioConnector) throws LtsllcException {
         boolean returnValue = true;
-        logger.debug("entering connectToNode with node = " + node.getHost() + ":" + node.getPort() + ", and ioConnector = " + ioConnector);
+        logger.debug("entering connectToNode with node = " + node.getHost() + ":" + node.getPort()
+                + ", and ioConnector = " + ioConnector);
+        if ((node.getHost() == null) || (node.getPort() == -1)) {
+            logger.error("connectToNode called with null host or -1 port, returning");
+            return false;
+        }
+
         InetSocketAddress addrRemote = new InetSocketAddress(node.getHost(), node.getPort());
 
         ConnectFuture future = getIoConnector().connect(addrRemote);
@@ -417,6 +425,7 @@ public class Cluster implements Alarmable, PropertyListener {
                 ioSession = future.getSession();
                 ioSession.getConfig().setUseReadOperation(true);
                 node.setIoSession(ioSession);
+
                 clusterHandler.getIoSessionToNode().put(ioSession, node);
                 if (Miranda.getInstance().getSynchronizationFlag()) {
                     Miranda.getInstance().setSynchronizationFlag(false);
@@ -448,6 +457,8 @@ public class Cluster implements Alarmable, PropertyListener {
 
         AlarmClock.getInstance().schedule(getInstance(), Alarms.CLUSTER,
                 Miranda.getProperties().getLongProperty(Miranda.PROPERTY_CLUSTER_RETRY));
+        AlarmClock.getInstance().scheduleOnce(getInstance(), Alarms.COALESCE,
+                Miranda.getProperties().getIntProperty(Miranda.PROPERTY_COALESCE_PERIOD));
     }
 
     /**
@@ -562,8 +573,22 @@ public class Cluster implements Alarmable, PropertyListener {
      */
     @Override
     public void alarm(Alarms alarm) throws Throwable {
-        if (alarm == Alarms.CLUSTER) {
-            reconnectIfNecessary();
+        switch (alarm) {
+            case CLUSTER: {
+                reconnectIfNecessary();
+                break;
+            }
+
+            case COALESCE: {
+                coalesce();
+                break;
+            }
+
+            default: {
+                String msg = "unrecognized alarm: " + alarm;
+                logger.error(msg);
+                throw new LtsllcException(msg);
+            }
         }
     }
 
@@ -677,7 +702,7 @@ public class Cluster implements Alarmable, PropertyListener {
 
         List<Node> connectedNodes = new ArrayList<>();
         for (Node node : nodes) {
-            if (node.getUuid().equals(uuid)) {
+            if (((node.getUuid() == null && null == uuid)) || node.getUuid() != null && node.getUuid().equals(uuid)){
                 node.setIoSession(null);
             }
 
@@ -748,5 +773,13 @@ public class Cluster implements Alarmable, PropertyListener {
     @Override
     public Set<Properties> listeningTo() {
         return null;
+    }
+
+    public int getNumberOfNodes () {
+        return nodes.size();
+    }
+
+    public boolean containsNode(Node node) {
+        return nodes.contains(node);
     }
 }
