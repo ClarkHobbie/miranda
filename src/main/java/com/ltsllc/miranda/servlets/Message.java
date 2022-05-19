@@ -1,6 +1,7 @@
 package com.ltsllc.miranda.servlets;
 
 import com.ltsllc.miranda.Miranda;
+import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.message.MessageLog;
 import jakarta.servlet.*;
 
@@ -34,6 +35,7 @@ public class Message implements Servlet {
         message.setMessageID(UUID.randomUUID());
 
         MessageLog.getInstance().add(message, Miranda.getInstance().getMyUuid());
+        Cluster.getInstance().informOfNewMessage(message);
 
         res.getWriter().write(message.getMessageID().toString());
     }

@@ -73,7 +73,13 @@ public class MessageLog implements Alarmable, PropertyListener {
         uuidToOwner = new LoggingMap(ownersFile);
     }
 
-    protected MessageLog () {}
+    protected MessageLog () {
+        ImprovedFile messageLog = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_MESSAGE_LOG));
+        cache = new LoggingCache(messageLog,
+                Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT));
+        ImprovedFile ownerLog = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_OWNER_FILE));
+        uuidToOwner = new LoggingMap(ownerLog);
+    }
 
     public static MessageLog getInstance() {
         return instance;

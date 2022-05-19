@@ -1223,7 +1223,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
         Message message = Message.readLongFormat(scanner);
 
-        MessageLog.getInstance().setOwner(message.getMessageID(), partnerUuid);
+        MessageLog.getInstance().add(message, partnerUuid);
 
         logger.debug("leaving handleNewMessage");
     }
