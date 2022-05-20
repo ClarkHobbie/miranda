@@ -33,9 +33,9 @@ public class SaveServletTest {
                 {Miranda.PROPERTY_PORT, "2020"},
                 {Miranda.PROPERTY_CLUSTER_PORT, "2020"},
                 {Miranda.PROPERTY_PROPERTIES_FILE, "miranda.properties"},
-                {Miranda.PROPERTY_DEAD_NODE_TIMEOUT, "500"},
+                {Miranda.PROPERTY_DEAD_NODE_TIMEOUT, "100000"},
                 {Miranda.PROPERTY_HEART_BEAT_TIMEOUT, "500"},
-                {Miranda.PROPERTY_START_TIMEOUT, "100000"}
+                {Miranda.PROPERTY_START_TIMEOUT, "1000000"}
         };
 
         assert (!Miranda.getProperties().isDifferentFrom(table));

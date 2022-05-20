@@ -236,75 +236,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     }
 
     /**
-     * Tell the node that we are starting an auction.
-     * <p>
-     * This method returns after the node acknowledges that we are starting an auction.
-     *
-     * @param uuid The node whose messages we are going to auction.
-     */
-    public void informOfStartOfAuction(UUID uuid) {
-        logger.debug("entering informOfStartOfAuction with uuid = " + uuid);
-        StringBuffer stringBuffer = new StringBuffer();
-
-        stringBuffer.append(AUCTION);
-        stringBuffer.append(" ");
-        stringBuffer.append(uuid);
-
-        ioSession.write(stringBuffer.toString());
-        logger.debug("wrote " + stringBuffer.toString());
-        logger.debug("leaving informOfStartOfAuction");
-    }
-
-    public void informOfAuctionEnd() {
-        ioSession.write(Node.AUCTION_OVER);
-    }
-
-    /**
-     * Tell the node that we are ending an auction
-     * <p>
-     * This method returns after the node has
-     */
-    public void informOfEndOfAuction() {
-        logger.debug("entering informOfEndOfAuction");
-        StringBuffer stringBuffer = new StringBuffer();
-
-        stringBuffer.append(Node.AUCTION_OVER);
-        ioSession.write(stringBuffer.toString());
-        logger.debug("wrote " + stringBuffer.toString());
-        logger.debug("leaving informOfEndOfAuction");
-    }
-
-    /**
-     * Auction a message with this node
-     * <p>
-     * This method takes care of sending out a bid for the message and takes care of the response
-     *
-     * @param uuid The ID of the message to be auctioned.
-     * @return True if we "won" the auction false otherwise
-     */
-    public void sendBid(UUID uuid) throws InterruptedException, IOException {
-        logger.debug("entering sendBid with " + uuid);
-
-        boolean returnValue = true;
-        int myBid = ourRandom.nextInt();
-
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(Node.BID);
-        stringBuffer.append(" ");
-        stringBuffer.append(uuid);
-        stringBuffer.append(" ");
-        stringBuffer.append(myBid);
-
-        ioSession.write(stringBuffer.toString());
-        logger.debug("wrote " + stringBuffer.toString());
-        setTimeOfLastActivity();
-
-        AlarmClock.getInstance().scheduleOnce(this, Alarms.BID,
-                Miranda.getProperties().getLongProperty(Miranda.PROPERTY_BID_TIMEOUT));
-        timeoutsMet.put(Alarms.BID, false);
-    }
-
-    /**
      * Send a message to the node informing it that we created a message
      * <p>
      * This is so that if we go down, someone has a copy of the message.
@@ -431,71 +362,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                 break;
             }
 
-            case AUCTION: {
-                switch (messageType) {
-                    case BID: {
-                        handleBid(s, ioSession, uuid);
-                        break;
-                    }
-
-                    case GET_MESSAGE: {
-                        handleGetMessageAuction(s, ioSession);
-                        break;
-                    }
-
-                    case AUCTION_OVER: {
-                        state = ClusterConnectionStates.GENERAL;
-                        ioSession.write(Node.AUCTION_OVER);
-                        setTimeOfLastActivity();
-                        break;
-                    }
-
-                    case HEART_BEAT_START: {
-                        handleHeartBeatStart(ioSession);
-                        break;
-                    }
-
-                    case HEART_BEAT: {
-                        handleHeartBeat();
-                        break;
-                    }
-
-                    case DEAD_NODE_START: {
-                        handleDeadNodeStart(s, ioSession);
-                        break;
-                    }
-
-                    case DEAD_NODE: {
-                        handleDeadNode();
-                        break;
-                    }
-
-                    case ERROR_START: {
-                        handleErrorStart(ioSession);
-                        break;
-                    }
-
-                    case ERROR: {
-                        handleErrorAuction(ioSession);
-                        break;
-                    }
-
-                    case MESSAGE_DELIVERED: {
-                        break;
-                    }
-
-                    case TAKE: {
-                        handleTake(s, ioSession);
-                        break;
-                    }
-
-                    default: {
-                        handleError(ioSession);
-                        break;
-                    }
-                }
-                break;
-            }
 
             case MESSAGE: {
                 switch (messageType) {
@@ -959,74 +825,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("leaving handleErrorStart");
     }
 
-
-    /**
-     * Handle a bid
-     * <p>
-     * This method takes care of a bid.  It reads in the message UUID and bid and sends out a bid of it's own.
-     *
-     * @param input     A string containing a bid message.
-     * @param ioSession The IoSession to respond to.
-     * @param partnerID The uuid of the other node for this ioSession
-     */
-    protected void handleBid(String input, IoSession ioSession, UUID partnerID) throws IOException {
-        logger.debug("entering handleBid with input = " + input + " and ioSession = " + ioSession + " and partnerID = " + partnerID);
-
-        timeoutsMet.put(Alarms.BID, true);
-
-        Scanner scanner = new Scanner(input);
-        scanner.skip(BID);
-        UUID messageID = UUID.fromString(scanner.next());
-        int theirBid = Integer.parseInt(scanner.next());
-        int myBid = ourRandom.nextInt();
-        while (myBid == theirBid) {
-            logger.debug("a tie");
-            myBid = ourRandom.nextInt();
-        }
-        logger.debug("myBid = " + myBid + " theirBid = " + theirBid);
-
-        String strMessage = BID;
-        strMessage += " ";
-        strMessage += messageID;
-        strMessage += " ";
-        strMessage += myBid;
-        ioSession.write(strMessage);
-        setTimeOfLastActivity();
-        logger.debug("wrote " + strMessage);
-
-        UUID owner = null;
-        //
-        // if we lost the bid, then set the owner to the partner
-        //
-        if (myBid < theirBid) {
-            owner = partnerID;
-        } else {
-            //
-            // otherwise, we won the bid, set the owner to us
-            //
-            owner = uuid;
-
-            //
-            // watch out for the situation where we don't have the message
-            //
-            if (!cache.contains(messageID)) {
-                logger.debug("cache miss");
-                strMessage = GET_MESSAGE;
-                strMessage += " ";
-                strMessage += messageID;
-                ioSession.write(strMessage);
-                setTimeOfLastActivity();
-
-                pushState(state);
-                state = ClusterConnectionStates.MESSAGE;
-            }
-        }
-
-        MessageLog.getInstance().setOwner(messageID, owner);
-
-        logger.debug("leaving handleBid");
-    }
-
     /**
      * "push" a state onto the state stack
      * <p>
@@ -1280,22 +1078,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("leaving handelOwner");
     }
 
-    /**
-     * Send the messages message
-     *
-     * <p>
-     * This method does not send out any messages, it merely tells the node on the other side that we will be
-     * sending messages.  This is part of the synchronization process.
-     * </P>
-     */
-    public void sendMessages(IoSession ioSession) {
-        ioSession.write(MESSAGES);
-        setTimeOfLastActivity();
-
-        logger.debug("wrote " + MESSAGES);
-    }
-
-    public void sendAllMessages(IoSession ioSession) throws IOException {
+   public void sendAllMessages(IoSession ioSession) throws IOException {
         logger.debug("entering sendAllMessages");
 
         ioSession.write(MESSAGES);
@@ -1746,18 +1529,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     }
 
 
-
-    /**
-     * The other node has signaled an error --- go back to the start state and send a start message
-     * @param ioSession
-     */
-    public void  handleErrorAuction (IoSession ioSession) {
-        state = ClusterConnectionStates.START;
-
-        sendStart(ioSession);
-    }
-
-
     /**
      * We have timed out waiting for a reply to our bid --- send a timeout and return to the start state
      */
@@ -1973,23 +1744,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     @Override
     public Set<Properties> listeningTo() {
         return null;
-    }
-
-    public void handleSynchronizationStartInStart (String input, IoSession ioSession) throws IOException {
-        Scanner scanner = new Scanner(input);
-
-        scanner.next(); scanner.next(); // SYNCHRONIZATION START
-
-        uuid = UUID.fromString(scanner.next());
-        host = scanner.next();
-        port = scanner.nextInt();
-        nodeStart = scanner.nextLong();
-
-        state = SYNCHRONIZING;
-
-        sendAllOwners(ioSession);
-        sendAllMessages(ioSession);
-        sendStart(ioSession);
     }
 
     public void handleMessagesEnd(IoSession ioSession) {

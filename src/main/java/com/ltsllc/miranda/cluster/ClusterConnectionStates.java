@@ -8,7 +8,6 @@ package com.ltsllc.miranda.cluster;
  * </P>
  */
 public enum ClusterConnectionStates {
-    AUCTION,
     GENERAL,
     GET_OWNERS,
     GET_MESSAGES,
