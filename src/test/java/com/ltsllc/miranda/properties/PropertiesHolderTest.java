@@ -49,10 +49,9 @@ public class PropertiesHolderTest {
                 {Miranda.PROPERTY_PORT, "2020"},
                 {Miranda.PROPERTY_CLUSTER_PORT, "2020"},
                 {Miranda.PROPERTY_PROPERTIES_FILE, "miranda.properties"},
-                {Miranda.PROPERTY_DEAD_NODE_TIMEOUT, "100000"},
-                {Miranda.PROPERTY_HEART_BEAT_TIMEOUT, "500"},
-                {Miranda.PROPERTY_START_TIMEOUT, "1000000"},
-                {Miranda.PROPERTY_COALESCE_PERIOD, "600000"},
+                {Miranda.PROPERTY_DEAD_NODE_TIMEOUT, Miranda.PROPERTY_DEFAULT_DEAD_NODE_TIMEOUT},
+                {Miranda.PROPERTY_START_TIMEOUT, Miranda.PROPERTY_DEFAULT_START_TIMEOUT},
+                {Miranda.PROPERTY_COALESCE_PERIOD, Miranda.PROPERTY_DEFAULT_COALESCE_PERIOD},
                 {Miranda.PROPERTY_COPY_SIZE, Miranda.PROPERTY_DEFAULT_COPY_SIZE}
         };
 
@@ -80,7 +79,7 @@ public class PropertiesHolderTest {
                 {Miranda.PROPERTY_PROPERTIES_FILE, "miranda.properties"},
                 {Miranda.PROPERTY_DEAD_NODE_TIMEOUT, "500"},
                 {Miranda.PROPERTY_HEART_BEAT_TIMEOUT, "500"},
-                {Miranda.PROPERTY_START_TIMEOUT, "500"}
+                {Miranda.PROPERTY_START_TIMEOUT, "750"}
         };
 
         assert (Miranda.getProperties().isDifferentFrom(table));
@@ -89,7 +88,7 @@ public class PropertiesHolderTest {
     @Test
     public void propertyIsDifferentNoDifferences () {
         Miranda miranda = new Miranda();
-        String row[] = {Miranda.PROPERTY_DEAD_NODE_TIMEOUT, "100000"};
+        String row[] = {Miranda.PROPERTY_DEAD_NODE_TIMEOUT, Miranda.PROPERTY_DEFAULT_DEAD_NODE_TIMEOUT};
         assert (!Miranda.getProperties().propertyIsDifferent(row));
     }
 
