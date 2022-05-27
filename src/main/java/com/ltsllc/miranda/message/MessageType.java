@@ -6,10 +6,7 @@ package com.ltsllc.miranda.message;
  * This class represents the type of message we are dealing with.
  */
 public enum MessageType {
-    AUTOMAGIC,
-    AUCTION,
-    AUCTION_START,
-    AUCTION_OVER,
+    ASSIGN,
     BID,
     DEAD_NODE,
     DEAD_NODE_START,

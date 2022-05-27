@@ -222,7 +222,6 @@ public class NodeTest {
         node.setCache(mockCache);
 
         IoSession mockIoSession = mock(IoSession.class);
-        when(mockIoSession.write(Node.AUCTION)).thenReturn(null);
 
         String strMessage = Node.DEAD_NODE_START;
         strMessage += " ";
@@ -284,7 +283,6 @@ public class NodeTest {
         node.setCache(mockCache);
 
         IoSession mockIoSession = mock(IoSession.class);
-        when(mockIoSession.write(Node.AUCTION)).thenReturn(null);
 
         String strMessage = Node.GET_MESSAGE;
         strMessage += " ";

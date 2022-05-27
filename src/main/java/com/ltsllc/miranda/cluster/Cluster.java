@@ -1,5 +1,7 @@
 package com.ltsllc.miranda.cluster;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.UncheckedLtsllcException;
 import com.ltsllc.commons.util.ImprovedRandom;
@@ -29,6 +31,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.Charset;
+import java.security.SecureRandom;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -153,6 +156,16 @@ public class Cluster implements Alarmable, PropertyListener {
 
     public void setClusterHandler(ClusterHandler clusterHandler) {
         this.clusterHandler = clusterHandler;
+    }
+
+    protected Election election;
+
+    public Election getElection() {
+        return election;
+    }
+
+    public void setElection(Election election) {
+        this.election = election;
     }
 
     public IoConnector getIoConnector() {
@@ -598,34 +611,18 @@ public class Cluster implements Alarmable, PropertyListener {
      * @param uuid The node whose messages we are dividing up
      * @throws IOException If there is a problem taking ownership.
      */
-    public synchronized void divideUpNodesMessages(UUID uuid) throws IOException {
+    public synchronized void divideUpNodesMessages(UUID uuid) throws IOException, LtsllcException {
         if (uuid == null) {
-            return;
+            throw new LtsllcException("null dead node");
         }
 
-        //
-        // how many connected nodes do we have?
-        //
-        List<Node> connectedNodes = new ArrayList<>();
-        for (Node node : nodes) {
-            if (node.getIoSession() != null) {
-                connectedNodes.add(node);
-            }
-        }
-
-        //
-        // dived up the messages among the still-connected nodes
-        //
-        List<UUID> list = MessageLog.getInstance().getAllMessagesOwnedBy(uuid);
-        if (connectedNodes.size() == 1 || connectedNodes.size() == 0) {
-            Node node = connectedNodes.get(0);
-            node.takeOwnershipOf(list);
-        } else {
-            for (int i = 0; i < connectedNodes.size(); i++) {
-                Node node = connectedNodes.get(i);
-                List<UUID> nodeMessages = divideUpMessages(connectedNodes.size(), i, list);
-                node.takeOwnershipOf(nodeMessages);
-            }
+        ImprovedRandom random = new ImprovedRandom(new SecureRandom());
+        List<UUID> voters = election.getVoters();
+        Node[] votersArray = (Node[]) voters.toArray();
+        List<UUID> messages = MessageLog.getInstance().getAllMessagesOwnedBy(uuid);
+        for (UUID message : messages) {
+            Node voter = random.choose(Node.class, votersArray);
+            voter.assignMessage(message);
         }
     }
 
@@ -652,30 +649,18 @@ public class Cluster implements Alarmable, PropertyListener {
      * contains the regular number plus the modulus of the size of the list modulo the number of portions.
      * </P>
      *
-     * @param numberOfPortions The number of ways messages will be split.
-     * @param myOrder          Which portion we want.  Note that this is zero-relative so the order will be 0 for the first
-     *                         portion, 1 for the second, and so on.
      * @param messages         The list to be divided into portions
      * @return The portion of messages that "belong to" myOrder
      */
-    public List<UUID> divideUpMessages(int numberOfPortions, int myOrder, List<UUID> messages) {
-        int numberOfMessages = messages.size() / numberOfPortions;
-        List<UUID> myPortion = new ArrayList<>();
+    public void divideUpMessages(List<Node> nodes, List<Message> messages) {
+        Node[] nodesArray = new Node[nodes.size()];
+        nodesArray = nodes.toArray(nodesArray);
 
-        int remainder = messages.size() % numberOfPortions;
-
-        int startIndex = myOrder * numberOfMessages;
-        if ((myOrder + 1) == numberOfPortions) {
-            numberOfMessages += remainder;
+        ImprovedRandom improvedRandom = new ImprovedRandom(new SecureRandom());
+        for (Message message : messages) {
+            Node node = improvedRandom.choose(Node.class, nodesArray);
+            node.assignMessage(message.getMessageID());
         }
-
-        for (int i = 0; i < numberOfMessages; i++) {
-            UUID newUuid = new UUID(messages.get(i + startIndex).getMostSignificantBits(),
-                    messages.get(i + startIndex).getLeastSignificantBits());
-            myPortion.add(newUuid);
-        }
-
-        return myPortion;
     }
 
     /**
@@ -687,7 +672,9 @@ public class Cluster implements Alarmable, PropertyListener {
     public synchronized void takeOwnershipOf(UUID newOwner, UUID message) {
         for (Node node : nodes) {
             if (node.getIoSession() != null) {
-                node.sendTakeOwnershipOf(newOwner, message);
+                if (node.getIoSession() != null) {
+                    node.sendTakeOwnershipOf(newOwner, message);
+                }
             }
         }
     }
@@ -699,23 +686,11 @@ public class Cluster implements Alarmable, PropertyListener {
      * @throws IOException If there is a problem transferring ownership.
      */
     public synchronized void deadNode(UUID uuid) throws IOException {
-
         List<Node> connectedNodes = new ArrayList<>();
         for (Node node : nodes) {
-            if (((node.getUuid() == null && null == uuid)) || node.getUuid() != null && node.getUuid().equals(uuid)){
-                node.setIoSession(null);
-            }
-
             if (node.getIoSession() != null) {
-                connectedNodes.add(node);
+                node.sendDeadNodeStart(uuid);
             }
-        }
-
-        List<UUID> messages = MessageLog.getInstance().getAllMessagesOwnedBy(uuid);
-        for (int i = 0; i < connectedNodes.size(); i++) {
-            List<UUID> aPortion = divideUpMessages(connectedNodes.size(), i, messages);
-            Node node = connectedNodes.get(i);
-            node.takeOwnershipOf(aPortion);
         }
     }
 
@@ -736,6 +711,13 @@ public class Cluster implements Alarmable, PropertyListener {
         }
     }
 
+    /**
+     * Get the number of nodes that are connected to other nodes.
+     * <H>
+     *     This returns the number of nodes in the custer with a non-null IoSession.
+     * </H>
+     * @return The number of nodes in the cluster with non-null IoSessions..
+     */
     public int getNumberOfConnections() {
         int count = 0;
         for (Node node : nodes) {
@@ -747,6 +729,13 @@ public class Cluster implements Alarmable, PropertyListener {
         return count;
     }
 
+    /**
+     * A property changed that we are watching.
+     * <H>
+     *     The properties that we watch are the custer port and the nodes which make up the cluster.
+     * </H>
+     * @param propertyChangedEvent The propertyChanged event that kicked off this whole process.
+     */
     @Override
     public void propertyChanged(PropertyChangedEvent propertyChangedEvent) {
         try {
@@ -775,6 +764,11 @@ public class Cluster implements Alarmable, PropertyListener {
         return null;
     }
 
+    /**
+     * Return the number of nodes in the cluster
+     *
+     * @return The number of nodes in the cluster.
+     */
     public int getNumberOfNodes () {
         return nodes.size();
     }
@@ -782,4 +776,55 @@ public class Cluster implements Alarmable, PropertyListener {
     public boolean containsNode(Node node) {
         return nodes.contains(node);
     }
+
+    /**
+     * Tally up the votes and if we won, then divide up the dead node's messages
+     *
+     * @param uuid The uuid of the node we are voting for.
+     * @param vote our vote.
+     * @throws LtsllcException If there are problems determining the leader or dividing up the messages
+     * @throws IOException If there are problems diving up the messages.
+     */
+    public void tallyVotes(UUID uuid, int vote) throws LtsllcException, IOException {
+        election.vote(uuid, vote);
+        if (election.allVotesIn()) {
+            if (election.getResult() == ElectionResults.LEADER_ELECTED) {
+                UUID leaderUuid = election.getLeader();
+                if (leaderUuid.equals(Miranda.getInstance().getMyUuid())) {
+                    divideUpNodesMessages(election.getDeadNode());
+                }
+            }
+        }
+    }
+
+    /**
+     * Assign a message to a node.
+     *
+     * @param receiverUuid The assignee of the message
+     * @param messageUuid The message to be assigned
+     * @throws LtsllcException If there is a problem finding the assignee
+     */
+    public void assignMessageTo (UUID receiverUuid, UUID messageUuid) throws LtsllcException {
+        Node node = findNode(receiverUuid);
+        node.assignMessage(messageUuid);
+    }
+
+    /**
+     * Find a node amongst all the nodes in the cluster
+     *
+     * @param uuid The node we are trying to find
+     * @return The node
+     * @throws LtsllcException If we couldn't find the node
+     */
+    public synchronized Node findNode (UUID uuid) throws LtsllcException {
+        for (Node node : nodes) {
+            if (uuid.equals(node.getUuid())) {
+                return node;
+            }
+        }
+
+        throw new LtsllcException("could not find node for: " + uuid);
+    }
+
+
 }

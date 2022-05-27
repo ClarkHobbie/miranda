@@ -162,7 +162,7 @@ public class Miranda implements PropertyListener {
     /**
      * The default timeout for a start message (1000 milliseconds).
      */
-    public static final String PROPERTY_DEFAULT_START_TIMEOUT = "500";
+    public static final String PROPERTY_DEFAULT_START_TIMEOUT = "1000";
 
     /**
      * The universally unique identifier (UUID) of this node.
@@ -199,11 +199,6 @@ public class Miranda implements PropertyListener {
     public static final String PROPERTY_AUCTION_TIMEOUT = "timeouts.auction";
 
     /**
-     * The default timeout to respond to an auction message
-     */
-    public static final String PROPERTY_DEFAULT_AUCTION_TIMEOUT = "500";
-
-    /**
      * The period for a heart beat to timeout (in milliseconds)
      */
     public static final String PROPERTY_HEART_BEAT_TIMEOUT = "timeouts.heart_beat";
@@ -211,7 +206,7 @@ public class Miranda implements PropertyListener {
     /**
      * The default timeout for a heart beat (1/2 a second)
      */
-    public static final String PROPERTY_DEFAULT_HEART_BEAT_TIMEOUT = "500";
+    public static final String PROPERTY_DEFAULT_HEART_BEAT_TIMEOUT = "1000";
 
     /**
      * The timeout for responding to a DEAD NODE START message.
@@ -221,7 +216,7 @@ public class Miranda implements PropertyListener {
     /**
      * The default timeout for a DEAD NODE START message is 1/2 a second
      */
-    public static final String PROPERTY_DEFAULT_DEAD_NODE_TIMEOUT = "500";
+    public static final String PROPERTY_DEFAULT_DEAD_NODE_TIMEOUT = "1000";
 
     /**
      * The period to wait to coalesce the cluster
@@ -722,7 +717,6 @@ public class Miranda implements PropertyListener {
         properties.setIfNull(PROPERTY_COMPACTION_TIME, PROPERTY_DEFAULT_COMPACTION_TIME);
         properties.setIfNull(PROPERTY_HEART_BEAT_INTERVAL, PROPERTY_DEFAULT_PROPERTY_HEART_BEAT_INTERVAL);
         properties.setIfNull(PROPERTY_START_TIMEOUT, PROPERTY_DEFAULT_START_TIMEOUT);
-        properties.setIfNull(PROPERTY_AUCTION_TIMEOUT, PROPERTY_DEFAULT_AUCTION_TIMEOUT);
         properties.setIfNull(PROPERTY_HEART_BEAT_TIMEOUT, PROPERTY_DEFAULT_HEART_BEAT_TIMEOUT);
         properties.setIfNull(PROPERTY_DEAD_NODE_TIMEOUT, PROPERTY_DEFAULT_DEAD_NODE_TIMEOUT);
         properties.setIfNull(PROPERTY_COALESCE_PERIOD, PROPERTY_DEFAULT_COALESCE_PERIOD);
@@ -1014,12 +1008,24 @@ public class Miranda implements PropertyListener {
         myPort = properties.getIntProperty(PROPERTY_PORT);
     }
 
+    /**
+     * Setup the message log
+     */
     public void setupMessageLog () {
         ImprovedFile messageLogfile = new ImprovedFile(properties.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
         int messageLoadLimit = properties.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
         ImprovedFile ownersFile = new ImprovedFile(properties.getProperty(Miranda.PROPERTY_OWNER_FILE));
 
     }
+
+    /**
+     * A property we were watching changed
+     * <H>
+     *     The properties we watch include the node's uuid, the node's host, and the node's messaging port
+     * </H>
+     * @param propertyChangedEvent The property change event that kicked off the whole process.
+     * @throws Throwable If we don't recognize the property.
+     */
     @Override
     public void propertyChanged(PropertyChangedEvent propertyChangedEvent) throws Throwable {
         switch (propertyChangedEvent.getProperty()) {

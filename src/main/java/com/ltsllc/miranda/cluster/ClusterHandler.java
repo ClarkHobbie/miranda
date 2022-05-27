@@ -1,6 +1,7 @@
 package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.miranda.Miranda;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.mina.core.service.IoHandler;
@@ -109,7 +110,7 @@ public class ClusterHandler implements IoHandler {
     public void sessionIdle(IoSession session, IdleStatus status) {
         Node node = ioSessionToNode.get(session);
         if (node != null) {
-            // node.sendHeartBeat();
+            node.maybeSendHeartBeat();
         }
     }
 

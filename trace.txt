@@ -1,10 +1,48 @@
-node1                   node2
-start                   |
------------------------>|
-| acknowledged          |
-|<-----------------------
-| start                 |
-|<-----------------------
-| acknowledged          |
------------------------>|
-|                       |
+This is regarding the move away from auctions.
+
+If a node times out waiting for another node to reply to a heart beat then it sends out
+the following message to all the nodes it is connected to
+
+    dead node start <uuid of dead node> <uuid of this node> <random number between -2^31 and 2^31>
+
+It then waits for the following reply
+
+    dead node <uuid of dead node> <uuid of this node> <its own random number between -2^31 and 2^31>
+
+All nodes must be sent the message and all nodes must respond.  If a node doesn't think
+that the dead node is dead, it should issue the following message:
+
+    live <uuid of "dead" node>
+
+If a node is too slow to respond, then a fast node issues the following message:
+
+    timeout
+
+And a new election is born
+
+The process of electing a new leader is called an election where the random number is
+referred to as a vote.
+
+The nodes then select the highest vote and issue the following message
+
+    leader <uuid of leader>
+
+All are expected to choose the same leader.  If two or more nodes have chosen the same
+bid, then another election takes place.  The process continues until all nodes have chosen a
+unique bid.  At that point, all nodes issue the following message:
+
+    leader <uuid of the leader>
+
+if a node gets a dead node message, it is expected to choose a different vote from all
+the node it has seen.
+
+all nodes are expected to choose the same leader.  If they do not, then the nodes
+elect again, except without the dead node start message.  And the process continues
+until a leader is chosen.
+
+The leader then issues the following message:
+
+    assign <uuid of message> <uuid of node to which the message has been assigned>
+
+Thereafter, all the nodes will say that the assigned node "owns" the message.  The
+leader repeats this for all the messages owned by the dead node.

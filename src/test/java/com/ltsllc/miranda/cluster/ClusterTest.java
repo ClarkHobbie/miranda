@@ -39,7 +39,7 @@ class ClusterTest extends TestSuperclass {
 
 
     @Test
-    public void connect() throws LtsllcException, InterruptedException {
+    public void connect() throws LtsllcException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
@@ -144,7 +144,7 @@ class ClusterTest extends TestSuperclass {
         StringBuffer IODMessage = new StringBuffer();
         IODMessage.append(Node.MESSAGE_DELIVERED);
         IODMessage.append(" ");
-        IODMessage.append(messageUuid.toString());
+        IODMessage.append(messageUuid);
 
         verify(mockIoSession1, atLeastOnce()).write(IODMessage.toString());
         verify(mockIoSession2, atLeastOnce()).write(IODMessage.toString());
@@ -313,7 +313,6 @@ class ClusterTest extends TestSuperclass {
 
     @Test
     public void deadNode() throws LtsllcException, IOException {
-        UUID uuid = UUID.fromString("00000000-0000-0000-0000-000000000001");
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
@@ -358,6 +357,7 @@ class ClusterTest extends TestSuperclass {
         assert (!MessageLog.getInstance().getOwnerOf(message3Uuid).equals(node2Uuid));
     }
 
+    /*
     @Test
     public void divideUpMessages () throws LtsllcException {
         Miranda miranda = new Miranda();
@@ -380,6 +380,7 @@ class ClusterTest extends TestSuperclass {
             }
         }
     }
+*/
 
     @Test
     public void takeOwnershipOf () throws LtsllcException {
@@ -401,4 +402,34 @@ class ClusterTest extends TestSuperclass {
 
         verify(mockIoSession, times(3)).write(any());
     }
+
+    @Test
+    public void divideUpMessages () {
+        Miranda miranda = new Miranda();
+        Cluster.defineStatics();
+        List<Message> list = new ArrayList<>();
+
+        for (int i = 0; i < 100; i++) {
+            Message message = new Message();
+            message.setMessageID(UUID.randomUUID());
+            message.setDeliveryURL("http://localhost:3030");
+            message.setContents("hi there".getBytes());
+            message.setStatusURL("http://localhost:3030");
+            list.add(message);
+        }
+
+        List<Node> voterList = new ArrayList<>();
+        IoSession mockIoSession1 = mock(IoSession.class);
+        Node node = new Node(UUID.randomUUID(), "192.168.0.12", 2020, mockIoSession1);
+        voterList.add(node);
+        IoSession mockIoSession2 = mock(IoSession.class);
+        node = new Node(UUID.randomUUID(), "192.168.0.6", 2020, mockIoSession2);
+        voterList.add(node);
+
+        Cluster.getInstance().divideUpMessages(voterList, list);
+
+        verify(mockIoSession1, atLeastOnce()).write(any());
+        verify(mockIoSession2, atLeastOnce()).write(any());
+    }
+
 }
