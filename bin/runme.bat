@@ -1,0 +1,3 @@
+@echo off
+set CLASSPATH=C:\USERS\CLARK\IDEAPROJECTS\MIRANDA\OUT\ARTIFACTS\ltsllc_jar\ltsllc.jar
+java -cp %CLASSPATH% Main

@@ -17,10 +17,6 @@ public class PropertiesHolderTest {
                 wasRun = true;
         }
 
-        @Override
-        public Set<Properties> listeningTo() {
-            return null;
-        }
     }
 
     @BeforeAll

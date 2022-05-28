@@ -233,6 +233,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         this.port = port;
     }
 
+
     /**
      * Send a message to the node informing it that we created a message
      * <p>
@@ -1620,12 +1621,9 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         scanner.next(); // DEAD NODE START
         String deadNodeStr = scanner.next();
 
-        String nodeUuidStr = scanner.next();
-        UUID uuid = UUID.fromString(nodeUuidStr);
-
         int vote = scanner.nextInt();
 
-        Cluster.getInstance().tallyVotes(uuid, vote);
+        Cluster.getInstance().tallyVotes(Miranda.getInstance().getMyUuid(), vote);
 
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append(DEAD_NODE);
@@ -1834,10 +1832,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         }
     }
 
-    @Override
-    public Set<Properties> listeningTo() {
-        return null;
-    }
 
     /**
      * The end of the messages has been encountered.  This is basically the end of the synchronization process.

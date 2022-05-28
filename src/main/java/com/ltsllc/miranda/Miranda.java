@@ -1050,8 +1050,4 @@ public class Miranda implements PropertyListener {
         }
     }
 
-    @Override
-    public Set<com.ltsllc.miranda.properties.Properties> listeningTo() {
-        return null;
-    }
 }

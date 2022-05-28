@@ -282,6 +282,9 @@ public class Cluster implements Alarmable, PropertyListener {
 
         logger.debug("POST contents = " + contents);
         for (Node node : nodes) {
+            if (node.getIoSession() == null) {
+                continue;
+            }
             WriteFuture future = node.getIoSession().write(contents);
             try {
                 if (!future.await(IONM_TIMEOUT, IONM_TIMEOUT_UNITS)) {
@@ -759,10 +762,6 @@ public class Cluster implements Alarmable, PropertyListener {
         }
     }
 
-    @Override
-    public Set<Properties> listeningTo() {
-        return null;
-    }
 
     /**
      * Return the number of nodes in the cluster

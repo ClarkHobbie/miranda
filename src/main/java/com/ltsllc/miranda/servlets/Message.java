@@ -29,6 +29,7 @@ public class Message implements Servlet {
         byte[] contents = req.getInputStream().readAllBytes();
 
         com.ltsllc.miranda.message.Message message = new com.ltsllc.miranda.message.Message();
+
         message.setStatusURL(statusURL);
         message.setDeliveryURL(deliveryURL);
         message.setContents(contents);

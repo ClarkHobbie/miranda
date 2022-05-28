@@ -496,8 +496,4 @@ public class MessageLog implements Alarmable, PropertyListener {
         }
     }
 
-    @Override
-    public Set<Properties> listeningTo() {
-        return null;
-    }
 }
