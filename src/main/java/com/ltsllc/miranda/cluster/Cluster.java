@@ -1,38 +1,40 @@
 package com.ltsllc.miranda.cluster;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.UncheckedLtsllcException;
 import com.ltsllc.commons.util.ImprovedRandom;
-import com.ltsllc.miranda.*;
+import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.alarm.AlarmClock;
 import com.ltsllc.miranda.alarm.Alarmable;
 import com.ltsllc.miranda.alarm.Alarms;
+import com.ltsllc.miranda.codec.StringEncoder;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.message.MessageLog;
 import com.ltsllc.miranda.properties.Properties;
 import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import com.ltsllc.miranda.properties.PropertyListener;
+import io.netty.bootstrap.Bootstrap;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.mina.core.RuntimeIoException;
-import org.apache.mina.core.future.ConnectFuture;
-import org.apache.mina.core.future.WriteFuture;
-import org.apache.mina.core.service.IoAcceptor;
-import org.apache.mina.core.service.IoConnector;
-import org.apache.mina.core.session.IoSession;
-import org.apache.mina.filter.codec.ProtocolCodecFilter;
-import org.apache.mina.filter.codec.textline.TextLineCodecFactory;
-import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
-import org.apache.mina.transport.socket.nio.NioSocketConnector;
+
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.nio.charset.Charset;
 import java.security.SecureRandom;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 
@@ -123,39 +125,25 @@ public class Cluster implements Alarmable, PropertyListener {
      */
     protected UUID uuid = null;
 
-    /**
-     * The IoConnector to use when trying to connect to other nodes
-     */
-    protected IoConnector ioConnector = null;
 
-    /**
-     * The IoAcceptor to use when other nodes try and connect to us.
-     */
-    protected IoAcceptor ioAcceptor = null;
+    protected Bootstrap bootstrap;
 
-    public IoAcceptor getIoAcceptor() {
-        if (null == ioAcceptor) {
-            ioAcceptor = new NioSocketAcceptor();
-        }
-
-        return ioAcceptor;
+    public Bootstrap getBootstrap() {
+        return bootstrap;
     }
 
-    public void setIoAcceptor(IoAcceptor ioAcceptor) {
-        this.ioAcceptor = ioAcceptor;
+    public void setBootstrap(Bootstrap bootstrap) {
+        this.bootstrap = bootstrap;
     }
 
-    /**
-     * The IoHandler for the acceptor and the connector
-     */
-    protected ClusterHandler clusterHandler;
+    protected ServerBootstrap serverBootstrap;
 
-    public ClusterHandler getClusterHandler() {
-        return clusterHandler;
+    public ServerBootstrap getServerBootstrap() {
+        return serverBootstrap;
     }
 
-    public void setClusterHandler(ClusterHandler clusterHandler) {
-        this.clusterHandler = clusterHandler;
+    public void setServerBootstrap(ServerBootstrap serverBootstrap) {
+        this.serverBootstrap = serverBootstrap;
     }
 
     protected Election election;
@@ -168,24 +156,25 @@ public class Cluster implements Alarmable, PropertyListener {
         this.election = election;
     }
 
-    public IoConnector getIoConnector() {
-        if (ioConnector == null) {
-            ioConnector = new NioSocketConnector();
-        }
-
-        return ioConnector;
-    }
-
-    public void setIoConnector(IoConnector ioConnector) {
-        this.ioConnector = ioConnector;
-    }
-
     public UUID getUuid() {
         return uuid;
     }
 
     public void setUuid(UUID uuid) {
         this.uuid = uuid;
+    }
+
+    /**
+     * Is the cluster bound?  For debugging
+     */
+    protected boolean bound = false;
+
+    public boolean isBound() {
+        return bound;
+    }
+
+    public void setBound(boolean bound) {
+        this.bound = bound;
     }
 
     public static Cluster getInstance() {
@@ -197,11 +186,7 @@ public class Cluster implements Alarmable, PropertyListener {
     }
 
     public Cluster() {
-        clusterHandler = new ClusterHandler();
-        ioConnector = new NioSocketConnector();
-        ioConnector.setHandler(clusterHandler);
-        ioAcceptor = new NioSocketAcceptor();
-        ioAcceptor.setHandler(clusterHandler);
+        initialize();
     }
 
     public synchronized List<Node> getNodes() {
@@ -227,6 +212,36 @@ public class Cluster implements Alarmable, PropertyListener {
         Cluster.randomNumberGenerator = randomNumberGenerator;
     }
 
+    public void initialize() {
+        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        bootstrap = new Bootstrap();
+        bootstrap.group(workerGroup);
+        bootstrap.channel(NioSocketChannel.class);
+        bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
+        bootstrap.handler(new ChannelInitializer<SocketChannel>() {
+            @Override
+            public void initChannel(SocketChannel ch) throws Exception {
+                ch.pipeline().addLast(new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4),
+                        new StringEncoder());
+            }
+        });
+        EventLoopGroup bossGroup = new NioEventLoopGroup();
+        workerGroup = new NioEventLoopGroup();
+
+        serverBootstrap = new ServerBootstrap();
+        serverBootstrap.group(bossGroup, workerGroup)
+                .channel(NioServerSocketChannel.class)
+                .childHandler(new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    public void initChannel(SocketChannel ch) throws Exception {
+                        ch.pipeline().addLast(new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4),
+                                new StringEncoder());
+                    }
+                })
+                .option(ChannelOption.SO_BACKLOG, 128)
+                .childOption(ChannelOption.SO_KEEPALIVE, true);
+    }
+
     /**
      * Add another node to the list of nodes in the cluster
      *
@@ -236,25 +251,21 @@ public class Cluster implements Alarmable, PropertyListener {
      * </P>
      *
      * @param node      The node to add.
-     * @param ioSession The session the new node should use.
      */
-    public synchronized void addNode(Node node, IoSession ioSession) {
+    public synchronized void addNode(Node node) {
         logger.debug("adding node " + node + " to nodes");
-
-        node.setIoSession(ioSession);
 
         boolean alreadyPresent = false;
         for (Node node2 : nodes) {
             if ((node.getUuid() != null) && (node2.getUuid() != null) && (node2.getUuid().equals(node.getUuid()))) {
                 alreadyPresent = true;
                 logger.debug("node already present discarding");
-                node.closeSession();
+                node.closeChannel();
             }
         }
 
         if (!alreadyPresent) {
             nodes.add(node);
-            clusterHandler.getIoSessionToNode().put(ioSession, node);
         }
     }
 
@@ -264,11 +275,10 @@ public class Cluster implements Alarmable, PropertyListener {
      * This method does so synchronously, so it is thread safe.
      * </P>
      */
-    public synchronized void removeNode(Node node, IoSession ioSession) {
+    public synchronized void removeNode(Node node) {
         logger.debug("removing node, " + node + " from nodes");
         nodes.remove(node);
-        node.closeSession();
-        clusterHandler.getIoSessionToNode().remove(ioSession);
+        node.closeChannel();
     }
 
     /**
@@ -282,12 +292,12 @@ public class Cluster implements Alarmable, PropertyListener {
 
         logger.debug("POST contents = " + contents);
         for (Node node : nodes) {
-            if (node.getIoSession() == null) {
+            if (node.getChannel() == null) {
                 continue;
             }
-            WriteFuture future = node.getIoSession().write(contents);
+            ChannelFuture channelFuture = node.getChannel().writeAndFlush(contents);
             try {
-                if (!future.await(IONM_TIMEOUT, IONM_TIMEOUT_UNITS)) {
+                if (!channelFuture.await(IONM_TIMEOUT, IONM_TIMEOUT_UNITS)) {
                     logger.error("write timed out informing another node of new message");
                 }
             } catch (InterruptedException e) {
@@ -312,13 +322,13 @@ public class Cluster implements Alarmable, PropertyListener {
         String contents = "MESSAGE DELIVERED " + message.getMessageID();
         logger.debug("session contents = " + contents);
         for (Node node : nodes) {
-            if (node.getIoSession() == null) {
+            if (node.getChannel() == null) {
                 continue;
             }
 
-            WriteFuture future = node.getIoSession().write(contents);
+            ChannelFuture channelFuture = node.getChannel().writeAndFlush(contents);
             try {
-                future.await(IOD_TIMEOUT, IOD_TIMEOUT_UNITS);
+                channelFuture.await(IOD_TIMEOUT, IOD_TIMEOUT_UNITS);
             } catch (InterruptedException e) {
                 logger.error("Interrupted during wait for write to complete for some in informOfDelivery", e);
             }
@@ -352,27 +362,15 @@ public class Cluster implements Alarmable, PropertyListener {
             nodes = new ArrayList<>();
         }
 
-        IoAcceptor ioAcceptor = getIoAcceptor();
-        ioAcceptor.getFilterChain().addLast("codec",
-                new ProtocolCodecFilter(new TextLineCodecFactory(Charset.forName("UTF-8"))));
-
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
         Miranda.getProperties().listen(this, Properties.clusterPort);
 
         SocketAddress socketAddress = new InetSocketAddress(port);
 
-        try {
-            logger.debug("listening at port " + port);
-            ioAcceptor.bind(socketAddress);
-        } catch (IOException e) {
-            logger.error("exception binding to cluster port, " + Miranda.getProperties()
-                    .getIntProperty(Miranda.PROPERTY_CLUSTER_PORT), e);
-            throw new LtsllcException(
-                    "exception binding to cluster port, "
-                            + Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT),
-                    e
-            );
-        }
+        logger.debug("listening at port " + port);
+        serverBootstrap.bind(socketAddress);
+        bound = true;
+
         logger.debug("leaving listen");
     }
 
@@ -393,21 +391,19 @@ public class Cluster implements Alarmable, PropertyListener {
             return;
         }
 
-        ioConnector = getIoConnector();
-        ioConnector.getFilterChain().addLast("codec", new ProtocolCodecFilter(new TextLineCodecFactory()));
-
         for (SpecNode specNode : list) {
-            Node node = new Node(null,specNode.getHost(), specNode.getPort(), null);
+            Node node = new Node(null, specNode.getHost(), specNode.getPort(), null);
             nodes.add(node);
         }
 
         boolean tempAllNodesFailed = true;
 
+        Bootstrap bootstrap = new Bootstrap();
         for (Node node : nodes) {
-            if (node.getIoSession() != null) {
+            if (node.getChannel() != null) {
                 tempAllNodesFailed = false;
             }
-            tempAllNodesFailed = !connectToNode(node, ioConnector);
+            tempAllNodesFailed = !connectToNode(node);
         }
 
         if (tempAllNodesFailed) {
@@ -418,48 +414,33 @@ public class Cluster implements Alarmable, PropertyListener {
     /**
      * Try to connect to a Node
      *
-     * @param node        The node to try and connect to.
-     * @param ioConnector Over what to make the connection.
+     * @param node The node to try and connect to.
      * @return true if we were able to connect to the node, false otherwise.
      */
-    public boolean connectToNode(Node node, IoConnector ioConnector) throws LtsllcException {
+    public boolean connectToNode(Node node) throws LtsllcException {
         boolean returnValue = true;
-        logger.debug("entering connectToNode with node = " + node.getHost() + ":" + node.getPort()
-                + ", and ioConnector = " + ioConnector);
+        logger.debug("entering connectToNode with node = " + node.getHost() + ":" + node.getPort());
         if ((node.getHost() == null) || (node.getPort() == -1)) {
             logger.error("connectToNode called with null host or -1 port, returning");
             return false;
         }
 
         InetSocketAddress addrRemote = new InetSocketAddress(node.getHost(), node.getPort());
-
-        ConnectFuture future = getIoConnector().connect(addrRemote);
-        future.awaitUninterruptibly();
-        IoSession ioSession = null;
+        ChannelFuture channelFuture = bootstrap.connect(addrRemote);
         try {
-            if (future.getException() == null) {
-                ioSession = future.getSession();
-                ioSession.getConfig().setUseReadOperation(true);
-                node.setIoSession(ioSession);
-
-                clusterHandler.getIoSessionToNode().put(ioSession, node);
-                if (Miranda.getInstance().getSynchronizationFlag()) {
-                    Miranda.getInstance().setSynchronizationFlag(false);
-                    node.sendSynchronizationStart(ioSession);
-                } else {
-                    node.sendStart(ioSession);
-                }
-            } else {
-                logger.debug("failed to connect to " + node.getHost() + ":" + node.getPort());
-                returnValue = false;
-            }
-        } catch (RuntimeIoException e) {
-            logger.error("encountered exception", e);
+            channelFuture.await();
+            node.setChannel(channelFuture.channel());
+        } catch (InterruptedException e) {
+            logger.debug("failed to connect to " + node.getHost() + ":" + node.getPort());
             returnValue = false;
         }
+
         if (returnValue) {
             events.info("Connected to " + node.getHost() + ":" + node.getPort());
         }
+
+        node.sendStart(true);
+
         logger.debug("leaving connectToNode with " + returnValue);
         return returnValue;
     }
@@ -490,8 +471,8 @@ public class Cluster implements Alarmable, PropertyListener {
         // if a node is not connected then try and connect it
         //
         for (Node node : nodes) {
-            if (node.getIoSession() == null) {
-                if (!connectToNode(node, ioConnector)) {
+            if (node.getChannel() == null) {
+                if (!connectToNode(node)) {
                     returnValue = false;
                 }
             }
@@ -531,7 +512,7 @@ public class Cluster implements Alarmable, PropertyListener {
         // create a list of the other nodes we know about
         //
         for (Node node : nodes) {
-            if (node.getIoSession() == null) {
+            if (node.getChannel() == null) {
                 returnValue = false;
             }
         }
@@ -567,7 +548,7 @@ public class Cluster implements Alarmable, PropertyListener {
                 copy.remove(node2);
                 if (node1.pointsToTheSameThing(node2)) {
                     node1.merge(node2);
-                    node2.closeSession();
+                    node2.closeChannel();
                 } else {
                     results.add(node2);
                 }
@@ -576,6 +557,11 @@ public class Cluster implements Alarmable, PropertyListener {
             results.add(node1);
         }
 
+        for (Node node : results) {
+            if (node.getState() == ClusterConnectionStates.START) {
+                node.sendStart(false);
+            }
+        }
 
         nodes = results;
     }
@@ -600,6 +586,11 @@ public class Cluster implements Alarmable, PropertyListener {
                 break;
             }
 
+            case SCAN: {
+                scan();
+                break;
+            }
+
             default: {
                 String msg = "unrecognized alarm: " + alarm;
                 logger.error(msg);
@@ -610,11 +601,14 @@ public class Cluster implements Alarmable, PropertyListener {
 
     /**
      * Divide up a node's messages among the still-connected nodes
+     * <H>
+     * This method assumes that there has been an election.
+     * </H>
      *
      * @param uuid The node whose messages we are dividing up
      * @throws IOException If there is a problem taking ownership.
      */
-    public synchronized void divideUpNodesMessages(UUID uuid) throws IOException, LtsllcException {
+    public synchronized void divideUpNodesMessages(UUID uuid) throws LtsllcException {
         if (uuid == null) {
             throw new LtsllcException("null dead node");
         }
@@ -636,7 +630,7 @@ public class Cluster implements Alarmable, PropertyListener {
      */
     public synchronized boolean allConnected() {
         for (Node node : nodes) {
-            if (node.getIoSession() == null) {
+            if (node.getChannel() == null) {
                 return false;
             }
         }
@@ -652,7 +646,7 @@ public class Cluster implements Alarmable, PropertyListener {
      * contains the regular number plus the modulus of the size of the list modulo the number of portions.
      * </P>
      *
-     * @param messages         The list to be divided into portions
+     * @param messages The list to be divided into portions
      * @return The portion of messages that "belong to" myOrder
      */
     public void divideUpMessages(List<Node> nodes, List<Message> messages) {
@@ -674,8 +668,8 @@ public class Cluster implements Alarmable, PropertyListener {
      */
     public synchronized void takeOwnershipOf(UUID newOwner, UUID message) {
         for (Node node : nodes) {
-            if (node.getIoSession() != null) {
-                if (node.getIoSession() != null) {
+            if (node.getChannel() != null) {
+                if (node.getChannel() != null) {
                     node.sendTakeOwnershipOf(newOwner, message);
                 }
             }
@@ -688,12 +682,22 @@ public class Cluster implements Alarmable, PropertyListener {
      * @param uuid The uuid of the node being declared dead.
      * @throws IOException If there is a problem transferring ownership.
      */
-    public synchronized void deadNode(UUID uuid) throws IOException {
-        List<Node> connectedNodes = new ArrayList<>();
+    public synchronized void deadNode(UUID uuid) throws IOException, LtsllcException {
+        boolean onlyNode = true;
+
         for (Node node : nodes) {
-            if (node.getIoSession() != null) {
+            if (node.getChannel() != null && null != node.getUuid() && !node.getUuid().equals(uuid)) {
                 node.sendDeadNodeStart(uuid);
+                onlyNode = false;
             }
+
+            if (node.getChannel() != null) {
+                onlyNode = false;
+            }
+        }
+
+        if (onlyNode) {
+            divideUpNodesMessagesOnlyNode(uuid);
         }
     }
 
@@ -708,7 +712,7 @@ public class Cluster implements Alarmable, PropertyListener {
      */
     public synchronized void notifyOfDelivery(Message message) {
         for (Node node : nodes) {
-            if (null != node.getIoSession()) {
+            if (null != node.getChannel()) {
                 node.notifyOfDelivery(message);
             }
         }
@@ -717,14 +721,15 @@ public class Cluster implements Alarmable, PropertyListener {
     /**
      * Get the number of nodes that are connected to other nodes.
      * <H>
-     *     This returns the number of nodes in the custer with a non-null IoSession.
+     * This returns the number of nodes in the custer with a non-null IoSession.
      * </H>
+     *
      * @return The number of nodes in the cluster with non-null IoSessions..
      */
     public int getNumberOfConnections() {
         int count = 0;
         for (Node node : nodes) {
-            if (null != node.getIoSession()) {
+            if (null != node.getChannel()) {
                 count++;
             }
         }
@@ -735,8 +740,9 @@ public class Cluster implements Alarmable, PropertyListener {
     /**
      * A property changed that we are watching.
      * <H>
-     *     The properties that we watch are the custer port and the nodes which make up the cluster.
+     * The properties that we watch are the custer port and the nodes which make up the cluster.
      * </H>
+     *
      * @param propertyChangedEvent The propertyChanged event that kicked off this whole process.
      */
     @Override
@@ -768,7 +774,7 @@ public class Cluster implements Alarmable, PropertyListener {
      *
      * @return The number of nodes in the cluster.
      */
-    public int getNumberOfNodes () {
+    public int getNumberOfNodes() {
         return nodes.size();
     }
 
@@ -782,7 +788,7 @@ public class Cluster implements Alarmable, PropertyListener {
      * @param uuid The uuid of the node we are voting for.
      * @param vote our vote.
      * @throws LtsllcException If there are problems determining the leader or dividing up the messages
-     * @throws IOException If there are problems diving up the messages.
+     * @throws IOException     If there are problems diving up the messages.
      */
     public void tallyVotes(UUID uuid, int vote) throws LtsllcException, IOException {
         election.vote(uuid, vote);
@@ -800,10 +806,10 @@ public class Cluster implements Alarmable, PropertyListener {
      * Assign a message to a node.
      *
      * @param receiverUuid The assignee of the message
-     * @param messageUuid The message to be assigned
+     * @param messageUuid  The message to be assigned
      * @throws LtsllcException If there is a problem finding the assignee
      */
-    public void assignMessageTo (UUID receiverUuid, UUID messageUuid) throws LtsllcException {
+    public void assignMessageTo(UUID receiverUuid, UUID messageUuid) throws LtsllcException {
         Node node = findNode(receiverUuid);
         node.assignMessage(messageUuid);
     }
@@ -815,7 +821,7 @@ public class Cluster implements Alarmable, PropertyListener {
      * @return The node
      * @throws LtsllcException If we couldn't find the node
      */
-    public synchronized Node findNode (UUID uuid) throws LtsllcException {
+    public synchronized Node findNode(UUID uuid) throws LtsllcException {
         for (Node node : nodes) {
             if (uuid.equals(node.getUuid())) {
                 return node;
@@ -825,5 +831,28 @@ public class Cluster implements Alarmable, PropertyListener {
         throw new LtsllcException("could not find node for: " + uuid);
     }
 
+    public void divideUpNodesMessagesOnlyNode(UUID uuid) throws IOException {
+        List<UUID> list = MessageLog.getInstance().getAllMessagesOwnedBy(uuid);
+        for (UUID uuidOfMessage : list) {
+            MessageLog.getInstance().setOwner(uuidOfMessage, Miranda.getInstance().getMyUuid());
+        }
+    }
 
+    public void setupScan() {
+        AlarmClock.getInstance().scheduleOnce(this, Alarms.SCAN,
+                Miranda.getProperties().getLongProperty(Miranda.PROPERTY_SCAN_PERIOD));
+    }
+
+    public synchronized void scan() {
+        setupScan();
+        for (Node node : nodes) {
+            if ((node.getChannel() != null) && (node.getState() == ClusterConnectionStates.START)) {
+                node.sendStart(true);
+            }
+        }
+    }
+
+    public synchronized void startElection () {
+        election = new Election();
+    }
 }

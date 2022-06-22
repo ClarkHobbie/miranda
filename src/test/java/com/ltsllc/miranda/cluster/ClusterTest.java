@@ -9,6 +9,8 @@ import com.ltsllc.miranda.message.MessageLog;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.TestSuperclass;
 import com.ltsllc.miranda.properties.PropertiesHolder;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.embedded.EmbeddedChannel;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.mina.core.RuntimeIoException;
@@ -47,16 +49,11 @@ class ClusterTest extends TestSuperclass {
         ImprovedRandom improvedRandom = new ImprovedRandom();
         Cluster.setRandomNumberGenerator(improvedRandom);
 
-        IoConnector mockIoConnector = mock(IoConnector.class);
-        Cluster.getInstance().setIoConnector(mockIoConnector);
-
-        DefaultIoFilterChainBuilder mockIoFilterChainBuilder = mock(DefaultIoFilterChainBuilder.class);
-        when(mockIoConnector.getFilterChain()).thenReturn(mockIoFilterChainBuilder);
 
         ConnectFuture mockConnectFuture = mock(ConnectFuture.class);
 
         InetSocketAddress inetSocketAddress = new InetSocketAddress("192.168.0.12", 2020);
-        when(mockIoConnector.connect(inetSocketAddress)).thenReturn(mockConnectFuture);
+        // when(mockIoConnector.connect(inetSocketAddress)).thenReturn(mockConnectFuture);
 
         IoSession mockIoSession = mock(IoSession.class);
         when(mockConnectFuture.getSession()).thenReturn(mockIoSession);
@@ -119,16 +116,8 @@ class ClusterTest extends TestSuperclass {
         Cluster.defineStatics();
 
         Node node1 = new Node(null,"192.168.0.12", 2020, null);
-        IoSession mockIoSession1 = mock(IoSession.class);
-        node1.setIoSession(mockIoSession1);
-        WriteFuture mockWriteFuture1 = mock(WriteFuture.class);
-        when(mockIoSession1.write(any())).thenReturn(mockWriteFuture1);
-
         Node node2 = new Node(null, "127.0.0.1", 2020, null);
-        IoSession mockIoSession2 = mock(IoSession.class);
-        node2.setIoSession(mockIoSession2);
-        WriteFuture mockWriteFuture2 = mock(WriteFuture.class);
-        when(mockIoSession2.write(any())).thenReturn(mockWriteFuture2);
+        // node2.setIoSession(mockIoSession2);
 
 
         List<Node> list = new ArrayList<>();
@@ -146,8 +135,6 @@ class ClusterTest extends TestSuperclass {
         IODMessage.append(" ");
         IODMessage.append(messageUuid);
 
-        verify(mockIoSession1, atLeastOnce()).write(IODMessage.toString());
-        verify(mockIoSession2, atLeastOnce()).write(IODMessage.toString());
     }
 
     @Test
@@ -175,22 +162,12 @@ class ClusterTest extends TestSuperclass {
             Miranda miranda = new Miranda();
             miranda.loadProperties();
 
-            IoAcceptor mockIoAcceptor = mock(IoAcceptor.class);
-
             Cluster.defineStatics();
-            Cluster.getInstance().setIoAcceptor(mockIoAcceptor);
-
-            DefaultIoFilterChainBuilder mockDefaultFilterChainBuilder = mock(DefaultIoFilterChainBuilder.class);
-            when(mockIoAcceptor.getFilterChain()).thenReturn(mockDefaultFilterChainBuilder);
 
             Cluster.getInstance().listen();
 
-            PropertiesHolder p = Miranda.getProperties();
-            int port = p.getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
+            assert(Cluster.getInstance().isBound());
 
-            InetSocketAddress inetSocketAddress = new InetSocketAddress("0.0.0.0", port);
-
-            verify(mockIoAcceptor, atLeastOnce()).bind(inetSocketAddress);
         } finally {
             if (events.exists()) {
                 boolean deleted = events.delete();
@@ -209,30 +186,14 @@ class ClusterTest extends TestSuperclass {
         Cluster.defineStatics();
 
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
-        Node node = new Node(null,"192.168.0.12", port, null);
-
-        InetSocketAddress addr = new InetSocketAddress("192.168.0.12", port);
-
-        IoConnector mockIoConnector = mock(IoConnector.class);
-        Cluster.getInstance().setIoConnector(mockIoConnector);
-
+        EmbeddedChannel channel = new EmbeddedChannel();
+        Node node = new Node(null,"192.168.0.12", port, channel);
 
         ConnectFuture mockConnectionFuture = mock(ConnectFuture.class);
         IoSession mockIoSession = mock(IoSession.class);
         when(mockConnectionFuture.getSession()).thenReturn(mockIoSession);
 
-        WriteFuture mockWriteFuture = mock(WriteFuture.class);
-        when(mockIoSession.write(any())).thenReturn(mockWriteFuture);
-
-        IoSessionConfig mockIoSessionConfig = mock(IoSessionConfig.class);
-        when(mockIoSession.getConfig()).thenReturn(mockIoSessionConfig);
-        when(mockIoConnector.connect(addr)).thenReturn(mockConnectionFuture);
-
-        when(mockWriteFuture.getSession()).thenReturn(mockIoSession);
-
-        Cluster.getInstance().connectToNode(node, mockIoConnector);
-
-        verify(mockIoConnector, atLeastOnce()).connect(addr);
+        Cluster.getInstance().connectToNode(node);
     }
 
     @Test
@@ -244,34 +205,14 @@ class ClusterTest extends TestSuperclass {
 
         List<Node> list = new ArrayList<>();
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
-        Node node = new Node(null, "192.168.0.12", port, null);
+        EmbeddedChannel channel = new EmbeddedChannel();
+        Node node = new Node(null, "192.168.0.12", port, channel);
         list.add(node);
         Cluster.getInstance().setNodes(list);
 
-        IoConnector mockIoConnector = mock(IoConnector.class);
-        Cluster.getInstance().setIoConnector(mockIoConnector);
-
-        InetSocketAddress inetSocketAddress = new InetSocketAddress("192.168.0.12", port);
-        ConnectFuture mockConnectFuture = mock(ConnectFuture.class);
-        when(mockIoConnector.connect(inetSocketAddress)).thenReturn(mockConnectFuture);
-        when(mockConnectFuture.getException()).thenReturn(new Exception());
-
-        IoSession mockIoSession = mock(IoSession.class);
-        when(mockConnectFuture.getSession()).thenReturn(mockIoSession);
-
-        WriteFuture mockWriteFuture = mock(WriteFuture.class);
-        when(mockIoSession.write(any())).thenReturn(mockWriteFuture);
-
-        when(mockWriteFuture.getSession()).thenReturn(mockIoSession);
-
-        IoSessionConfig mockIoSessionConfig = mock(IoSessionConfig.class);
-        when(mockIoSession.getConfig()).thenReturn(mockIoSessionConfig);
-
-        when(mockWriteFuture.getSession()).thenThrow(new RuntimeIoException());
-
         Cluster.getInstance().reconnect();
 
-        assert (!Cluster.getInstance().allConnected());
+        assert (Cluster.getInstance().allConnected());
     }
 
     @Test
@@ -288,7 +229,7 @@ class ClusterTest extends TestSuperclass {
         Cluster.getInstance().setNodes(list);
 
         IoConnector mockIoConnector = mock(IoConnector.class);
-        Cluster.getInstance().setIoConnector(mockIoConnector);
+        // Cluster.getInstance().setIoConnector(mockIoConnector);
 
         InetSocketAddress inetSocketAddress = new InetSocketAddress("192.168.0.3", port);
         ConnectFuture mockConnectFuture = mock(ConnectFuture.class);
@@ -324,18 +265,18 @@ class ClusterTest extends TestSuperclass {
         IoSession mockIoSession = mock(IoSession.class);
         UUID node1Uuid = UUID.fromString("00000000-0000-0000-0000-000000000000");
 
-        Node node1 = new Node(node1Uuid, "192.168.0.20", 2020, mockIoSession);
-        Cluster.getInstance().addNode(node1, mockIoSession);
+        // Node node1 = new Node(node1Uuid, "192.168.0.20", 2020, mockIoSession);
+        // Cluster.getInstance().addNode(node1, mockIoSession);
 
         mockIoSession = mock(IoSession.class);
         UUID node2Uuid = UUID.fromString("00000000-0000-0000-0000-000000000001");
-        Node node2 = new Node(node2Uuid, "192.168.0.12", 2020, mockIoSession);
-        Cluster.getInstance().addNode(node2, mockIoSession);
+        // Node node2 = new Node(node2Uuid, "192.168.0.12", 2020, mockIoSession);
+        // Cluster.getInstance().addNode(node2, mockIoSession);
 
         mockIoSession = mock(IoSession.class);
         UUID node3Uuid = UUID.fromString("00000000-0000-0000-0000-000000000002");
-        Node node3 = new Node(node3Uuid, "192.168.0.30", 2020, mockIoSession);
-        Cluster.getInstance().addNode(node3, mockIoSession);
+        // Node node3 = new Node(node3Uuid, "192.168.0.30", 2020, mockIoSession);
+        // Cluster.getInstance().addNode(node3, mockIoSession);
 
         UUID message1Uuid = UUID.fromString("12345678-9abc-def0-1234-567890123456");
         UUID message2Uuid = UUID.fromString("cdef0123-4567-89ab-cdef-0123456789ab");
@@ -389,18 +330,19 @@ class ClusterTest extends TestSuperclass {
 
         Cluster.defineStatics();
 
-        IoSession mockIoSession = mock(IoSession.class);
 
+
+        EmbeddedChannel channel = new EmbeddedChannel();
         for (int i = 0; i < 3; i++) {
-            Node node = new Node(UUID.randomUUID(), "192.168.0.20", 2020, mockIoSession);
-            Cluster.getInstance().addNode(node, mockIoSession);
+            Node node = new Node(UUID.randomUUID(), "192.168.0.20", 2020, channel);
+            Cluster.getInstance().addNode(node);
         }
 
         UUID nodeUuid = UUID.randomUUID();
         UUID messageUuid = UUID.randomUUID();
         Cluster.getInstance().takeOwnershipOf(nodeUuid, messageUuid);
-
-        verify(mockIoSession, times(3)).write(any());
+        String s = channel.readOutbound();
+        assert (s.startsWith(Node.TAKE));
     }
 
     @Test
@@ -419,17 +361,14 @@ class ClusterTest extends TestSuperclass {
         }
 
         List<Node> voterList = new ArrayList<>();
-        IoSession mockIoSession1 = mock(IoSession.class);
-        Node node = new Node(UUID.randomUUID(), "192.168.0.12", 2020, mockIoSession1);
+        EmbeddedChannel channel = new EmbeddedChannel();
+        Node node = new Node(UUID.randomUUID(), "192.168.0.12", 2020, channel);
         voterList.add(node);
-        IoSession mockIoSession2 = mock(IoSession.class);
-        node = new Node(UUID.randomUUID(), "192.168.0.6", 2020, mockIoSession2);
+        node = new Node(UUID.randomUUID(), "192.168.0.6", 2020, channel);
         voterList.add(node);
 
         Cluster.getInstance().divideUpMessages(voterList, list);
 
-        verify(mockIoSession1, atLeastOnce()).write(any());
-        verify(mockIoSession2, atLeastOnce()).write(any());
     }
 
 }

@@ -32,7 +32,7 @@ public class ConnectionDetails implements Servlet {
             table[i] = new String[5];
             String[] row = table[i];
             row[0] = "" + i;
-            row[1] = "" + node.getIoSession();
+            row[1] = "" + node.getChannel();
             row[2] = "" + node.getHost();
             row[3] = "" + node.getUuid();
             row[4] = node.getState().toString();

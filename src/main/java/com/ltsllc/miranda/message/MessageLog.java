@@ -496,4 +496,7 @@ public class MessageLog implements Alarmable, PropertyListener {
         }
     }
 
+    public boolean contains (UUID uuid) {
+        return uuidToOwner.get(uuid) != null;
+    }
 }

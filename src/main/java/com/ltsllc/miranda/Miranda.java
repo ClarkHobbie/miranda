@@ -7,6 +7,7 @@ import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.cluster.Node;
 import com.ltsllc.miranda.cluster.SpecNode;
+import com.ltsllc.miranda.codec.StringEncoder;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.message.MessageLog;
 import com.ltsllc.miranda.properties.PropertiesHolder;
@@ -14,13 +15,18 @@ import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import com.ltsllc.miranda.properties.PropertyListener;
 import com.ltsllc.miranda.servlets.Properties;
 import com.ltsllc.miranda.servlets.*;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.codec.FixedLengthFrameDecoder;
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.asynchttpclient.*;
 import org.eclipse.jetty.server.Handler;
-import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -29,6 +35,7 @@ import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.*;
 
 
@@ -238,6 +245,16 @@ public class Miranda implements PropertyListener {
      * Defaults to 100,000,000
      */
     public static final String PROPERTY_DEFAULT_COPY_SIZE = "100000000";
+
+    /**
+     * The period of time between scans
+     */
+    public static final String PROPERTY_SCAN_PERIOD = "intervals.scan";
+
+    /**
+     * The default period for scans
+     */
+    public static final String PROPERTY_DEFAULT_SCAN_PERIOD = "3000";
 
     /**
      * The logger to use
@@ -570,18 +587,20 @@ public class Miranda implements PropertyListener {
         QueuedThreadPool threadPool = new QueuedThreadPool();
         threadPool.setName("server");
 
-        server = new Server(threadPool);
+        server = new Server(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_MESSAGE_PORT));
+        ChannelHandler serverHandler = null;
 
         // Create a ServerConnector to accept connections from clients.
-        ServerConnector serverConnector = new ServerConnector(server, 3, 3, new HttpConnectionFactory());
-        server.addConnector(serverConnector);
-        serverConnector.setPort(properties.getIntProperty(PROPERTY_MESSAGE_PORT));
-        serverConnector.setHost("localhost");
-
-        server.addConnector(serverConnector);
-        ResourceHandler resource_handler = new ResourceHandler();
-        resource_handler.setDirectoriesListed(true);
-        resource_handler.setWelcomeFiles(new String[]{ "index.html" });
+        ServerBootstrap serverBootstrap = new ServerBootstrap();
+        serverBootstrap.channel(NioServerSocketChannel.class)
+                .localAddress(new InetSocketAddress(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT)))
+                .childHandler(new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    public void initChannel(SocketChannel ch) throws Exception {
+                        ch.pipeline().addLast(new StringEncoder(),
+                                new LengthFieldBasedFrameDecoder( Integer.MAX_VALUE, 0, 4, 0, 4));
+                    }
+                });
 
         ResourceHandler rh0 = new ResourceHandler();
         rh0.setWelcomeFiles(new String[]{"index.html"});
@@ -596,7 +615,6 @@ public class Miranda implements PropertyListener {
         servletContextHandler.addServlet(Coalesce.class, "/api/coalesce");
         servletContextHandler.addServlet(ConnectionDetails.class, "/api/connections/details");
         servletContextHandler.addServlet(com.ltsllc.miranda.servlets.Message.class, "/api/newMessage");
-
 
         HandlerList handlers = new HandlerList();
         handlers.setHandlers(new Handler[] { rh0, servletContextHandler });
@@ -721,6 +739,7 @@ public class Miranda implements PropertyListener {
         properties.setIfNull(PROPERTY_DEAD_NODE_TIMEOUT, PROPERTY_DEFAULT_DEAD_NODE_TIMEOUT);
         properties.setIfNull(PROPERTY_COALESCE_PERIOD, PROPERTY_DEFAULT_COALESCE_PERIOD);
         properties.setIfNull(PROPERTY_COPY_SIZE, PROPERTY_DEFAULT_COPY_SIZE);
+        properties.setIfNull(PROPERTY_SCAN_PERIOD, PROPERTY_DEFAULT_SCAN_PERIOD);
     }
 
     /**

@@ -134,15 +134,7 @@
             <version>2.9.0</version>
         </dependency>
 
-        <!-- mina -->
-        <dependency>
-            <groupId>org.apache.mina</groupId>
-            <artifactId>mina-core</artifactId>
-            <version>2.1.6</version>
-        </dependency>
-
         <!-- log4j -->
-
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>
@@ -188,7 +180,7 @@
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-all</artifactId>
-            <version>4.1.76.Final</version>
+            <version>4.1.77.Final</version>
         </dependency>
 
     </dependencies>
