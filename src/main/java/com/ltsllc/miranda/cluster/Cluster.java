@@ -7,7 +7,9 @@ import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.alarm.AlarmClock;
 import com.ltsllc.miranda.alarm.Alarmable;
 import com.ltsllc.miranda.alarm.Alarms;
-import com.ltsllc.miranda.codec.StringEncoder;
+import com.ltsllc.miranda.netty.ClientChannelToNodeDecoder;
+import com.ltsllc.miranda.netty.ServerChannelToNodeDecoder;
+import com.ltsllc.miranda.netty.StringEncoder;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.message.MessageLog;
 import com.ltsllc.miranda.properties.Properties;
@@ -221,7 +223,8 @@ public class Cluster implements Alarmable, PropertyListener {
         bootstrap.handler(new ChannelInitializer<SocketChannel>() {
             @Override
             public void initChannel(SocketChannel ch) throws Exception {
-                ch.pipeline().addLast(new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4),
+                ch.pipeline().addLast(
+                        new LengthFieldBasedFrameDecoder(2048, 0, 4, 0, 4),
                         new StringEncoder());
             }
         });
@@ -233,9 +236,11 @@ public class Cluster implements Alarmable, PropertyListener {
                 .channel(NioServerSocketChannel.class)
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
-                    public void initChannel(SocketChannel ch) throws Exception {
-                        ch.pipeline().addLast(new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4),
-                                new StringEncoder());
+                   public void initChannel(SocketChannel ch) throws Exception {
+                        ch.pipeline().addLast(
+                                new LengthFieldBasedFrameDecoder(2048, 0, 4, 0, 4),
+                                new StringEncoder(),
+                                new ServerChannelToNodeDecoder());
                     }
                 })
                 .option(ChannelOption.SO_BACKLOG, 128)
@@ -363,7 +368,7 @@ public class Cluster implements Alarmable, PropertyListener {
         }
 
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
-        Miranda.getProperties().listen(this, Properties.clusterPort);
+        Miranda.getProperties().listen(this, Properties.cluster);
 
         SocketAddress socketAddress = new InetSocketAddress(port);
 
@@ -438,6 +443,8 @@ public class Cluster implements Alarmable, PropertyListener {
         if (returnValue) {
             events.info("Connected to " + node.getHost() + ":" + node.getPort());
         }
+
+        node.getChannel().pipeline().addLast(new ClientChannelToNodeDecoder(node));
 
         node.sendStart(true);
 

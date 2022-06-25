@@ -14,10 +14,6 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.mina.core.session.IoSession;
-import org.apache.mina.core.session.IoSessionConfig;
-import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
-import org.apache.mina.transport.socket.nio.NioSocketConnector;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -645,11 +641,7 @@ public class NodeTest {
         miranda.setMyPort(2020);
         Miranda.getProperties().setProperty(Miranda.PROPERTY_START_TIMEOUT, Miranda.PROPERTY_DEFAULT_START_TIMEOUT);
 
-        Node node = new Node(null,"192.168.0.12", 2020, null);
-        IoSession mockIoSession = mock(IoSession.class);
-        // node.setIoSession(mockIoSession);
-
-        // node.sendStart(false, mockIoSession);
+          Node node = new Node(null,"192.168.0.12", 2020, null);
 
         synchronized (this) {
 System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_START_TIMEOUT));
@@ -671,9 +663,6 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
         miranda.setMyPort(2020);
 
         Node node = new Node(null,"192.168.0.12", 2020, null);
-        IoSession mockIoSession = mock(IoSession.class);
-        IoSessionConfig mockIoSessionConfig = mock(IoSessionConfig.class);
-        when(mockIoSession.getConfig()).thenReturn(mockIoSessionConfig);
 
         Cluster mockCluster = mock(Cluster.class);
         Cluster.setInstance(mockCluster);

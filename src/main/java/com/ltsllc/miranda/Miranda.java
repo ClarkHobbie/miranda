@@ -7,7 +7,8 @@ import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.cluster.Node;
 import com.ltsllc.miranda.cluster.SpecNode;
-import com.ltsllc.miranda.codec.StringEncoder;
+import com.ltsllc.miranda.netty.ServerChannelToNodeDecoder;
+import com.ltsllc.miranda.netty.StringEncoder;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.message.MessageLog;
 import com.ltsllc.miranda.properties.PropertiesHolder;
@@ -18,9 +19,11 @@ import com.ltsllc.miranda.servlets.*;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.FixedLengthFrameDecoder;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -437,7 +440,8 @@ public class Miranda implements PropertyListener {
             myHost = properties.getProperty(PROPERTY_HOST);
         }
 
-        properties.listen(this, com.ltsllc.miranda.properties.Properties.clusterPort);
+        setupClusterPort(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
+
         if (null == properties.getProperty(PROPERTY_PORT)) {
             String msg = "Please specify a port for this node by setting the " + PROPERTY_PORT + " property";
             logger.error(msg);
@@ -448,6 +452,22 @@ public class Miranda implements PropertyListener {
         }
     }
 
+    public void setupClusterPort (int port) {
+        EventLoopGroup bossGroup = new NioEventLoopGroup();
+        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        ServerBootstrap bootstrap = new ServerBootstrap();
+        bootstrap.group(bossGroup, workerGroup);
+        bootstrap.channel(NioServerSocketChannel.class);
+        bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
+        bootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
+            public void initChannel(SocketChannel ch) throws Exception {
+                ch.pipeline().addLast(
+                    new StringEncoder(),
+                    new LengthFieldBasedFrameDecoder(2048, 0, 4, 0, 4),
+                    new ServerChannelToNodeDecoder());
+            }
+        });
+    }
     /**
      * Get the jetty server
      *

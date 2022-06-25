@@ -16,7 +16,6 @@ import com.ltsllc.miranda.properties.PropertyListener;
 import io.netty.channel.Channel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.mina.core.session.IoSession;
 
 import java.io.IOException;
 import java.util.*;
@@ -260,12 +259,12 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * This method is really the "heart" of this class.  It is where most of the application logic lives.
      * </P>
      *
-     * @param o         The message (expected to be a text string).
+     * @param s         The message.
      * @throws IOException                If there is a problem opening or closing a file.
      * @throws LtsllcException            If there is an application error.
      * @throws CloneNotSupportedException If a request is made to clone something that cloning is not supported.
      */
-    public void messageReceived(Object o) throws IOException, LtsllcException, CloneNotSupportedException {
+    public void messageReceived(String s) throws IOException, LtsllcException, CloneNotSupportedException {
         if (this.getChannel() != channel) {
             logger.warn("WARNING! local ioSession differs from node ioSession");
         }
@@ -273,8 +272,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             logger.warn("WARNING!  Cluster doesn't contain node!");
         }
         setTimeOfLastActivity();
-        logger.debug("entering messageReceived with state = " + state + " and message = " + o);
-        String s = (String) o;
+        logger.debug("entering messageReceived with state = " + state + " and message = " + s);
         s = s.toUpperCase();
 
         MessageType messageType = determineMessageType(s);
@@ -693,6 +691,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         if ((Miranda.getInstance().getMyStart() == -1) || (Miranda.getInstance().getEldest() > nodeStart)) {
             Miranda.getInstance().setEldest(nodeStart);
             sendSynchronizationStart();
+            pushState(state);
             setState(SYNCHRONIZING);
         }
         //
@@ -756,6 +755,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public void handleSynchronizeStartInStart(String input) throws LtsllcException, CloneNotSupportedException, IOException {
         logger.debug("entering handleSynchronizeStart with input = " + input);
 
+        pushState(state);
         setState(SYNCHRONIZING);
 
         Scanner scanner = new Scanner(input);
@@ -776,11 +776,11 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         sendAllOwners();
         sendAllMessages();
 
-        if (-1 == Miranda.getInstance().getEldest()) {
-            sendSynchronizationStart();
-        } else {
+        setState(popState());
+        if (state == ClusterConnectionStates.START) {
             sendStart(false);
         }
+
         logger.debug("leaving handleSynchronizeStart");
     }
 
@@ -827,7 +827,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         channel.writeAndFlush(ERROR);
 
         sendStart(true);
-        setState(ClusterConnectionStates.START);
 
         logger.debug("leaving handleErrorStart");
     }
@@ -1130,6 +1129,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         Miranda.getInstance().setSynchronizationFlag(false);
 
         sendSynchronizationStart();
+        pushState(state);
         setState(SYNCHRONIZING);
     }
 
@@ -1234,6 +1234,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         if ((Miranda.getInstance().getEldest() == -1) || (Miranda.getInstance().getEldest() > nodeStart)) {
             Miranda.getInstance().setEldest(nodeStart);
             sendSynchronizationStart();
+            pushState(state);
             setState(SYNCHRONIZING);
         }
 
@@ -1296,8 +1297,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         this.host = host;
         this.port = port;
         this.nodeStart = start;
-
-        setState(SYNCHRONIZING);
     }
 
 
@@ -1768,11 +1767,10 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      *     In reply to this event the node goes into the start state and sends a start message.
      * </H>
      */
-    public void handleMessagesEnd() {
+    public void handleMessagesEnd() throws LtsllcException {
         logger.debug("entering handleMessagesEnd");
 
-        sendStart(false);
-        setState(ClusterConnectionStates.START);
+        setState(popState());
 
         logger.debug("leaving handleMessagesEnd");
     }
@@ -1809,8 +1807,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      *              time it was started.
      * @throws IOException If there is a problem sending the messages.
      */
-    public void handleSynchronizationStartInGeneral(String input) throws IOException {
-        setState(SYNCHRONIZING);
+    public void handleSynchronizationStartInGeneral(String input) throws IOException, LtsllcException {
 
         sendSynchronize();
 

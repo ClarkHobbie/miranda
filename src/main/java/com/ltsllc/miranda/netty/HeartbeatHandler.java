@@ -1,7 +1,6 @@
-package com.ltsllc.miranda.codec;
+package com.ltsllc.miranda.netty;
 
 import io.netty.channel.ChannelDuplexHandler;
-import io.netty.handler.timeout.IdleStateHandler;
 
 public class HeartbeatHandler extends ChannelDuplexHandler {
 

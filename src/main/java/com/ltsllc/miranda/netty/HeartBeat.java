@@ -1,4 +1,4 @@
-package com.ltsllc.miranda.codec;
+package com.ltsllc.miranda.netty;
 
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.alarm.Alarmable;
