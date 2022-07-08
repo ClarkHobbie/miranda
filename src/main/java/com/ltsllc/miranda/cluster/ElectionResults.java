@@ -4,6 +4,8 @@ package com.ltsllc.miranda.cluster;
  * The outcome of an election
  */
 public enum ElectionResults {
+    UNKNOWN,
+
     /**
      * The outcome was a tie.
      */

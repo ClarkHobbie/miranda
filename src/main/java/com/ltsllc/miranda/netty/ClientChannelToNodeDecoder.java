@@ -20,10 +20,6 @@ public class ClientChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
         this.node = node;
     }
 
-    public ClientChannelToNodeDecoder(Node node) {
-        this.node = node;
-    }
-
     public void channelRead (ChannelHandlerContext ctx, Object message) throws LtsllcException, IOException, CloneNotSupportedException {
         if (node.getChannel() == null) {
             node.setChannel(ctx.channel());
@@ -33,10 +29,12 @@ public class ClientChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
         if (message instanceof ByteBuf) {
             ByteBuf byteBuf = (ByteBuf) message;
             s = byteBuf.toString(Charset.defaultCharset());
-        } else if (message instanceof String) {
+        } else {
             s = (String) message;
         }
 
         node.messageReceived(s);
     }
+
+
 }

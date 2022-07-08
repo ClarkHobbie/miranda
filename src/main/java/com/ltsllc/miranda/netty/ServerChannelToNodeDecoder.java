@@ -27,8 +27,10 @@ public class ServerChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
             this.node = node;
             Cluster.getInstance().addNode(node);
         }
-        ByteBuf byteBuf = (ByteBuf) message;
-        String s = byteBuf.toString(Charset.defaultCharset());
+        String s = (String) message;
         node.messageReceived(s);
+        Cluster.getInstance().coalesce();
     }
+
+
 }

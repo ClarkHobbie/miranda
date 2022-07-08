@@ -8,6 +8,7 @@ import com.ltsllc.miranda.alarm.AlarmClock;
 import com.ltsllc.miranda.alarm.Alarmable;
 import com.ltsllc.miranda.alarm.Alarms;
 import com.ltsllc.miranda.netty.ClientChannelToNodeDecoder;
+import com.ltsllc.miranda.netty.HeartBeatHandler;
 import com.ltsllc.miranda.netty.ServerChannelToNodeDecoder;
 import com.ltsllc.miranda.netty.StringEncoder;
 import com.ltsllc.miranda.message.Message;
@@ -17,10 +18,7 @@ import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import com.ltsllc.miranda.properties.PropertyListener;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -34,9 +32,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 
@@ -199,10 +195,7 @@ public class Cluster implements Alarmable, PropertyListener {
         nodes = n;
     }
 
-    public static ImprovedRandom getRandomNumberGenerator() {
-        return randomNumberGenerator;
-    }
-
+    protected Map<HeartBeatHandler, UUID> heartBeatHandlerToUUIDMap = new HashMap<>();
     /**
      * Set the random number generator that this node uses
      *
@@ -214,6 +207,15 @@ public class Cluster implements Alarmable, PropertyListener {
         Cluster.randomNumberGenerator = randomNumberGenerator;
     }
 
+    public boolean allVotesIn() throws LtsllcException {
+        if (null == election) {
+            throw new LtsllcException("null election");
+        }
+
+        return election.allVotesIn();
+    }
+
+
     public void initialize() {
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         bootstrap = new Bootstrap();
@@ -224,8 +226,10 @@ public class Cluster implements Alarmable, PropertyListener {
             @Override
             public void initChannel(SocketChannel ch) throws Exception {
                 ch.pipeline().addLast(
-                        new LengthFieldBasedFrameDecoder(2048, 0, 4, 0, 4),
-                        new StringEncoder());
+                        "LENGTH", new LengthFieldBasedFrameDecoder(2048, 0, 4, 0, 4));
+                ch.pipeline().addLast("STRING",new StringEncoder());
+                ch.pipeline().addLast("HEARTBEAT", new HeartBeatHandler(ch));
+                ch.pipeline().addLast("DECODER", new ClientChannelToNodeDecoder());
             }
         });
         EventLoopGroup bossGroup = new NioEventLoopGroup();
@@ -238,9 +242,11 @@ public class Cluster implements Alarmable, PropertyListener {
                     @Override
                    public void initChannel(SocketChannel ch) throws Exception {
                         ch.pipeline().addLast(
-                                new LengthFieldBasedFrameDecoder(2048, 0, 4, 0, 4),
-                                new StringEncoder(),
-                                new ServerChannelToNodeDecoder());
+                                "LENGTH", new LengthFieldBasedFrameDecoder(2048, 0, 4, 0, 4)
+                                );
+                        ch.pipeline().addLast("ENCODER",new StringEncoder());
+                        ch.pipeline().addLast("HEARTBEAT",new HeartBeatHandler(ch));
+                        ch.pipeline().addLast("DECODER", new ServerChannelToNodeDecoder());
                     }
                 })
                 .option(ChannelOption.SO_BACKLOG, 128)
@@ -350,7 +356,7 @@ public class Cluster implements Alarmable, PropertyListener {
      * @see #listen()
      * @see #connectNodes(List)
      */
-    public void start(List<SpecNode> list) throws LtsllcException {
+    public void start(List<SpecNode> list) throws LtsllcException, CloneNotSupportedException {
         Miranda.getProperties().listen(this, Properties.cluster);
         listen();
         connectNodes(list);
@@ -385,7 +391,7 @@ public class Cluster implements Alarmable, PropertyListener {
      * @param list The list of nodes to connect to.
      * @throws LtsllcException If there is a problem with the ClusterHandler for the connection.
      */
-    public synchronized void connectNodes(List<SpecNode> list) throws LtsllcException {
+    public synchronized void connectNodes(List<SpecNode> list) throws LtsllcException, CloneNotSupportedException {
         logger.debug("entering connectNodes");
         events.info("Trying to connect to other nodes");
 
@@ -403,12 +409,13 @@ public class Cluster implements Alarmable, PropertyListener {
 
         boolean tempAllNodesFailed = true;
 
-        Bootstrap bootstrap = new Bootstrap();
+
         for (Node node : nodes) {
             if (node.getChannel() != null) {
                 tempAllNodesFailed = false;
+            } else {
+                tempAllNodesFailed = !connectToNode(node);
             }
-            tempAllNodesFailed = !connectToNode(node);
         }
 
         if (tempAllNodesFailed) {
@@ -422,9 +429,9 @@ public class Cluster implements Alarmable, PropertyListener {
      * @param node The node to try and connect to.
      * @return true if we were able to connect to the node, false otherwise.
      */
-    public boolean connectToNode(Node node) throws LtsllcException {
+    public boolean connectToNode(Node node) throws LtsllcException, CloneNotSupportedException {
         boolean returnValue = true;
-        logger.debug("entering connectToNode with node = " + node.getHost() + ":" + node.getPort());
+        logger.debug("entering connectToNode with " + node.getHost() + ":" + node.getPort());
         if ((node.getHost() == null) || (node.getPort() == -1)) {
             logger.error("connectToNode called with null host or -1 port, returning");
             return false;
@@ -435,6 +442,21 @@ public class Cluster implements Alarmable, PropertyListener {
         try {
             channelFuture.await();
             node.setChannel(channelFuture.channel());
+            Channel channel = channelFuture.channel();
+            ChannelPipeline pipeline = channel.pipeline();
+            ChannelHandler channelHandler = pipeline.get("DECODER");
+            if (channelHandler instanceof ClientChannelToNodeDecoder) {
+                ClientChannelToNodeDecoder decoder = (ClientChannelToNodeDecoder) channelHandler;
+                decoder.setNode(node);
+            } else {
+                throw new LtsllcException("decoder is not an instance of ClientChannelToNodeDecoder");
+            }
+            channelHandler = pipeline.get("HEARTBEAT");
+            if (channelHandler instanceof HeartBeatHandler) {
+                HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
+                heartBeatHandler.setUuid(node.getUuid());
+                heartBeatHandler.setNode(node);
+            }
         } catch (InterruptedException e) {
             logger.debug("failed to connect to " + node.getHost() + ":" + node.getPort());
             returnValue = false;
@@ -444,9 +466,9 @@ public class Cluster implements Alarmable, PropertyListener {
             events.info("Connected to " + node.getHost() + ":" + node.getPort());
         }
 
-        node.getChannel().pipeline().addLast(new ClientChannelToNodeDecoder(node));
-
         node.sendStart(true);
+
+        coalesce();
 
         logger.debug("leaving connectToNode with " + returnValue);
         return returnValue;
@@ -470,7 +492,7 @@ public class Cluster implements Alarmable, PropertyListener {
      *
      * @return Whether we are connected to all the other nodes.
      */
-    public synchronized boolean reconnect() throws LtsllcException {
+    public synchronized boolean reconnect() throws LtsllcException, CloneNotSupportedException {
         logger.debug("entering reconnect");
         boolean returnValue = true;
 
@@ -498,7 +520,7 @@ public class Cluster implements Alarmable, PropertyListener {
      *
      * @throws LtsllcException If there is a problem reconnecting.
      */
-    public void reconnectIfNecessary() throws LtsllcException {
+    public void reconnectIfNecessary() throws LtsllcException, CloneNotSupportedException {
         if (connectedToAll()) {
             return;
         } else {
@@ -607,30 +629,6 @@ public class Cluster implements Alarmable, PropertyListener {
     }
 
     /**
-     * Divide up a node's messages among the still-connected nodes
-     * <H>
-     * This method assumes that there has been an election.
-     * </H>
-     *
-     * @param uuid The node whose messages we are dividing up
-     * @throws IOException If there is a problem taking ownership.
-     */
-    public synchronized void divideUpNodesMessages(UUID uuid) throws LtsllcException {
-        if (uuid == null) {
-            throw new LtsllcException("null dead node");
-        }
-
-        ImprovedRandom random = new ImprovedRandom(new SecureRandom());
-        List<UUID> voters = election.getVoters();
-        Node[] votersArray = (Node[]) voters.toArray();
-        List<UUID> messages = MessageLog.getInstance().getAllMessagesOwnedBy(uuid);
-        for (UUID message : messages) {
-            Node voter = random.choose(Node.class, votersArray);
-            voter.assignMessage(message);
-        }
-    }
-
-    /**
      * Are we connected to all nodes in the cluster?
      *
      * @return If we are connected to all the nodes in the cluster: true if we are false otherwise
@@ -652,19 +650,13 @@ public class Cluster implements Alarmable, PropertyListener {
      * As far as this method is concerned all portions except the last one are of equal size. The last portion
      * contains the regular number plus the modulus of the size of the list modulo the number of portions.
      * </P>
-     *
-     * @param messages The list to be divided into portions
-     * @return The portion of messages that "belong to" myOrder
      */
-    public void divideUpMessages(List<Node> nodes, List<Message> messages) {
-        Node[] nodesArray = new Node[nodes.size()];
-        nodesArray = nodes.toArray(nodesArray);
-
-        ImprovedRandom improvedRandom = new ImprovedRandom(new SecureRandom());
-        for (Message message : messages) {
-            Node node = improvedRandom.choose(Node.class, nodesArray);
-            node.assignMessage(message.getMessageID());
+    public void divideUpMessages() throws LtsllcException, IOException {
+        if (null == election) {
+            throw new LtsllcException("null election");
         }
+
+        election.divideUpNodesMessages();
     }
 
     /**
@@ -684,27 +676,30 @@ public class Cluster implements Alarmable, PropertyListener {
     }
 
     /**
-     * A node has been declared dead --- divide up its message among the connected survivors
+     * A node has been declared dead --- divide up its messages among the connected survivors
      *
      * @param uuid The uuid of the node being declared dead.
      * @throws IOException If there is a problem transferring ownership.
      */
-    public synchronized void deadNode(UUID uuid) throws IOException, LtsllcException {
+    public synchronized void deadNode(UUID uuid, Node node) throws LtsllcException, IOException {
         boolean onlyNode = true;
 
-        for (Node node : nodes) {
-            if (node.getChannel() != null && null != node.getUuid() && !node.getUuid().equals(uuid)) {
-                node.sendDeadNodeStart(uuid);
-                onlyNode = false;
-            }
+        election = new Election(nodes);
+        election.setDeadNode(uuid);
 
-            if (node.getChannel() != null) {
-                onlyNode = false;
+        for (Node n : nodes) {
+            if (n.getChannel() != null) {
+                n.sendDeadNode(uuid);
+            } else if (n.getChannel() != null && null != n.getUuid() && !n.getUuid().equals(uuid)) {
+                n.sendDeadNodeStart(uuid);
             }
         }
 
-        if (onlyNode) {
-            divideUpNodesMessagesOnlyNode(uuid);
+        if (election.getVoters().size() == 1) {
+            List<UUID> messages = MessageLog.getInstance().getAllMessagesOwnedBy(uuid);
+            for (UUID message: messages) {
+                MessageLog.getInstance().setOwner(message, Miranda.getInstance().getMyUuid());
+            }
         }
     }
 
@@ -753,7 +748,7 @@ public class Cluster implements Alarmable, PropertyListener {
      * @param propertyChangedEvent The propertyChanged event that kicked off this whole process.
      */
     @Override
-    public void propertyChanged(PropertyChangedEvent propertyChangedEvent) {
+    public void propertyChanged(PropertyChangedEvent propertyChangedEvent) throws CloneNotSupportedException {
         try {
             switch (propertyChangedEvent.getProperty()) {
                 case clusterPort: {
@@ -790,33 +785,13 @@ public class Cluster implements Alarmable, PropertyListener {
     }
 
     /**
-     * Tally up the votes and if we won, then divide up the dead node's messages
-     *
-     * @param uuid The uuid of the node we are voting for.
-     * @param vote our vote.
-     * @throws LtsllcException If there are problems determining the leader or dividing up the messages
-     * @throws IOException     If there are problems diving up the messages.
-     */
-    public void tallyVotes(UUID uuid, int vote) throws LtsllcException, IOException {
-        election.vote(uuid, vote);
-        if (election.allVotesIn()) {
-            if (election.getResult() == ElectionResults.LEADER_ELECTED) {
-                UUID leaderUuid = election.getLeader();
-                if (leaderUuid.equals(Miranda.getInstance().getMyUuid())) {
-                    divideUpNodesMessages(election.getDeadNode());
-                }
-            }
-        }
-    }
-
-    /**
      * Assign a message to a node.
      *
      * @param receiverUuid The assignee of the message
      * @param messageUuid  The message to be assigned
      * @throws LtsllcException If there is a problem finding the assignee
      */
-    public void assignMessageTo(UUID receiverUuid, UUID messageUuid) throws LtsllcException {
+    public void assignMessageTo(UUID receiverUuid, UUID messageUuid) throws LtsllcException, IOException {
         Node node = findNode(receiverUuid);
         node.assignMessage(messageUuid);
     }
@@ -859,7 +834,40 @@ public class Cluster implements Alarmable, PropertyListener {
         }
     }
 
-    public synchronized void startElection () {
-        election = new Election();
+    public synchronized void register(HeartBeatHandler heartBeatHandler, UUID uuid) {
+        heartBeatHandlerToUUIDMap.put(heartBeatHandler, uuid);
+    }
+
+
+    public void vote (UUID voter, int vote) throws LtsllcException {
+        if (null == election) {
+            throw new LtsllcException("null election in vote");
+        }
+
+        election.vote(voter, vote);
+    }
+
+    public synchronized void sendLeader () throws LtsllcException {
+        for (Node node : nodes) {
+            if (node.getChannel() != null) {
+                node.sendLeader();
+            }
+        }
+    }
+
+    public UUID getLeaderUuid() throws LtsllcException {
+        if (null == election) {
+            throw new LtsllcException("null election");
+        }
+
+        return election.getLeader().getNode().getUuid();
+    }
+
+    public void countVotes() throws LtsllcException {
+        if (null == election) {
+            throw new LtsllcException("null election");
+        }
+
+        election.countVotes();
     }
 }

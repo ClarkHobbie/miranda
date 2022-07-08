@@ -594,6 +594,7 @@ public class Miranda implements PropertyListener {
         logger.debug("starting the message port");
         startMessagePort();
 
+        startIdentityNode();
         logger.debug("Leaving startup");
     }
 
@@ -1089,4 +1090,9 @@ public class Miranda implements PropertyListener {
         }
     }
 
+    public void startIdentityNode () throws LtsllcException, CloneNotSupportedException {
+        Node node = new Node(myUuid, myHost, myPort, null);
+        Cluster.getInstance().connectToNode(node);
+        Cluster.getInstance().addNode(node);
+    }
 }

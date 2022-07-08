@@ -1,24 +1,27 @@
 package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.commons.util.ImprovedRandom;
+import com.ltsllc.miranda.message.MessageLog;
 
-import java.util.*;
+import java.io.IOException;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * An election that makes one node the leader
  */
 public class Election {
-    /**
-     * How each node voted
-     */
-    protected Map<UUID, Integer> votes = new HashMap<>();
+    protected ElectionResults result = ElectionResults.UNKNOWN;
 
-    public Map<UUID, Integer> getVotes() {
-        return votes;
+    public ElectionResults getResult() {
+        return result;
     }
 
-    public void setVotes(Map<UUID, Integer> votes) {
-        this.votes = votes;
+    public void setResult(ElectionResults result) {
+        this.result = result;
     }
 
     /**
@@ -34,42 +37,88 @@ public class Election {
         this.deadNode = deadNode;
     }
 
-    /**
-     * Get the results of the election
-     *
-     * <H>
-     *     An election can be a tie or a node (called the president) can be elected the leader.
-     * </H>
-     * @return The results of the election.
-     */
-    public ElectionResults getResult () {
-        boolean tie = false;
-        Set<UUID> voters = votes.keySet();
-        Iterator<UUID> iterator = voters.iterator();
-        int highest = -1;
-        UUID president = null;
-        while (iterator.hasNext()) {
-            UUID voter = iterator.next();
-            int vote = votes.get(voter);
+    protected List<Voter> voters = new ArrayList<>();
 
-            if (president == null) {
-                president = voter;
-                highest = vote;
-            }
+    public List<Voter> getVoters() {
+        return voters;
+    }
 
-            if (vote > highest) {
-                highest = vote;
-                tie = false;
-            } else if (vote == highest) {
-                tie = true;
+    public void setVoters(List<Voter> voters) {
+        this.voters = voters;
+    }
+
+    protected Voter leader = null;
+
+    public Voter getLeader () {
+        return leader;
+    }
+
+    public void setLeader(Voter leader) {
+        this.leader = leader;
+    }
+
+    public Election (List<Node> list) {
+        for (Node node : list) {
+            if ((node.getChannel() != null) && (node.getUuid() != null)) {
+                Voter voter = new Voter();
+                voter.node = node;
+                voters.add(voter);
             }
-        }
-        if (tie) {
-            return ElectionResults.TIE;
-        } else {
-            return ElectionResults.LEADER_ELECTED;
         }
     }
+
+
+    /**
+     * Tally up the votes and put the result in result
+     */
+    public void countVotes()  {
+        result = ElectionResults.UNKNOWN;
+        int highest = Integer.MIN_VALUE;
+        if (allVotesIn()) {
+            for (Voter voter : voters) {
+                if (voter.vote > highest) {
+                    highest = voter.vote;
+                    leader = voter;
+                    result = ElectionResults.LEADER_ELECTED;
+                } else if (voter.vote == highest) {
+                    result = ElectionResults.TIE;
+                }
+            }
+        } else {
+            result = ElectionResults.STILL_TALLYING;
+        }
+    }
+
+
+    /**
+     * Divide up a node's messages among the still-connected nodes
+     * <H>
+     * This method assumes that there has been an election.
+     * </H>
+     */
+    public synchronized void divideUpNodesMessages() throws LtsllcException, IOException {
+        if (result == ElectionResults.TIE) {
+            throw new LtsllcException("tie in divideUpNodesMessages");
+        }
+
+        if (null == deadNode) {
+            throw new LtsllcException("null deadnode");
+        }
+
+        UUID uuid = deadNode;
+
+        ImprovedRandom random = new ImprovedRandom(new SecureRandom());
+        List<UUID> messages = MessageLog.getInstance().getAllMessagesOwnedBy(uuid);
+        for (UUID message : messages) {
+            Voter voter = random.choose(Voter.class, voters);
+            voter.node.assignMessage(message);
+        }
+    }
+
+    public boolean containsOneNode () {
+        return voters.size() == 1;
+    }
+
 
     /**
      * Register a vote in the election
@@ -78,7 +127,11 @@ public class Election {
      * @param vote Their vote
      */
     public void vote (UUID uuid, int vote) {
-        votes.put(uuid, vote);
+        for (Voter voter:voters) {
+            if (uuid == voter.node.getUuid()) {
+                voter.vote = vote;
+            }
+        }
     }
 
     /**
@@ -87,72 +140,27 @@ public class Election {
      * @return Weather all the nodes have voted
      */
     public boolean allVotesIn () {
-        Collection col = votes.values();
-        Iterator<Integer> iterator = col.iterator();
-        while (iterator.hasNext()) {
-            int vote = iterator.next();
-            if (vote == -1) {
+        for (Voter voter: voters) {
+            if (voter.vote == Integer.MIN_VALUE) {
                 return false;
             }
-
         }
         return true;
     }
 
-    /**
-     * In the case where a leader has been elected, the new leader
-     * <H>
-     *     Note this method assumes that a) all nodes have voted and b) that the outcome of the election was a leader
-     *     getting elected.
-     * </H>
-     * @return The uuid of the new leader
-     * @throws LtsllcException If a leader was not elected.
-     */
-    public UUID getLeader() throws LtsllcException {
-        ElectionResults result = getResult();
-        if (result != ElectionResults.LEADER_ELECTED) {
-            throw new LtsllcException("the election did not result in a leader being selected");
+
+    public class Voter {
+        public int vote = Integer.MIN_VALUE;
+
+        protected Node node;
+
+        public Node getNode() {
+            return node;
         }
 
-        Set<UUID> candidates = votes.keySet();
-        Iterator<UUID> iterator = candidates.iterator();
-        int highest = -1;
-        UUID president = null;
-        while (iterator.hasNext()) {
-            UUID candidate = iterator.next();
-            int vote = votes.get(candidate);
-
-            if (president == null) {
-                highest = votes.get(candidate);
-                president = candidate;
-            }
-
-            if (vote > highest) {
-                president = candidate;
-                highest = vote;
-            }
+        public void setNode(Node node) {
+            this.node = node;
         }
-
-        return president;
     }
-
-
-    /**
-     * Get a list of all the nodes that voted.
-     *
-     * @return A list of all the nodes that voted.
-     */
-    public List<UUID> getVoters() {
-        List<UUID> newList = new ArrayList<>();
-        Set<UUID> set = votes.keySet();
-        Iterator<UUID> iterator = set.iterator();
-        while (iterator.hasNext()) {
-            UUID uuid = iterator.next();
-            newList.add(uuid);
-        }
-
-        return newList;
-    }
-
 
 }

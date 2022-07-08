@@ -3,17 +3,18 @@ package com.ltsllc.miranda.cluster;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.commons.util.Utils;
-import com.ltsllc.miranda.*;
+import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.alarm.AlarmClock;
 import com.ltsllc.miranda.alarm.Alarmable;
 import com.ltsllc.miranda.alarm.Alarms;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.message.MessageLog;
 import com.ltsllc.miranda.message.MessageType;
-import com.ltsllc.miranda.properties.Properties;
+import com.ltsllc.miranda.netty.HeartBeatHandler;
 import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import com.ltsllc.miranda.properties.PropertyListener;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -50,6 +51,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public static final String GET_MESSAGE = "GET MESSAGE";
     public static final String HEART_BEAT_START = "HEART BEAT START";
     public static final String HEART_BEAT = "HEART BEAT";
+    public static final String LEADER = "LEADER";
     public static final String MESSAGE = "MESSAGE";
     public static final String MESSAGES = "MESSAGES";
     public static final String MESSAGES_END = "MESSAGES END";
@@ -74,13 +76,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         this.uuid = myUUID;
         this.host = host;
         this.port = port;
-
-        if (channel != null) {
-            setupHeartBeat();
-            setupHeartBeatBeatTimeout();
-            Miranda.getProperties().listen(this, Properties.heartBeat);
-        }
-
     }
 
     /**
@@ -103,16 +98,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
     public HashMap<Alarms, Boolean> getTimeoutsMet() {
         return timeoutsMet;
-    }
-
-    protected Election election = new Election();
-
-    public Election getElection() {
-        return election;
-    }
-
-    public void setElection(Election election) {
-        this.election = election;
     }
 
     protected Map<Channel, Boolean> channelToSentStart = new HashMap<>();
@@ -265,13 +250,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * @throws CloneNotSupportedException If a request is made to clone something that cloning is not supported.
      */
     public void messageReceived(String s) throws IOException, LtsllcException, CloneNotSupportedException {
-        if (this.getChannel() != channel) {
-            logger.warn("WARNING! local ioSession differs from node ioSession");
-        }
-        if (!Cluster.getInstance().containsNode(this)) {
-            logger.warn("WARNING!  Cluster doesn't contain node!");
-        }
-        setTimeOfLastActivity();
         logger.debug("entering messageReceived with state = " + state + " and message = " + s);
         s = s.toUpperCase();
 
@@ -300,16 +278,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                         break;
                     }
 
-                    case HEART_BEAT_START: {
-                        handleHeartBeatStart(s);
-                        break;
-                    }
-
-                    case HEART_BEAT: {
-                        handleHeartBeat(s);
-                        break;
-                    }
-
                     case DEAD_NODE: {
                         handleError(); // this would mean we had issued a heart beat start
                         break;
@@ -329,6 +297,10 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                         break;
                     }
 
+                    case LEADER: {
+                        handleLeader(s);
+                        break;
+                    }
                     case TAKE: {
                         handleTake(s);
                         break;
@@ -338,6 +310,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                         handleMessageDelivered(s);
                         break;
                     }
+
+
 
                     default: {
                         handleError();
@@ -357,16 +331,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
                     case MESSAGE_NOT_FOUND: {
                         setState(popState());
-                        break;
-                    }
-
-                    case HEART_BEAT_START: {
-                        handleHeartBeatStart(s);
-                        break;
-                    }
-
-                    case HEART_BEAT: {
-                        handleHeartBeat(s);
                         break;
                     }
 
@@ -427,16 +391,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
                     case GET_MESSAGE: {
                         handleGetMessage(s);
-                        break;
-                    }
-
-                    case HEART_BEAT_START: {
-                        handleHeartBeatStart(s);
-                        break;
-                    }
-
-                    case HEART_BEAT: {
-                        handleHeartBeat(s);
                         break;
                     }
 
@@ -527,16 +481,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                         break;
                     }
 
-                    case HEART_BEAT_START: {
-                        handleHeartBeatStart(s);
-                        break;
-                    }
-
-                    case HEART_BEAT: {
-                        handleHeartBeat(s);
-                        break;
-                    }
-
                     case ERROR_START: {
                         handleErrorStart();
                         break;
@@ -609,6 +553,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             messageType = MessageType.HEART_BEAT_START;
         } else if (s.startsWith(HEART_BEAT)) {
             messageType = MessageType.HEART_BEAT;
+        } else if (s.equals(LEADER)) {
+            messageType = MessageType.LEADER;
         } else if (s.startsWith(MESSAGE_DELIVERED)) {
             messageType = MessageType.MESSAGE_DELIVERED;
         } else if (s.startsWith(NEW_MESSAGE)) {
@@ -652,10 +598,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         return messageType;
     }
 
-    public void setTimeOfLastActivity() {
-        timeOfLastActivity = System.currentTimeMillis();
-    }
-
     /**
      * Handle a start message.
      * <p>
@@ -664,16 +606,14 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      *
      * @param input     The string that came to us.
      */
-    protected synchronized void handleStart(String input) throws LtsllcException, CloneNotSupportedException {
+    protected synchronized void handleStart(String input)  {
         logger.debug("entering handleStart");
         Scanner scanner = new Scanner(input);
         scanner.skip(START);
         uuid = UUID.fromString(scanner.next());
-
+        registerUuid(uuid);
         host = scanner.next();
-
         port = scanner.nextInt();
-
         nodeStart = scanner.nextLong();
 
         StringBuffer stringBuffer = new StringBuffer();
@@ -682,7 +622,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         addId(stringBuffer);
 
         channel.writeAndFlush(stringBuffer.toString());
-        setTimeOfLastActivity();
         logger.debug("wrote " + stringBuffer);
 
         //
@@ -733,7 +672,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
         channel.writeAndFlush(stringBuffer.toString());
         logger.debug("wrote " + stringBuffer.toString());
-        setTimeOfLastActivity();
 
         AlarmClock.getInstance().scheduleOnce(this, Alarms.START,
                 Miranda.getProperties().getLongProperty(Miranda.PROPERTY_START_TIMEOUT));
@@ -752,7 +690,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      *
      * @param input     The synchronization start message
      */
-    public void handleSynchronizeStartInStart(String input) throws LtsllcException, CloneNotSupportedException, IOException {
+    public void handleSynchronizeStartInStart(String input) throws LtsllcException, IOException {
         logger.debug("entering handleSynchronizeStart with input = " + input);
 
         pushState(state);
@@ -762,6 +700,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         scanner.next();
         scanner.next(); // SYNCHRONIZE START
         UUID uuid = UUID.fromString(scanner.next());
+        registerUuid(uuid);
         String host = scanner.next();
         int port = scanner.nextInt();
         long start = scanner.nextLong();
@@ -782,38 +721,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         }
 
         logger.debug("leaving handleSynchronizeStart");
-    }
-
-    /**
-     * Handle a heart beat start message
-     *
-     * <p>
-     * This consists of sending a heart beat of our own and setting a time0out flag.
-     * </P>
-     *
-     */
-    public void handleHeartBeatStart(String input) {
-        logger.debug("entering handleHeartBeatStart with input = " + input);
-
-        Scanner scanner = new Scanner(input);
-        scanner.next();
-        scanner.next();
-        scanner.next(); // HEART BEAT START
-        uuid = UUID.fromString(scanner.next());
-        host = scanner.next();
-        port = scanner.nextInt();
-
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(HEART_BEAT + " ");
-        addId(stringBuffer);
-
-        channel.writeAndFlush(stringBuffer.toString());
-        setTimeOfLastActivity();
-        setupHeartBeatBeatTimeout();
-
-        logger.debug("wrote " + stringBuffer);
-
-        logger.debug("leaving handleHeartBeatStart");
     }
 
     /**
@@ -877,7 +784,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public void sendMessage(UUID uuid) throws IOException, LtsllcException {
         Message message = MessageLog.getInstance().get(uuid);
         String strMessage = message.longToString();
-        setTimeOfLastActivity();
     }
 
     /**
@@ -917,10 +823,10 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         Scanner scanner = new Scanner(input);
         scanner.skip(GET_MESSAGE);
         UUID uuid = UUID.fromString(scanner.next());
+        registerUuid(uuid);
         if (!MessageLog.getInstance().contains(uuid)) {
             logger.debug("cache miss, sending MESSAGE NOT FOUND");
             channel.writeAndFlush(MESSAGE_NOT_FOUND);
-            setTimeOfLastActivity();
         } else {
             Message message = MessageLog.getInstance().get(uuid);
             logger.debug("cache hit, message = " + message.longToString() + "; sending message");
@@ -930,7 +836,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     }
 
     /**
-     * Send a message message over an IoSession
+     * Send a message message
      *
      * @param message   The message to send.
      */
@@ -938,7 +844,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         String strMessage = message.longToString();
 
         channel.writeAndFlush(strMessage);
-        setTimeOfLastActivity();
     }
 
     /**
@@ -964,13 +869,13 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * Handle a message delivered message
      *
      * @param input The string we received.
-     * @throws LtsllcException If the cache has problems removing the message
      */
-    public synchronized void handleMessageDelivered(String input) throws LtsllcException, IOException {
+    public synchronized void handleMessageDelivered(String input) throws IOException {
         Scanner scanner = new Scanner(input);
         scanner.skip(MESSAGE_DELIVERED);
         String strUuid = scanner.next();
         UUID uuid = UUID.fromString(strUuid);
+        registerUuid(uuid);
         MessageLog.getInstance().remove(uuid);
     }
 
@@ -985,9 +890,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      *
      * @param input       A string containing the message.
      * @param partnerUuid The UUID of our partner
-     * @throws LtsllcException If there is a problem adding the message.
      */
-    protected void handleNewMessage(String input, UUID partnerUuid) throws LtsllcException, IOException {
+    protected void handleNewMessage(String input, UUID partnerUuid) throws IOException {
         logger.debug("entering handleNewMessage with " + input);
 
         Scanner scanner = new Scanner(input);
@@ -1017,19 +921,17 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             UUID message = iterator.next();
             UUID owner = MessageLog.getInstance().getOwnerOf(message);
 
-            StringBuffer stringBuffer = new StringBuffer();
-            stringBuffer.append(OWNER);
-            stringBuffer.append(" ");
-            stringBuffer.append(message);
-            stringBuffer.append(" ");
-            stringBuffer.append(owner);
-            stringBuffer.append(" ");
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.append(OWNER);
+            stringBuilder.append(" ");
+            stringBuilder.append(message);
+            stringBuilder.append(" ");
+            stringBuilder.append(owner);
+            stringBuilder.append(" ");
 
-            channel.writeAndFlush(stringBuffer.toString());
-            setTimeOfLastActivity();
+            channel.writeAndFlush(stringBuilder.toString());
         }
         channel.writeAndFlush(OWNERS_END);
-        setTimeOfLastActivity();
         logger.debug("leaving handleSendOwners");
     }
 
@@ -1039,8 +941,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * The owner information is expected to be in the form "OWNER &lt;message UUID&gt; &lt;owner UUID&gt;."
      * </P>
      *
-     * @param input
-     * @throws IOException
+     * @param input The owner information
+     * @throws IOException If there is a problem setting the owner
      */
     public void handleReceiveOwner(String input) throws IOException {
         logger.debug("entering handleOwner");
@@ -1061,35 +963,13 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             String msg = message.longToString();
 
             channel.writeAndFlush(msg);
-            setTimeOfLastActivity();
             logger.debug("wrote " + msg);
         }
 
         channel.writeAndFlush(MESSAGES_END);
-        setTimeOfLastActivity();
         logger.debug("wrote " + MESSAGES_END);
 
         logger.debug("leaving sendMessages");
-    }
-
-    /**
-     * Send all the messages that we have
-     * <p>
-     * The message information is in the form "MESSAGE ID: &lt;message UUID&gt; STATUS: &lt;message status URL&gt;
-     * DELIVERY: &lt;message delivery URL&gt; CONTENT: &lt;message content as a hexadecimal string&gt;
-     * </P>
-     */
-    public void handleSendMessages() throws IOException {
-        logger.debug("entering handleSendMessages");
-        Collection<Message> messages = MessageLog.getInstance().copyAllMessages();
-        Iterator<Message> iterator = messages.iterator();
-        while (iterator.hasNext()) {
-            channel.writeAndFlush(iterator.next().longToString() + " ");
-            setTimeOfLastActivity();
-        }
-        channel.write(MESSAGES_END);
-        setTimeOfLastActivity();
-        logger.debug("leaving handleSendMessages");
     }
 
     /**
@@ -1159,46 +1039,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         Cluster.getInstance().addNode(this);
     }
 
-    public void sendHeartBeatStart() {
-        logger.debug("entering sendHeartBeatStart");
-
-        if (null == channel) {
-            logger.debug("null ioSession, returning");
-            return;
-        }
-
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(HEART_BEAT_START);
-        stringBuffer.append(" ");
-        addId(stringBuffer);
-
-        channel.writeAndFlush(stringBuffer.toString());
-        logger.debug("wrote " + stringBuffer);
-        setTimeOfLastActivity();
-
-        logger.debug("leaving sendHeartBeatStart");
-    }
-
-    public void sendHeartBeat() {
-        logger.debug("entering sendHeartBeat");
-
-        if (null == channel) {
-            logger.debug("channel is null returning");
-            return;
-        }
-
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(HEART_BEAT);
-        stringBuffer.append(" ");
-        addId(stringBuffer);
-
-        channel.writeAndFlush(stringBuffer.toString());
-        logger.debug("wrote " + stringBuffer);
-        setTimeOfLastActivity();
-
-        logger.debug("leaving sendHeartBeat");
-    }
-
     /**
      * Add the uuid host and port to a StringBuffer
      *
@@ -1222,6 +1062,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         Scanner scanner = new Scanner(input);
         scanner.next(); // START
         uuid = UUID.fromString(scanner.next());
+        registerUuid(uuid);
         host = scanner.next();
         port = scanner.nextInt();
         long nodeStart = scanner.nextLong();
@@ -1257,20 +1098,18 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         channel.writeAndFlush(OWNERS);
 
         for (UUID messageID : MessageLog.getInstance().getUuidToOwner().getAllKeys()) {
-            StringBuffer stringBuffer = new StringBuffer();
-            stringBuffer.append(OWNER);
-            stringBuffer.append(" ");
-            stringBuffer.append(messageID);
-            stringBuffer.append(" ");
-            stringBuffer.append(MessageLog.getInstance().getOwnerOf(messageID));
+            StringBuilder stringBuilder  = new StringBuilder();
+            stringBuilder.append(OWNER);
+            stringBuilder.append(" ");
+            stringBuilder.append(messageID);
+            stringBuilder.append(" ");
+            stringBuilder.append(MessageLog.getInstance().getOwnerOf(messageID));
 
-            channel.writeAndFlush(stringBuffer.toString());
-            setTimeOfLastActivity();
-            logger.debug("wrote " + stringBuffer);
+            channel.writeAndFlush(stringBuilder.toString());
+            logger.debug("wrote " + stringBuilder);
         }
 
         channel.writeAndFlush(OWNERS_END);
-        setTimeOfLastActivity();
         logger.debug("wrote " + OWNERS_END);
 
     }
@@ -1289,6 +1128,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
         scanner.next(); // SYNCHRONIZE
         UUID uuid = UUID.fromString(scanner.next());
+        registerUuid(uuid);
         String host = scanner.next();
         int port = scanner.nextInt();
         long start = scanner.nextLong();
@@ -1323,7 +1163,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         stringBuffer.append(Miranda.getInstance().getMyStart());
 
         channel.writeAndFlush(stringBuffer.toString());
-        setTimeOfLastActivity();
         logger.debug("wrote " + stringBuffer);
 
         logger.debug("leaving sendSynchronizationStart");
@@ -1380,12 +1219,13 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * @throws LtsllcException            Coalesce throws this.
      * @throws CloneNotSupportedException Coalesce also throws this.
      */
-    public void handleStartSynchronizing(String input) throws CloneNotSupportedException, LtsllcException {
+    public void handleStartSynchronizing(String input)   {
         logger.debug("entering handleStartSynchronizing");
 
         Scanner scanner = new Scanner(input);
         scanner.next(); // START
         uuid = UUID.fromString(scanner.next());
+        registerUuid(uuid);
         host = scanner.next();
         port = scanner.nextInt();
 
@@ -1394,7 +1234,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         stringBuffer.append(" ");
         addId(stringBuffer);
         channel.writeAndFlush(stringBuffer.toString());
-        setTimeOfLastActivity();
         logger.debug("wrote " + stringBuffer);
 
         logger.debug("leaving handleStartSynchronizing");
@@ -1451,33 +1290,13 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * @param alarm The alarm.
      */
     @Override
-    public void alarm(Alarms alarm) throws IOException, LtsllcException {
+    public void alarm(Alarms alarm)  {
         switch (alarm) {
             case START: {
                 if (!timeoutsMet.get(Alarms.START)) {
                     startTimeout();
                 } else {
                     timeoutsMet.put(Alarms.START, false);
-                }
-                break;
-            }
-
-            case HEART_BEAT: {
-                setupHeartBeat();
-                if (timeOfLastActivity < System.currentTimeMillis() +
-                        Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL)) {
-                    sendHeartBeatStart();
-                } else {
-                    // ignore
-                }
-                break;
-            }
-
-            case HEART_BEAT_TIMEOUT: {
-                if (timeoutsMet.get(Alarms.HEART_BEAT_TIMEOUT) != null && !timeoutsMet.get(Alarms.HEART_BEAT_TIMEOUT)) {
-                    heartBeatTimeout();
-                } else {
-                    timeoutsMet.put(Alarms.HEART_BEAT_TIMEOUT, false);
                 }
                 break;
             }
@@ -1499,37 +1318,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     }
 
     /**
-     * A heart beat has timed out waiting for a response
-     */
-    public void heartBeatTimeout() throws IOException, LtsllcException {
-        logger.debug("entering heartBeatTimeout");
-
-        closeChannel();
-        Cluster.getInstance().deadNode(uuid);
-
-        logger.debug("leaving heartBeatTimeout");
-    }
-
-
-    /**
-     * This is about setting timeoutsMet
-     */
-    public void handleHeartBeat(String input) {
-        logger.debug("entering handleHeartBeat");
-
-        Scanner scanner = new Scanner(input);
-        scanner.next();
-        scanner.next(); // HEART BEAT
-        uuid = UUID.fromString(scanner.next());
-        host = scanner.next();
-        port = scanner.nextInt();
-
-        timeoutsMet.put(Alarms.HEART_BEAT_TIMEOUT, true);
-
-        logger.debug("leaving handleHeartBeat");
-    }
-
-    /**
      * Handles a dead node start message by sending back a dead node message of it own
      *
      * @param input     The dead node start message.
@@ -1545,7 +1333,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
         int vote = scanner.nextInt();
 
-        Cluster.getInstance().tallyVotes(Miranda.getInstance().getMyUuid(), vote);
+        Cluster.getInstance().vote(Miranda.getInstance().getMyUuid(), vote);
 
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append(DEAD_NODE);
@@ -1568,22 +1356,22 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * This consists of setting a timeoutsMet flag.
      * </P>
      */
-    public void handleDeadNode(String input) throws LtsllcException, IOException {
+    public void handleDeadNode(String input) throws LtsllcException {
         logger.debug("entering handleDeadNode");
 
         timeoutsMet.put(Alarms.DEAD_NODE, true);
         Scanner scanner = new Scanner(input);
 
         scanner.next();
-        scanner.next();
-        scanner.next(); // DEAD NODE START
-        UUID deadNodeUuid = UUID.fromString(scanner.next());
-
+        scanner.next(); // DEAD NODE
+        scanner.next(); // uuid
         int vote = scanner.nextInt();
 
-        Cluster.getInstance().startElection();
-        Cluster.getInstance().tallyVotes(Miranda.getInstance().getMyUuid(), vote);
-        Cluster.getInstance().getElection().setDeadNode(deadNodeUuid);
+        Cluster.getInstance().vote(uuid, vote);
+        if (Cluster.getInstance().allVotesIn()) {
+            Cluster.getInstance().countVotes();
+            Cluster.getInstance().sendLeader();
+        }
 
         logger.debug("leaving handleDeadNode");
     }
@@ -1638,7 +1426,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         stringBuffer.append(uuid);
 
         channel.writeAndFlush(stringBuffer.toString());
-        setTimeOfLastActivity();
 
         logger.debug("leaving sendDeadNode");
     }
@@ -1723,19 +1510,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     }
 
     /**
-     * Setup the heart beat with the AlarmClock
-     */
-    public void setupHeartBeat() {
-        // AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT,
-        //                Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL));
-    }
-
-    public void setupHeartBeatBeatTimeout() {
-        AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT_TIMEOUT,
-                Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_TIMEOUT));
-    }
-
-    /**
      * A property we are watching changed.
      * <H>
      * The property we care about is the heart beat.
@@ -1747,12 +1521,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     @Override
     public void propertyChanged(PropertyChangedEvent propertyChangedEvent) throws Throwable {
         switch (propertyChangedEvent.getProperty()) {
-            case heartBeat: {
-                setupHeartBeat();
-                setupHeartBeatBeatTimeout();
-                break;
-            }
-
             default: {
                 throw new LtsllcException("propertyChanged call for " + propertyChangedEvent.getProperty());
             }
@@ -1795,7 +1563,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         stringBuffer.append(" ");
         stringBuffer.append(Miranda.getInstance().getMyStart());
         channel.writeAndFlush(stringBuffer.toString());
-        setTimeOfLastActivity();
 
         logger.debug("wrote " + stringBuffer);
     }
@@ -1808,7 +1575,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * @throws IOException If there is a problem sending the messages.
      */
     public void handleSynchronizationStartInGeneral(String input) throws IOException, LtsllcException {
-
         sendSynchronize();
 
         sendAllOwners();
@@ -1816,32 +1582,15 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     }
 
     /**
-     * Send a heartbeat if it's time
-     * <H>
-     *     The method sends a heart beat if it has been more than the heart beat interval since the last activity on the
-     *     channel between this node and the other node.
-     * </H>
-     */
-    public void maybeSendHeartBeat() {
-        long now = System.currentTimeMillis();
-        long millisecondsSinceLastActivity = now - timeOfLastActivity;
-        if (millisecondsSinceLastActivity >
-                Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL)) {
-            sendHeartBeat();
-        }
-    }
-
-    /**
      * Tell another node to take possession of a message
      *
      * @param uuid The id of the message we are assigning.
      */
-    public void assignMessage(UUID uuid) {
+    public void assignMessage(UUID uuid) throws IOException {
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append(ASSIGN_MESSAGE);
         stringBuffer.append(" ");
         stringBuffer.append(uuid);
-
         channel.writeAndFlush(stringBuffer.toString());
     }
 
@@ -1867,6 +1616,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         scanner.next(); scanner.next(); // START ACKNOWLEDGED
 
         uuid = UUID.fromString(scanner.next());
+        registerUuid(uuid);
         host = scanner.next();
         port = scanner.nextInt();
 
@@ -1879,6 +1629,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         scanner.next(); scanner.next(); // START ACKNOWLEDGED
 
         uuid = UUID.fromString(scanner.next());
+        registerUuid(uuid);
         host = scanner.next();
         port = scanner.nextInt();
 
@@ -1888,6 +1639,31 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public void handleErrorGeneral () {
         sendStart(true);
         setState(ClusterConnectionStates.START);
+    }
+
+    public void registerUuid (UUID uuid) {
+        ChannelHandler channelHandler = channel.pipeline().get("HEARTBEAT");
+        HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
+        heartBeatHandler.setUuid(uuid);
+        heartBeatHandler.setNode(this);
+    }
+
+    public void sendLeader () throws LtsllcException {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(LEADER);
+        stringBuilder.append(" ");
+        stringBuilder.append(Cluster.getInstance().getLeaderUuid());
+
+        channel.writeAndFlush(stringBuilder);
+    }
+
+    public void handleLeader (String input) throws LtsllcException, IOException {
+        Scanner scanner = new Scanner(input);
+        scanner.next(); // LEADER
+        UUID uuid = UUID.fromString(scanner.next());
+        if (uuid.equals(Miranda.getInstance().getMyUuid())) {
+            Cluster.getInstance().divideUpMessages();
+        }
     }
 }
 

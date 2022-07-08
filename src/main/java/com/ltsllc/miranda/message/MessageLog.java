@@ -281,6 +281,7 @@ public class MessageLog implements Alarmable, PropertyListener {
     }
 
     public synchronized void setOwner(UUID message, UUID owner) throws IOException {
+        uuidToOwner.remove(message);
         uuidToOwner.add(message, owner);
     }
 
@@ -297,13 +298,14 @@ public class MessageLog implements Alarmable, PropertyListener {
      * @throws IOException If a problem is encountered while reading or writing the logfiles
      */
     public void add (Message message, UUID owner) throws IOException {
-        logger.debug("entering add with message");
+        logger.debug("entering add with message: " + message + " and owner: " + owner);
+
+        cache.add(message);
         if (null == owner) {
-            cache.add(message);
-        } else {
-            cache.add(message);
             uuidToOwner.add(message.getMessageID(), owner);
         }
+
+        logger.debug("leaving add");
     }
 
     /**
@@ -403,7 +405,7 @@ public class MessageLog implements Alarmable, PropertyListener {
 
         Collection<UUID> collection = uuidToOwner.getAllKeys();
         for (UUID message : collection) {
-            if (getOwnerOf(message) == owner) {
+            if (getOwnerOf(message).equals(owner)) {
                 results.add(message);
             }
         }

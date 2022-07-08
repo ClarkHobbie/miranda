@@ -70,12 +70,12 @@ public class LoggingMap {
             fileWriter = new FileWriter(file, true);
             bufferedWriter = new BufferedWriter(fileWriter);
 
-            StringBuffer stringBuffer = new StringBuffer();
-            stringBuffer.append (message.toString());
-            stringBuffer.append (" ");
-            stringBuffer.append (owner.toString());
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.append (message.toString());
+            stringBuilder.append (" ");
+            stringBuilder.append (owner.toString());
 
-            bufferedWriter.write(stringBuffer.toString());
+            bufferedWriter.write(stringBuilder.toString());
             bufferedWriter.newLine();
         } finally {
             if (bufferedWriter != null) {

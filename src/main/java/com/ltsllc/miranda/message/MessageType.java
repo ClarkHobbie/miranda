@@ -18,6 +18,7 @@ public enum MessageType {
     MESSAGE,
     MESSAGE_NOT_FOUND,
     NEW_MESSAGE,
+    LEADER,
     MESSAGE_DELIVERED,
     NEW_NODE,
     NEW_NODE_CONFIRMED,
