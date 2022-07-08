@@ -9,6 +9,9 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
+/**
+ * A ChannelInboundHandlerAdapter that translates ByteBufs to Strings
+ */
 public class ClientChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
     protected Node node;
 
@@ -20,6 +23,11 @@ public class ClientChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
         this.node = node;
     }
 
+    /**
+     * A new message is available, translate it to a String and call messageReceived
+     * @param ctx The context in which it was received
+     * @param message The message
+     */
     public void channelRead (ChannelHandlerContext ctx, Object message) throws LtsllcException, IOException, CloneNotSupportedException {
         if (node.getChannel() == null) {
             node.setChannel(ctx.channel());

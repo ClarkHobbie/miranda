@@ -16,6 +16,12 @@ import io.netty.handler.codec.MessageToByteEncoder;
  * @see FixedLengthFrameDecoder
  */
 public class StringEncoder extends MessageToByteEncoder<String> {
+    /**
+     * Create a new message
+     * @param channelHandlerContext The context in which the message was created.
+     * @param s The message.
+     * @param byteBuf The new message.
+     */
     @Override
     protected void encode(ChannelHandlerContext channelHandlerContext, String s, ByteBuf byteBuf) {
         ByteBuf byteBuf1 = Unpooled.buffer();

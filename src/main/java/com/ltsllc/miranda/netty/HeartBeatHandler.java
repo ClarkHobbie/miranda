@@ -19,6 +19,9 @@ import java.nio.charset.Charset;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * A class that enforces the heart beat protocol
+ */
 public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> implements Alarmable {
     protected static final Logger logger = LogManager.getLogger();
 
@@ -60,6 +63,18 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
         list.add(s);
    }
 
+    /**
+     * Decode a heart beat message.
+     *
+     * <P>
+     *     This method translates a ByteBuf to a string.
+     *     If the message is not heart beat related then just pass it on.  This method also updates the
+     *     timeOfLastActivity.
+     * </P>
+     * @param channelHandlerContext The channel context in which the message took place
+     * @param byteBuf The message
+     * @param list The output messages.
+     */
     @Override
     protected void decode(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf, List<Object> list) {
         String s = byteBuf.toString(Charset.defaultCharset());
@@ -73,20 +88,30 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
         }
     }
 
+    /**
+     * Handle an alarm event
+     * @param alarm
+     * @throws Throwable
+     */
     @Override
     public void alarm(Alarms alarm) throws Throwable {
         switch (alarm) {
-            case HEART_BEAT -> {
+            case HEART_BEAT ->
                 sendHeartBeat();
-            }
 
-            case HEART_BEAT_TIMEOUT -> {
+
+            case HEART_BEAT_TIMEOUT ->
                 heartBeatTimeout();
-            }
+
         }
 
     }
 
+    /**
+     * The node has timed out, close the channel and declare the node dead.
+     * @throws IOException
+     * @throws LtsllcException
+     */
     public void heartBeatTimeout() throws IOException, LtsllcException {
         if (!metTimeout) {
             logger.error("Node has gone offline.");
@@ -98,6 +123,12 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
         }
     }
 
+    /**
+     * Send a heart beat start message.
+     * <P>
+     *     This method is also responsible for setting an alarm for the next heart beat.
+     * </P>
+     */
     public void sendHeartBeat() {
         AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT,
                 Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL));
@@ -111,6 +142,13 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
         }
     }
 
+    /**
+     * An exception occurred - close the channel and declare the node dead.
+     *
+     * @param ctx The context in which the exception occurred
+     * @param cause The exception that triggered the exception
+     * @throws Exception If the method has any exceptions
+     */
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         if (cause.getMessage().endsWith("Connection reset")) {
