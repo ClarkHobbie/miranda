@@ -17,6 +17,7 @@ import com.ltsllc.miranda.properties.PropertyListener;
 import com.ltsllc.miranda.servlets.Properties;
 import com.ltsllc.miranda.servlets.*;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -25,6 +26,8 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import io.netty.util.ResourceLeakDetector;
+import io.netty.util.ResourceLeakDetectorFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.asynchttpclient.*;
@@ -400,6 +403,16 @@ public class Miranda implements PropertyListener {
         this.specNodes = specNodes;
     }
 
+    protected static ResourceLeakDetector rld;
+
+    public static ResourceLeakDetector getRld() {
+        return rld;
+    }
+
+    public static void setRld(ResourceLeakDetector rld) {
+        Miranda.rld = rld;
+    }
+
     /**
      * The constructor for the class
      *
@@ -450,8 +463,16 @@ public class Miranda implements PropertyListener {
         } else {
             myPort = properties.getIntProperty(PROPERTY_PORT);
         }
+        rld = ResourceLeakDetectorFactory.instance().newResourceLeakDetector(ByteBuf.class);
+        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID);
+
     }
 
+    /**
+     * Setup the port for other nodes in the network
+     *
+     * @param port The port number to listen at.
+     */
     public void setupClusterPort (int port) {
         EventLoopGroup bossGroup = new NioEventLoopGroup();
         EventLoopGroup workerGroup = new NioEventLoopGroup();
@@ -468,6 +489,7 @@ public class Miranda implements PropertyListener {
             }
         });
     }
+
     /**
      * Get the jetty server
      *
@@ -576,8 +598,6 @@ public class Miranda implements PropertyListener {
             recover();
         }
 
-
-
         logger.debug("parsing arguments");
         processArguments(args);
 
@@ -641,10 +661,6 @@ public class Miranda implements PropertyListener {
         handlers.setHandlers(new Handler[] { rh0, servletContextHandler });
         server.setHandler(handlers);
 
-        // Set a simple Handler to handle requests/responses.
-
-        // server.setHandler(new MessageHandler(myUuid));
-
         // Start the Server, so it starts accepting connections from clients.
         server.start();
 
@@ -683,6 +699,12 @@ public class Miranda implements PropertyListener {
         return temp;
     }
 
+    /**
+     * Process a single command line argument
+     * @param prev The previous argument.
+     * @param argument The argument.
+     * @param map The map of keys to values.
+     */
     protected void processArgument (String prev, String argument, java.util.Properties map) {
         logger.debug("processing argument with argument = " + argument + ", prev = " + prev + " and map = " + map);
 
@@ -926,6 +948,7 @@ public class Miranda implements PropertyListener {
      * <P>
      *     Note that this method assumes that if PROPERTY_CLUSTER + "." &lt;number&gt; + ".host" is defined then the
      *     corresponding port is also defined.
+     * </P>
      *
      * @see SpecNode
      */
@@ -1090,6 +1113,11 @@ public class Miranda implements PropertyListener {
         }
     }
 
+    /**
+     * Start up a node that represents us
+     * @throws LtsllcException This exception is thrown by connectToNode.
+     * @throws CloneNotSupportedException This exception is thrown by connectToNode.
+     */
     public void startIdentityNode () throws LtsllcException, CloneNotSupportedException {
         Node node = new Node(myUuid, myHost, myPort, null);
         Cluster.getInstance().connectToNode(node);
