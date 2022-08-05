@@ -558,41 +558,18 @@ public class Cluster implements Alarmable, PropertyListener {
      * </P>
      */
     public synchronized void coalesce() throws LtsllcException, CloneNotSupportedException {
-        List<Node> copy = new ArrayList<>(nodes.size());
-        List<Node> results = new ArrayList<>(nodes.size());
-
-        for (Node node : nodes) {
-            if ((node.getUuid() != null) || ((node.getHost() != null) && (node.getPort() != -1))) {
-                Node node2 = (Node) node.clone();
-                copy.add(node2);
-            }
-        }
-
-        while (!copy.isEmpty()) {
-            Node node1 = copy.get(0);
-            copy.remove(node1);
-
-            while (!copy.isEmpty()) {
-                Node node2 = copy.get(0);
-                copy.remove(node2);
+        if (nodes.size() < 2)
+            return;
+        for (int i = 0; i < nodes.size(); i++) {
+            for (int j = i + 1; j < nodes.size(); j++) {
+                Node node1 = nodes.get(i);
+                Node node2 = nodes.get(j);
                 if (node1.pointsToTheSameThing(node2)) {
                     node1.merge(node2);
-                    node2.closeChannel();
-                } else {
-                    results.add(node2);
+                    removeNode(node2);
                 }
             }
-
-            results.add(node1);
         }
-
-        for (Node node : results) {
-            if (node.getState() == ClusterConnectionStates.START) {
-                node.sendStart(false);
-            }
-        }
-
-        nodes = results;
     }
 
 
@@ -681,9 +658,7 @@ public class Cluster implements Alarmable, PropertyListener {
      * @param uuid The uuid of the node being declared dead.
      * @throws IOException If there is a problem transferring ownership.
      */
-    public synchronized void deadNode(UUID uuid, Node node) throws LtsllcException, IOException {
-        boolean onlyNode = true;
-
+    public synchronized void deadNode(UUID uuid, Node node) throws IOException {
         election = new Election(nodes);
         election.setDeadNode(uuid);
 
@@ -723,10 +698,10 @@ public class Cluster implements Alarmable, PropertyListener {
     /**
      * Get the number of nodes that are connected to other nodes.
      * <H>
-     * This returns the number of nodes in the custer with a non-null IoSession.
+     * This returns the number of nodes in the custer with a non-null channel.
      * </H>
      *
-     * @return The number of nodes in the cluster with non-null IoSessions..
+     * @return The number of nodes in the cluster with non-null channels..
      */
     public int getNumberOfConnections() {
         int count = 0;

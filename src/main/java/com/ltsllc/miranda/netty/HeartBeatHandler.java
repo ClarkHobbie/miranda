@@ -11,6 +11,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageCodec;
+import io.netty.util.ReferenceCountUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -77,14 +78,19 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
      */
     @Override
     protected void decode(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf, List<Object> list) {
-        String s = byteBuf.toString(Charset.defaultCharset());
-        timeOfLastActivity = System.currentTimeMillis();
-        if (s.equals(Node.HEART_BEAT)) {
-            metTimeout = true;
-        } else if (s.equals(Node.HEART_BEAT_START)) {
-            channelHandlerContext.writeAndFlush(Node.HEART_BEAT);
-        } else {
-            list.add(s);
+        try {
+            String s = byteBuf.toString(Charset.defaultCharset());
+            timeOfLastActivity = System.currentTimeMillis();
+            if (s.equals(Node.HEART_BEAT)) {
+                metTimeout = true;
+            } else if (s.equals(Node.HEART_BEAT_START)) {
+                channelHandlerContext.writeAndFlush(Node.HEART_BEAT);
+            } else {
+                list.add(s);
+            }
+        }
+        finally {
+            ReferenceCountUtil.release(byteBuf);
         }
     }
 

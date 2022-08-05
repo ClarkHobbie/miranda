@@ -247,9 +247,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * @param s         The message.
      * @throws IOException                If there is a problem opening or closing a file.
      * @throws LtsllcException            If there is an application error.
-     * @throws CloneNotSupportedException If a request is made to clone something that cloning is not supported.
      */
-    public void messageReceived(String s) throws IOException, LtsllcException, CloneNotSupportedException {
+    public void messageReceived(String s) throws IOException, LtsllcException {
         logger.debug("entering messageReceived with state = " + state + " and message = " + s);
         s = s.toUpperCase();
 
@@ -653,28 +652,28 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         }
 
         if (channel == null) {
-            logger.warn("ioSession is null in sendStart");
+            logger.warn("channel is null in sendStart");
             return;
         }
 
         channelToSentStart.put(channel, new Boolean(true));
         logger.debug("entering sendStart");
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(START);
-        stringBuffer.append(" ");
-        stringBuffer.append(Miranda.getInstance().getMyUuid());
-        stringBuffer.append(" ");
-        stringBuffer.append(Miranda.getInstance().getMyHost());
-        stringBuffer.append(" ");
-        stringBuffer.append(Miranda.getInstance().getMyPort());
-        stringBuffer.append(" ");
-        stringBuffer.append(Miranda.getInstance().getMyStart());
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(START);
+        stringBuilder.append(" ");
+        stringBuilder.append(Miranda.getInstance().getMyUuid());
+        stringBuilder.append(" ");
+        stringBuilder.append(Miranda.getInstance().getMyHost());
+        stringBuilder.append(" ");
+        stringBuilder.append(Miranda.getInstance().getMyPort());
+        stringBuilder.append(" ");
+        stringBuilder.append(Miranda.getInstance().getMyStart());
 
-        channel.writeAndFlush(stringBuffer.toString());
-        logger.debug("wrote " + stringBuffer.toString());
+        channel.writeAndFlush(stringBuilder.toString());
+        logger.debug("wrote " + stringBuilder.toString());
 
-        AlarmClock.getInstance().scheduleOnce(this, Alarms.START,
-                Miranda.getProperties().getLongProperty(Miranda.PROPERTY_START_TIMEOUT));
+        //AlarmClock.getInstance().scheduleOnce(this, Alarms.START,
+        //        Miranda.getProperties().getLongProperty(Miranda.PROPERTY_START_TIMEOUT));
         timeoutsMet.put(Alarms.START, false);
 
         logger.debug("leaving sendStart");
@@ -1538,6 +1537,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public void handleMessagesEnd() throws LtsllcException {
         logger.debug("entering handleMessagesEnd");
 
+        Miranda.getInstance().setMyStart(nodeStart);
         setState(popState());
 
         logger.debug("leaving handleMessagesEnd");
@@ -1665,5 +1665,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             Cluster.getInstance().divideUpMessages();
         }
     }
+
 }
 

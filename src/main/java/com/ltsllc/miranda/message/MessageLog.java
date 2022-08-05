@@ -301,7 +301,7 @@ public class MessageLog implements Alarmable, PropertyListener {
         logger.debug("entering add with message: " + message + " and owner: " + owner);
 
         cache.add(message);
-        if (null == owner) {
+        if (null != owner) {
             uuidToOwner.add(message.getMessageID(), owner);
         }
 
