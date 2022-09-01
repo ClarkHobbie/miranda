@@ -711,8 +711,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
         sendSynchronize();
 
-        sendAllOwners();
         sendAllMessages();
+        sendAllOwners();
 
         setState(popState());
         if (state == ClusterConnectionStates.START) {
@@ -770,21 +770,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         return stateStack.pop();
     }
 
-
-
-    /**
-     * Send a Message over a channel
-     * <p>
-     * This method sends a com.ltsllc.miranda.Message over an IoSession.
-     * </P>
-     *
-     * @param uuid      The Message to send.  NOTE: the uuid must exist in the message cache.
-     */
-    public void sendMessage(UUID uuid) throws IOException, LtsllcException {
-        Message message = MessageLog.getInstance().get(uuid);
-        String strMessage = message.longToString();
-    }
-
     /**
      * Handle a message message
      *
@@ -840,9 +825,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * @param message   The message to send.
      */
     protected void sendMessage(Message message) {
-        String strMessage = message.longToString();
-
-        channel.writeAndFlush(strMessage);
+        String str = message.longToString();
+        channel.writeAndFlush(str);
     }
 
     /**
@@ -953,22 +937,25 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("leaving handelOwner");
     }
 
+    /**
+     * send all the messages that we "know" about
+     *
+     * @throws IOException If there is an error copying the messages
+     */
     public void sendAllMessages() throws IOException {
         logger.debug("entering sendAllMessages");
 
         channel.writeAndFlush(MESSAGES);
 
         for (Message message : MessageLog.getInstance().copyAllMessages()) {
-            String msg = message.longToString();
-
-            channel.writeAndFlush(msg);
-            logger.debug("wrote " + msg);
+            sendMessage(message);
+            logger.debug("wrote " + message.getMessageID());
         }
 
         channel.writeAndFlush(MESSAGES_END);
         logger.debug("wrote " + MESSAGES_END);
 
-        logger.debug("leaving sendMessages");
+        logger.debug("leaving sendAllMessages");
     }
 
     /**
@@ -1577,8 +1564,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public void handleSynchronizationStartInGeneral(String input) throws IOException, LtsllcException {
         sendSynchronize();
 
-        sendAllOwners();
         sendAllMessages();
+        sendAllOwners();
     }
 
     /**

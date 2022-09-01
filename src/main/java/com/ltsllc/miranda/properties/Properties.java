@@ -25,5 +25,6 @@ public enum Properties {
     propertiesFile,
     deadNodeTimeout,
     heartBeatTimeout,
-    startTimeout
+    startTimeout,
+    useHeartbeats
 }

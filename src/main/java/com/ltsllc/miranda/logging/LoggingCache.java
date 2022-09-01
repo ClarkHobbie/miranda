@@ -164,6 +164,7 @@ public class LoggingCache {
         uuidToInMemory.put (message.getMessageID(), true);
         uuidToTimesReferenced.put (message.getMessageID(), 0);
 
+
         //
         // see if we are over the  limit
         //

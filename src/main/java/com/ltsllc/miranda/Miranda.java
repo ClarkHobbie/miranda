@@ -263,6 +263,17 @@ public class Miranda implements PropertyListener {
     public static final String PROPERTY_DEFAULT_SCAN_PERIOD = "3000";
 
     /**
+     * whether the system should send heartbeats
+     */
+    public static final String PROPERTY_USE_HEARTBEATS = "heartbeats";
+
+    /**
+     * default is to send heartbeat messages
+     */
+    public static final String PROPERTY_DEFAULT_USE_HEART_BEATS = "on";
+
+
+    /**
      * The logger to use
      */
     protected static final Logger logger = LogManager.getLogger();
@@ -783,6 +794,7 @@ public class Miranda implements PropertyListener {
         properties.setIfNull(PROPERTY_COALESCE_PERIOD, PROPERTY_DEFAULT_COALESCE_PERIOD);
         properties.setIfNull(PROPERTY_COPY_SIZE, PROPERTY_DEFAULT_COPY_SIZE);
         properties.setIfNull(PROPERTY_SCAN_PERIOD, PROPERTY_DEFAULT_SCAN_PERIOD);
+        properties.setIfNull(PROPERTY_USE_HEARTBEATS, PROPERTY_DEFAULT_USE_HEART_BEATS);
     }
 
     /**

@@ -139,12 +139,14 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
         AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT,
                 Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL));
 
-        if (System.currentTimeMillis() >
-                timeOfLastActivity + Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL)) {
-            channel.writeAndFlush(Node.HEART_BEAT_START);
-            AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT,
-                    Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_TIMEOUT));
+        if (Miranda.getProperties().getBooleanProperty(Miranda.PROPERTY_USE_HEARTBEATS)) {
+            if (System.currentTimeMillis() >
+                    timeOfLastActivity + Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL)) {
+                channel.writeAndFlush(Node.HEART_BEAT_START);
+                AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT,
+                        Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_TIMEOUT));
 
+            }
         }
     }
 
