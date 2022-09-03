@@ -8,6 +8,7 @@ import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.message.MessageLog;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.logging.LoggingCache;
+import com.ltsllc.miranda.message.MessageType;
 import com.ltsllc.miranda.properties.PropertiesHolder;
 import io.netty.channel.embedded.EmbeddedChannel;
 import org.apache.logging.log4j.Level;
@@ -405,7 +406,7 @@ public class NodeTest {
     }
 
     @Test
-    public void handleStart () throws LtsllcException, CloneNotSupportedException {
+    public void handleStart () throws LtsllcException, CloneNotSupportedException, IOException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
         Cluster.defineStatics();
@@ -437,7 +438,7 @@ public class NodeTest {
         reply.append(" ");
         reply.append(Miranda.getInstance().getMyStart());
 
-        node.handleStart(stringBuffer.toString().toUpperCase());
+        node.handleStateStart(MessageType.START_START, stringBuffer.toString().toUpperCase());
 
         assert(node.getState() == ClusterConnectionStates.START);
     }

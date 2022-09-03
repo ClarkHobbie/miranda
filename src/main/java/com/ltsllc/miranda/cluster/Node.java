@@ -64,6 +64,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public static final String OWNER = "OWNER";
     public static final String OWNERS = "OWNERS";
     public static final String OWNERS_END = "OWNERS END";
+    public static final String START_START = "START START";
     public static final String START = "START";
     public static final String START_ACKNOWLEDGED = "START ACKNOWLEDGED";
     public static final String SYNCHRONIZE = "SYNCHRONIZE";
@@ -244,9 +245,9 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * This method is really the "heart" of this class.  It is where most of the application logic lives.
      * </P>
      *
-     * @param s         The message.
-     * @throws IOException                If there is a problem opening or closing a file.
-     * @throws LtsllcException            If there is an application error.
+     * @param s The message.
+     * @throws IOException     If there is a problem opening or closing a file.
+     * @throws LtsllcException If there is an application error.
      */
     public void messageReceived(String s) throws IOException, LtsllcException {
         logger.debug("entering messageReceived with state = " + state + " and message = " + s);
@@ -256,275 +257,259 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
         switch (state) {
             case START: {
-                switch (messageType) {
-                    case START: {
-                        handleStart(s);
-                        break;
-                    }
-
-                    case START_ACKNOWLEDGED: {
-                        handleStartAcknowledged(s);
-                        break;
-                    }
-
-                    case SYNCHRONIZE_START: {
-                        handleSynchronizeStartInStart(s);
-                        break;
-                    }
-
-                    case SYNCHRONIZE: {
-                        handleSynchronize(s);
-                        break;
-                    }
-
-                    case DEAD_NODE: {
-                        handleError(); // this would mean we had issued a heart beat start
-                        break;
-                    }
-
-                    case DEAD_NODE_START: {
-                        handleDeadNodeStart(s);
-                        break;
-                    }
-
-                    case ERROR_START: {
-                        handleErrorStart();
-                        break;
-                    }
-
-                    case ERROR: {
-                        break;
-                    }
-
-                    case LEADER: {
-                        handleLeader(s);
-                        break;
-                    }
-                    case TAKE: {
-                        handleTake(s);
-                        break;
-                    }
-
-                    case MESSAGE_DELIVERED: {
-                        handleMessageDelivered(s);
-                        break;
-                    }
-
-
-
-                    default: {
-                        handleError();
-                        break;
-                    }
-                }
+                handleStateStart(messageType, s);
                 break;
             }
-
 
             case MESSAGE: {
-                switch (messageType) {
-                    case MESSAGE: {
-                        handleMessage(s);
-                        break;
-                    }
-
-                    case MESSAGE_NOT_FOUND: {
-                        setState(popState());
-                        break;
-                    }
-
-                    case DEAD_NODE: {
-                        handleDeadNode(s);
-                        break;
-                    }
-
-                    case DEAD_NODE_START: {
-                        handleDeadNodeStart(s);
-                        break;
-                    }
-
-                    case ERROR_START: {
-                        handleErrorStart();
-                        break;
-                    }
-
-                    case ERROR: {
-                        break;
-                    }
-
-                    case MESSAGE_DELIVERED: {
-                        break;
-                    }
-
-                    case TAKE: {
-                        handleTake(s);
-                        break;
-                    }
-
-                    default: {
-                        handleError();
-                        logger.error("protocol error, returning to START state");
-                        break;
-                    }
-                }
+                handleStateMessage(messageType, s);
                 break;
             }
 
-
             case GENERAL: {
-                switch (messageType) {
-                    case ASSIGN: {
-                        handleAssign(s);
-                        break;
-                    }
-
-                    case DEAD_NODE: {
-                        handleDeadNode(s);
-                        break;
-                    }
-
-                    case DEAD_NODE_START: {
-                        handleDeadNodeStart(s);
-                        break;
-                    }
-
-                    case GET_MESSAGE: {
-                        handleGetMessage(s);
-                        break;
-                    }
-
-                    case MESSAGE_DELIVERED: {
-                        handleMessageDelivered(s);
-                        break;
-                    }
-
-                    case NEW_MESSAGE: {
-                        handleNewMessage(s, uuid);
-                        break;
-                    }
-
-                    case ERROR_START: {
-                        handleErrorStart();
-                        break;
-                    }
-
-                    case ERROR: {
-                        handleErrorGeneral();
-                        break;
-                    }
-
-                    case START: {
-                        handleStartGeneral(s);
-                        break;
-                    }
-
-                    case START_ACKNOWLEDGED: {
-                        handleStartAcknowledgedGeneral(s);
-                        break;
-                    }
-
-                    case SYNCHRONIZE: {
-                        handleSynchronize(s);
-                        break;
-                    }
-
-                    case SYNCHRONIZE_START: {
-                        handleSynchronizationStartInGeneral(s);
-                        break;
-                    }
-
-                    case TAKE: {
-                        handleTake(s);
-                        break;
-                    }
-
-                    default: {
-                        handleError();
-                        break;
-                    }
-                }
+                handleStateGeneral(messageType, s);
                 break;
             }
 
             case SYNCHRONIZING: {
-                switch (messageType) {
-                    case SYNCHRONIZE: {
-                        handleSynchronize(s);
-                        break;
-                    }
+                handleStateSynchronizing(messageType, s);
+                break;
+            }
+        }
 
-                    case OWNERS: {
-                        break;
-                    }
+        logger.debug("leaving messageReceived with state = " + state);
+    }
 
-                    case OWNER: {
-                        handleReceiveOwner(s);
-                        break;
-                    }
 
-                    case OWNERS_END: {
-                        break;
-                    }
+    public void handleStateMessage(MessageType messageType, String s) throws LtsllcException, IOException {
+        switch (messageType) {
+            case MESSAGE: {
+                handleMessage(s);
+                break;
+            }
 
-                    case MESSAGE: {
-                        handleReceiveMessage(s);
-                        break;
-                    }
+            case MESSAGE_NOT_FOUND: {
+                setState(popState());
+                break;
+            }
 
-                    case MESSAGES: {
-                        break;
-                    }
+            case DEAD_NODE: {
+                handleDeadNode(s);
+                break;
+            }
 
-                    case MESSAGES_END: {
-                        handleMessagesEnd();
-                        break;
-                    }
+            case DEAD_NODE_START: {
+                handleDeadNodeStart(s);
+                break;
+            }
 
-                    case ERROR_START: {
-                        handleErrorStart();
-                        break;
-                    }
+            case ERROR_START: {
+                handleErrorStart();
+                break;
+            }
 
-                    case DEAD_NODE: {
-                        handleDeadNode(s);
-                        break;
-                    }
+            case ERROR: {
+                break;
+            }
 
-                    case DEAD_NODE_START: {
-                        handleDeadNodeStart(s);
-                        break;
-                    }
+            case MESSAGE_DELIVERED: {
+                break;
+            }
 
-                    case ERROR: {
-                        break;
-                    }
+            case TAKE: {
+                handleTake(s);
+                break;
+            }
 
-                    case START: {
-                        handleStartSynchronizing(s);
-                        break;
-                    }
+            default: {
+                handleError();
+                logger.error("protocol error, returning to START state");
+                break;
+            }
+        }
+    }
 
-                    case TAKE: {
-                        handleTake(s);
-                        break;
-                    }
+    public void handleStateSynchronizing(MessageType messageType, String s) throws IOException, LtsllcException
+    {
+        switch (messageType) {
+            case OWNERS: {
+                break;
+            }
 
-                    case START_ACKNOWLEDGED: {
-                        break;
-                    }
+            case OWNER: {
+                handleReceiveOwner(s);
+                break;
+            }
 
-                    default: {
-                        handleError();
-                        break;
-                    }
-                }
+            case OWNERS_END: {
+                handleOwnersEnd();
+                break;
+            }
 
+            case MESSAGE: {
+                handleReceiveMessage(s);
+                break;
+            }
+
+            case MESSAGES: {
+                break;
+            }
+
+            case MESSAGES_END: {
+                handleMessagesEnd();
+                break;
+            }
+
+            case ERROR_START: {
+                handleErrorStart();
+                break;
+            }
+
+            case DEAD_NODE: {
+                handleDeadNode(s);
+                break;
+            }
+
+            case DEAD_NODE_START: {
+                handleDeadNodeStart(s);
+                break;
+            }
+
+            case ERROR: {
+                break;
+            }
+        }
+    }
+
+
+    public void handleStateStart(MessageType messageType, String s) throws LtsllcException, IOException {
+        switch (messageType) {
+            case MESSAGE: {
+                handleMessage(s);
+                break;
+            }
+
+            case MESSAGE_NOT_FOUND: {
+                setState(popState());
+                break;
+            }
+
+            case DEAD_NODE: {
+                handleDeadNode(s);
+                break;
+            }
+
+            case DEAD_NODE_START: {
+                handleDeadNodeStart(s);
+                break;
+            }
+
+            case ERROR_START: {
+                handleErrorStart();
+                break;
+            }
+
+            case ERROR: {
+                break;
+            }
+
+            case MESSAGE_DELIVERED: {
+                break;
+            }
+
+            case TAKE: {
+                handleTake(s);
+                break;
+            }
+
+            default: {
+                handleError();
+                logger.error("protocol error, returning to START state");
                 break;
             }
 
         }
-        logger.debug("leaving messageReceived with state = " + state);
     }
+
+    public void handleStateGeneral(MessageType messageType, String s) throws LtsllcException, IOException {
+        switch (messageType) {
+            case ASSIGN: {
+                handleAssign(s);
+                break;
+            }
+
+            case DEAD_NODE: {
+                handleDeadNode(s);
+                break;
+            }
+
+            case DEAD_NODE_START: {
+                handleDeadNodeStart(s);
+                break;
+            }
+
+            case GET_MESSAGE: {
+                handleGetMessage(s);
+                break;
+            }
+
+            case MESSAGE_DELIVERED: {
+                handleMessageDelivered(s);
+                break;
+            }
+
+            case NEW_MESSAGE: {
+                handleNewMessage(s, uuid);
+                break;
+            }
+
+            case ERROR_START: {
+                handleErrorStart();
+                break;
+            }
+
+            case ERROR: {
+                handleErrorGeneral();
+                break;
+            }
+
+            case START: {
+                break;
+            }
+
+            case START_START: {
+                handleStartStartGeneral(s);
+                break;
+            }
+
+            case START_ACKNOWLEDGED: {
+                handleStartAcknowledgedGeneral(s);
+                break;
+            }
+
+            case SYNCHRONIZE: {
+                handleSynchronize(s);
+                break;
+            }
+
+            case SYNCHRONIZE_START: {
+                handleSynchronizationStartInGeneral(s);
+                break;
+            }
+
+            case TAKE: {
+                handleTake(s);
+                break;
+            }
+
+            default: {
+                handleError();
+                break;
+            }
+        }
+
+    }
+
 
     /**
      * Convert a string to a MessageType
@@ -580,6 +565,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             messageType = MessageType.OWNER;
         } else if (s.startsWith(START_ACKNOWLEDGED)) {
             messageType = MessageType.START_ACKNOWLEDGED;
+        } else if (s.startsWith(START_START)) {
+            messageType = MessageType.START_START;
         } else if (s.startsWith(START)) {
             messageType = MessageType.START;
         } else if (s.startsWith(SYNCHRONIZE_START)) {
@@ -603,12 +590,14 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * This method sets the partnerID and the state by side effect.  The response to this is to send a start of our own,
      * with our UUID and to go into the general state.
      *
-     * @param input     The string that came to us.
+     * @param input The string that came to us.
      */
-    protected synchronized void handleStart(String input)  {
+    protected synchronized void handleStartStart(String input) {
         logger.debug("entering handleStart");
         Scanner scanner = new Scanner(input);
-        scanner.skip(START);
+        scanner.next();
+        scanner.next(); // START START
+
         uuid = UUID.fromString(scanner.next());
         registerUuid(uuid);
         host = scanner.next();
@@ -647,7 +636,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      */
     public void sendStart(boolean force) {
         if (channelToSentStart.get(channel) != null && channelToSentStart.get(channel).booleanValue()
-                    && !force) {
+                && !force) {
             return;
         }
 
@@ -687,7 +676,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * with our own uuid, host and port and switching to state.
      * </P>
      *
-     * @param input     The synchronization start message
+     * @param input The synchronization start message
      */
     public void handleSynchronizeStartInStart(String input) throws LtsllcException, IOException {
         logger.debug("entering handleSynchronizeStart with input = " + input);
@@ -725,7 +714,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     /**
      * Handle an error start message by sending out an error message returning to the start state, and sending a new
      * start message
-     *
      */
     public void handleErrorStart() {
         logger.debug("entering handleErrorStart");
@@ -773,13 +761,13 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     /**
      * Handle a message message
      *
-     * @param input     The message we received;
+     * @param input The message we received;
      * @throws LtsllcException If there is a problem looking up the message.
      */
     public synchronized void handleMessage(String input) throws LtsllcException, IOException {
         logger.debug("entering handleMessage with input = " + input);
         Message message = Message.readLongFormat(input);
-        MessageLog.getInstance().add(message,Miranda.getInstance().getMyUuid());
+        MessageLog.getInstance().add(message, Miranda.getInstance().getMyUuid());
 
         setState(popState());
 
@@ -798,8 +786,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * <p>
      * This method takes care of reading in the message ID and sending back the requested message.
      *
-     * @param input     A string containing the new message message.  Note that this method assumes that this string has
-     *                  been capitalized.
+     * @param input A string containing the new message message.  Note that this method assumes that this string has
+     *              been capitalized.
      * @throws IOException If there is a problem looking up the message in the cache.
      */
     protected void handleGetMessage(String input) throws IOException, LtsllcException {
@@ -822,7 +810,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     /**
      * Send a message message
      *
-     * @param message   The message to send.
+     * @param message The message to send.
      */
     protected void sendMessage(Message message) {
         String str = message.longToString();
@@ -839,8 +827,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public void handleError() {
         logger.debug("entering handleError");
 
-        channel.writeAndFlush(ERROR_START);
-        logger.debug("wrote " + ERROR_START);
         setState(ClusterConnectionStates.START);
 
         sendStart(true);
@@ -1041,9 +1027,9 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     /**
      * Record the information from the START message, acknowledge the START message, but don't send a START of owr own
      *
-     * @param input     The START message.
+     * @param input The START message.
      */
-    public void handleStartGeneral(String input) {
+    public void handleStartStartGeneral(String input) {
         logger.debug("entering handleStartGeneral");
         Scanner scanner = new Scanner(input);
         scanner.next(); // START
@@ -1084,7 +1070,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         channel.writeAndFlush(OWNERS);
 
         for (UUID messageID : MessageLog.getInstance().getUuidToOwner().getAllKeys()) {
-            StringBuilder stringBuilder  = new StringBuilder();
+            StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.append(OWNER);
             stringBuilder.append(" ");
             stringBuilder.append(messageID);
@@ -1107,7 +1093,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * This method sends the proper response to a synchronize message - to whit a owners message.
      * </P>
      *
-     * @param input     A String containing the synchronize message
+     * @param input A String containing the synchronize message
      */
     public void handleSynchronize(String input) {
         Scanner scanner = new Scanner(input);
@@ -1201,11 +1187,11 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * This consists of sending a start acknowledged message, and the sending a start of our own.
      * </P>
      *
-     * @param input     A string containing the start message.
+     * @param input A string containing the start message.
      * @throws LtsllcException            Coalesce throws this.
      * @throws CloneNotSupportedException Coalesce also throws this.
      */
-    public void handleStartSynchronizing(String input)   {
+    public void handleStartSynchronizing(String input) {
         logger.debug("entering handleStartSynchronizing");
 
         Scanner scanner = new Scanner(input);
@@ -1276,7 +1262,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * @param alarm The alarm.
      */
     @Override
-    public void alarm(Alarms alarm)  {
+    public void alarm(Alarms alarm) {
         switch (alarm) {
             case START: {
                 if (!timeoutsMet.get(Alarms.START)) {
@@ -1306,7 +1292,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     /**
      * Handles a dead node start message by sending back a dead node message of it own
      *
-     * @param input     The dead node start message.
+     * @param input The dead node start message.
      */
     public void handleDeadNodeStart(String input) throws LtsllcException, IOException {
         logger.debug("entering handleDeadNodeStart");
@@ -1458,7 +1444,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     /**
      * Handle a take message
      *
-     * @param input     A string containing the take message.
+     * @param input A string containing the take message.
      * @throws IOException If there is a problem transferring ownership
      */
     public void handleTake(String input) throws IOException {
@@ -1518,14 +1504,13 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * The end of the messages has been encountered.  This is basically the end of the synchronization process.
      *
      * <H>
-     *     In reply to this event the node goes into the start state and sends a start message.
+     * In reply to this event the node goes into the start state and sends a start message.
      * </H>
      */
     public void handleMessagesEnd() throws LtsllcException {
         logger.debug("entering handleMessagesEnd");
 
         Miranda.getInstance().setMyStart(nodeStart);
-        setState(popState());
 
         logger.debug("leaving handleMessagesEnd");
     }
@@ -1534,8 +1519,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * Send a synchronization message and start synchronizing with the node.
      *
      * <H>
-     *     A synchronization message consists of more than a request to synchronize it includes the uuid of this node,
-     *     the host of this node, the port it is listening on and the time when this node started.
+     * A synchronization message consists of more than a request to synchronize it includes the uuid of this node,
+     * the host of this node, the port it is listening on and the time when this node started.
      * </H>
      */
     public void sendSynchronize() {
@@ -1584,7 +1569,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     /**
      * Take possession of a message
      * <H>
-     *     This method tells the cluster that this node is taking possession of the message.
+     * This method tells the cluster that this node is taking possession of the message.
      * </H>
      *
      * @param input The assignment message.
@@ -1595,12 +1580,13 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         scanner.next(); // ASSIGN MESSAGE
         UUID uuid = UUID.fromString(scanner.next());
 
-        Cluster.getInstance().takeOwnershipOf (Miranda.getInstance().getMyUuid(), uuid);
+        Cluster.getInstance().takeOwnershipOf(Miranda.getInstance().getMyUuid(), uuid);
     }
 
-    public void handleStartAcknowledged (String input) {
+    public void handleStartAcknowledged(String input) {
         Scanner scanner = new Scanner(input);
-        scanner.next(); scanner.next(); // START ACKNOWLEDGED
+        scanner.next();
+        scanner.next(); // START ACKNOWLEDGED
 
         uuid = UUID.fromString(scanner.next());
         registerUuid(uuid);
@@ -1611,9 +1597,10 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         timeoutsMet.put(Alarms.START, true);
     }
 
-    public void handleStartAcknowledgedGeneral (String input) {
+    public void handleStartAcknowledgedGeneral(String input) {
         Scanner scanner = new Scanner(input);
-        scanner.next(); scanner.next(); // START ACKNOWLEDGED
+        scanner.next();
+        scanner.next(); // START ACKNOWLEDGED
 
         uuid = UUID.fromString(scanner.next());
         registerUuid(uuid);
@@ -1623,19 +1610,19 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         timeoutsMet.put(Alarms.START, true);
     }
 
-    public void handleErrorGeneral () {
+    public void handleErrorGeneral() {
         sendStart(true);
         setState(ClusterConnectionStates.START);
     }
 
-    public void registerUuid (UUID uuid) {
+    public void registerUuid(UUID uuid) {
         ChannelHandler channelHandler = channel.pipeline().get("HEARTBEAT");
         HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
         heartBeatHandler.setUuid(uuid);
         heartBeatHandler.setNode(this);
     }
 
-    public void sendLeader () throws LtsllcException {
+    public void sendLeader() throws LtsllcException {
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append(LEADER);
         stringBuilder.append(" ");
@@ -1644,13 +1631,36 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         channel.writeAndFlush(stringBuilder);
     }
 
-    public void handleLeader (String input) throws LtsllcException, IOException {
+    public void handleLeader(String input) throws LtsllcException, IOException {
         Scanner scanner = new Scanner(input);
         scanner.next(); // LEADER
         UUID uuid = UUID.fromString(scanner.next());
         if (uuid.equals(Miranda.getInstance().getMyUuid())) {
             Cluster.getInstance().divideUpMessages();
         }
+    }
+
+    /**
+     * handle the end of owners message
+     *
+     * <p>
+     * Because this signals a return to whatever the node was doing before a synchronize was issued we restore the
+     * state.
+     * </P>
+     */
+    public void handleOwnersEnd() {
+        try {
+            setState(popState());
+        } catch (LtsllcException e) {
+            sendErrorStart();
+        }
+    }
+
+    /**
+     * send an error start over the channel
+     */
+    public void sendErrorStart() {
+        channel.writeAndFlush(ERROR_START);
     }
 
 }

@@ -10,8 +10,6 @@ package com.ltsllc.miranda.cluster;
 public enum ClusterConnectionStates {
     ELECTION,
     GENERAL,
-    GET_OWNERS,
-    GET_MESSAGES,
     MESSAGE,
     START,
     SYNCHRONIZING
