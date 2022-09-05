@@ -275,6 +275,10 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                 handleStateSynchronizing(messageType, s);
                 break;
             }
+
+            default: {
+                throw new LtsllcException("unknown state, " + state);
+            }
         }
 
         logger.debug("leaving messageReceived with state = " + state);
