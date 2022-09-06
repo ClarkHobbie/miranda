@@ -426,6 +426,16 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                 break;
             }
 
+            case START: {
+                handleStart(s);
+                break;
+            }
+
+            case START_ACKNOWLEDGED: {
+                handleStartAcknowledged(s);
+                break;
+            }
+
             default: {
                 handleError();
                 logger.error("protocol error, returning to START state");
@@ -433,6 +443,10 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             }
 
         }
+    }
+
+    public void handleStart (String input) {
+
     }
 
     public void handleStateGeneral(MessageType messageType, String s) throws LtsllcException, IOException {
@@ -649,7 +663,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             return;
         }
 
-        channelToSentStart.put(channel, new Boolean(true));
+        channelToSentStart.put(channel, true);
         logger.debug("entering sendStart");
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append(START);
@@ -663,7 +677,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         stringBuilder.append(Miranda.getInstance().getMyStart());
 
         channel.writeAndFlush(stringBuilder.toString());
-        logger.debug("wrote " + stringBuilder.toString());
+        logger.debug("wrote " + stringBuilder);
 
         //AlarmClock.getInstance().scheduleOnce(this, Alarms.START,
         //        Miranda.getProperties().getLongProperty(Miranda.PROPERTY_START_TIMEOUT));

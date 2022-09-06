@@ -697,9 +697,9 @@ public class Cluster implements Alarmable, PropertyListener {
 
     /**
      * Get the number of nodes that are connected to other nodes.
-     * <H>
+     * <P>
      * This returns the number of nodes in the custer with a non-null channel.
-     * </H>
+     * </P>
      *
      * @return The number of nodes in the cluster with non-null channels..
      */
