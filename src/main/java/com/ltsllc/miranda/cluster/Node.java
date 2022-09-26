@@ -426,13 +426,18 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                 break;
             }
 
-            case START: {
-                handleStart(s);
+            case START_START: {
+                handleStartStart(s);
                 break;
             }
 
             case START_ACKNOWLEDGED: {
                 handleStartAcknowledged(s);
+                break;
+            }
+
+            case NEW_MESSAGE: {
+                handleNewMessage(s, uuid);
                 break;
             }
 
@@ -443,10 +448,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             }
 
         }
-    }
-
-    public void handleStart (String input) {
-
     }
 
     public void handleStateGeneral(MessageType messageType, String s) throws LtsllcException, IOException {
@@ -666,7 +667,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         channelToSentStart.put(channel, true);
         logger.debug("entering sendStart");
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append(START);
+        stringBuilder.append(START_START);
         stringBuilder.append(" ");
         stringBuilder.append(Miranda.getInstance().getMyUuid());
         stringBuilder.append(" ");
@@ -1050,7 +1051,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public void handleStartStartGeneral(String input) {
         logger.debug("entering handleStartGeneral");
         Scanner scanner = new Scanner(input);
-        scanner.next(); // START
+        scanner.next(); scanner.next(); // START START
         uuid = UUID.fromString(scanner.next());
         registerUuid(uuid);
         host = scanner.next();

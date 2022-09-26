@@ -1,7 +1,11 @@
 package com.ltsllc.miranda.logging;
 
 import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.commons.UncheckedLtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
+import com.ltsllc.miranda.alarm.AlarmClock;
+import com.ltsllc.miranda.alarm.Alarmable;
+import com.ltsllc.miranda.alarm.Alarms;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.Miranda;
 import org.apache.logging.log4j.LogManager;
@@ -19,7 +23,7 @@ import java.util.*;
  * using a most frequently used algorithm.  Finally, the class can rebuild itself from a past file.
  * </P>
  */
-public class LoggingCache {
+public class LoggingCache implements Alarmable{
     public static final Logger logger = LogManager.getLogger();
 
     /**
@@ -557,4 +561,28 @@ public class LoggingCache {
     public synchronized Collection<Message> getAllMessages () {
         return uuidToMessage.values();
     }
+
+    /**
+     * An alarm which the class previously registered for went off
+     *
+     * @param alarm The alarm that the class previously registered for.
+     * @throws IOException If the method (this method calls the compact method) this method calls throws an
+     *                     exception.
+     */
+    @Override
+    public void alarm(Alarms alarm) throws IOException {
+        if (alarm == Alarms.COMPACTION) {
+            compact();
+            setupCompaction();
+        } else {
+            throw new UncheckedLtsllcException("alarm called with " + alarm);
+        }
+    }
+
+    public void setupCompaction() {
+        AlarmClock.getInstance().scheduleOnce(this, Alarms.COMPACTION,
+                Miranda.getProperties().getLongProperty(Miranda.PROPERTY_COMPACTION_TIME));
+
+    }
+
 }
