@@ -288,8 +288,8 @@ public class Message implements Comparable<Message> {
         //
         // TODO: find a replacement for Long
         //
-        Long l1 = new Long(messageID.getMostSignificantBits());
-        Long l2 = new Long(messageID.getLeastSignificantBits());
+        Long l1 = new Long(this.messageID.getMostSignificantBits());
+        Long l2 = new Long(this.messageID.getLeastSignificantBits());
 
         int result = l1.compareTo(message.messageID.getMostSignificantBits());
 

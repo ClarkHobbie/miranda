@@ -180,14 +180,13 @@ public class MessageLog implements  PropertyListener {
         ImprovedFile messageBackup = new ImprovedFile(logfile.getName() + ".backup");
         ImprovedFile ownersBackup = new ImprovedFile(ownersFile.getName() + ".backup");
 
-        if (messageBackup.exists()) {
-            logger.error("Backup file, " + messageBackup + ", already exists");
-            throw new LtsllcException("backup file already exists " + messageBackup);
+        if (messageBackup.exists())
+        {
+            logger.info("removing backup " + messageBackup);
         }
 
         if (ownersBackup.exists()) {
-            logger.error("Backup file, " + ownersBackup + ", already exists");
-            throw new LtsllcException("backup file already exists " + ownersBackup);
+            logger.info("removing backup " + ownersBackup);
         }
 
         logfile.renameTo(messageBackup);
@@ -195,8 +194,8 @@ public class MessageLog implements  PropertyListener {
         cache = new LoggingCache(logfile, loadLimit);
         uuidToOwner = new LoggingMap(ownersFile);
 
-        restoreOwnersFile(ownersBackup);
-        restoreMessages(messageBackup);
+        restoreOwnersFile(ownersFile);
+        restoreMessages(logfile);
 
         return this;
     }
@@ -214,6 +213,7 @@ public class MessageLog implements  PropertyListener {
     public void restoreOwnersFile(ImprovedFile file) throws IOException {
         FileReader fileReader = null;
         BufferedReader bufferedReader = null;
+        Map<UUID, UUID> temp = new HashMap<>();
 
         try {
 
@@ -227,7 +227,7 @@ public class MessageLog implements  PropertyListener {
                 UUID messageUuid = UUID.fromString(scanner.next());
                 UUID ownerUuid = UUID.fromString(scanner.next());
 
-                uuidToOwner.add(messageUuid, ownerUuid);
+                temp.put(messageUuid, ownerUuid);
 
                 line = bufferedReader.readLine();
             }
@@ -240,43 +240,32 @@ public class MessageLog implements  PropertyListener {
                 fileReader.close();
             }
         }
+
+        if (file.exists()) {
+            file.delete();
+        }
+        uuidToOwner = new LoggingMap(file);
+
+        //
+        // copy over the messages
+        //
+        for (UUID messageID : temp.keySet()) {
+            uuidToOwner.add(messageID, temp.get(messageID));
+        }
     }
 
     /**
      * Restore the message cache
      * <p>
-     * This method attempts to recover from a crash by restoring the message information that the system had when it
-     * crashed.  It does this by reading an old messages file into the cache.
+     * There's not a whole lot we can do in this situation. Basically, this method complains if the file does not exist.
      * </P>
      *
      * @param file The old message logfile.
-     * @throws IOException If there is a problem reading in the old message file.
+     * @throws LtsllcException If the logfile does not exist.
      */
-    public void restoreMessages(ImprovedFile file) throws IOException {
-
-        FileReader fileReader = null;
-        BufferedReader bufferedReader = null;
-
-        try {
-            fileReader = new FileReader(file);
-            bufferedReader = new BufferedReader(fileReader);
-
-            String line = bufferedReader.readLine();
-
-            while (line != null) {
-                Message message = Message.readLongFormat(line);
-                cache.add(message);
-
-                line = bufferedReader.readLine();
-            }
-        } finally {
-            if (bufferedReader != null) {
-                bufferedReader.close();
-            }
-
-            if (fileReader != null) {
-                fileReader.close();
-            }
+    public void restoreMessages(ImprovedFile file) throws LtsllcException {
+        if (!file.exists()) {
+            throw new LtsllcException("the file," + file + "does not exist so it cannot be restored.");
         }
     }
 
@@ -293,6 +282,9 @@ public class MessageLog implements  PropertyListener {
         uuidToOwner.remove(message);
     }
 
+    public boolean outOfBounds (int value) {
+        return cache.outOfBounds(value);
+    }
     /**
      * Add the message to the logfile and record the ownership of the message
      *
@@ -333,6 +325,10 @@ public class MessageLog implements  PropertyListener {
 
     public List<Message> copyAllMessages() throws IOException {
         return cache.copyAllMessages();
+    }
+
+    public List<Message> copyMessages(int limit, int restartIndexIn, int restartIndexOut) {
+        return cache.copyMessages(limit, restartIndexIn, restartIndexOut);
     }
 
     public UUID getOwnerOf(UUID message) {
@@ -480,4 +476,7 @@ public class MessageLog implements  PropertyListener {
     public boolean contains(UUID uuid) {
         return uuidToOwner.get(uuid) != null;
     }
+
+
+
 }

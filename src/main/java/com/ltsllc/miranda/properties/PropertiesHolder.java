@@ -59,6 +59,10 @@ public class PropertiesHolder extends Properties {
         return properties.getBooleanProperty(propertyName);
     }
 
+    public String getStringProperty (String propertyName) {
+        return properties.getStringProperty(propertyName);
+    }
+
     public void setIfNull (String propertyName, String propertyValue) {
         properties.setIfNull(propertyName, propertyValue);
     }

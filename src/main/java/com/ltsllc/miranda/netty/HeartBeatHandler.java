@@ -33,6 +33,16 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
 
     protected UUID uuid = null;
 
+    protected boolean online;
+
+    public boolean isOnline() {
+        return online;
+    }
+
+    public void setOnline(boolean online) {
+        this.online = online;
+    }
+
     public UUID getUuid() {
         return uuid;
     }
@@ -83,6 +93,7 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
             timeOfLastActivity = System.currentTimeMillis();
             if (s.equals(Node.HEART_BEAT)) {
                 metTimeout = true;
+                online = true;
             } else if (s.equals(Node.HEART_BEAT_START)) {
                 channelHandlerContext.writeAndFlush(Node.HEART_BEAT);
             } else {
@@ -165,4 +176,5 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
             Cluster.getInstance().deadNode(uuid,node);
         }
     }
+
 }

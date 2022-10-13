@@ -34,7 +34,7 @@ public class LoggingCache implements Alarmable{
     /**
      * A message's UUID to the message itself the "main" part of the cache
      */
-    protected Map<UUID, Message> uuidToMessage = new HashMap<>();
+    protected TreeMap<UUID, Message> uuidToMessage = new TreeMap<>();
 
     /**
      * A map from a message's UUID to the location in the file where it can be found
@@ -119,7 +119,7 @@ public class LoggingCache implements Alarmable{
         return uuidToMessage;
     }
 
-    public void setUuidToMessage(Map<UUID, Message> uuidToMessage) {
+    public void setUuidToMessage(TreeMap<UUID, Message> uuidToMessage) {
         this.uuidToMessage = uuidToMessage;
     }
 
@@ -130,6 +130,23 @@ public class LoggingCache implements Alarmable{
     public void setFile(ImprovedFile file) {
         this.file = file;
     }
+
+
+    /**
+     * return if the value is outside the cache
+     *
+     * @param value the value
+     * @return whether the value is outside the allowable range
+     */
+    public boolean outOfBounds (int value) {
+        if ((value > -1) && (value < uuidToInMemory.size())) {
+            return false;
+        }
+        else {
+            return true;
+        }
+    }
+
 
     /**
      * Take ownership of a message.
@@ -144,6 +161,7 @@ public class LoggingCache implements Alarmable{
         FileWriter fileWriter = null;
         BufferedWriter bufferedWriter = null;
         Long location = null;
+
         try {
             location = file.length();
             fileWriter = new FileWriter(file, true);
@@ -161,21 +179,19 @@ public class LoggingCache implements Alarmable{
         }
 
         //
+        // if we will take too much space then migrate some messages to disk
+        //
+        if (currentLoad + message.getContents().length >= loadLimit) {
+            migrateLeastReferencedMessagesToDisk(loadLimit - message.getContents().length);
+        }
+
+        //
         // then add it to the cache
         //
         uuidToMessage.put (message.getMessageID(), message);
         uuidToLocation.put (message.getMessageID(), location);
         uuidToInMemory.put (message.getMessageID(), true);
         uuidToTimesReferenced.put (message.getMessageID(), 0);
-
-
-        //
-        // see if we are over the  limit
-        //
-        currentLoad += message.getContents().length;
-        while (currentLoad > loadLimit) {
-            migrateLeastReferencedMessageToDisk(message);
-        }
     }
 
     /**
@@ -214,28 +230,76 @@ public class LoggingCache implements Alarmable{
     }
 
     /**
-     * Move the least referenced message to disk
+     * Copy messages up to some limit
+     *
+     * @param limit The number of .content.length in the list
+     *
+     * @return A list of messages with, at most. limit number of content.length bytes in it.
      */
-    public synchronized void migrateLeastReferencedMessageToDisk(Message messageToAvoid) {
+    public synchronized List<Message> copyMessages (int limit,int restartIndexIn, int restartIndexOut) {
+        List<Message> list = new ArrayList<>();
+
+        Iterator<UUID> iter = uuidToMessage.keySet().iterator();
+
+        int spaceUsed = 0;
+        int index = 0;
+
         //
-        // find the least referenced message
+        // skip to restartIndexIn
         //
-        Message message2 = null;
-        int leastReferenced = Integer.MAX_VALUE;
-        for (Message message: uuidToMessage.values()) {
-            if (!message.equals(messageToAvoid)) {
-                int timesReferenced = uuidToTimesReferenced.get(message.getMessageID());
-                if (timesReferenced < leastReferenced) {
-                    leastReferenced = timesReferenced;
-                    message2 = message;
-                }
-            }
+        while (iter.hasNext() && (restartIndexIn != index)) {
+            index++;
+            restartIndexOut++;
+            iter.next();
         }
 
         //
-        // then migrate it
+        // if we hit the end element then signal by returning null
         //
-        moveMessageToDisk(message2);
+        if (!iter.hasNext()) {
+            return null;
+        }
+
+        //
+        // otherwise start copying
+        //
+        while (iter.hasNext()) {
+            UUID u = iter.next();
+            Message m = uuidToMessage.get(u);
+
+            if ((spaceUsed + m.getContents().length) < limit) {
+                list.add(m);
+                restartIndexOut++;
+                spaceUsed += m.getContents().length;
+            } else {
+                break;
+            }
+        }
+
+        restartIndexOut++;
+        return list;
+    }
+
+    /**
+     * Move the least referenced message to disk
+     */
+    public synchronized void migrateLeastReferencedMessagesToDisk(int desiredLoad) {
+        //
+        // sort the cache by number of times referenced
+        //
+        List<Message> list = new ArrayList<>(uuidToMessage.size());
+
+        int index = 0;
+        for (Message message : uuidToMessage.values()) {
+            list.add(index, message);
+        }
+
+        Collections.sort(list, new TimesReferencedComparator(uuidToTimesReferenced));
+
+        while (currentLoad < desiredLoad) {
+            Message message = list.get(list.size());
+            moveMessageToDisk(message);
+        }
     }
 
     /**
@@ -289,6 +353,9 @@ public class LoggingCache implements Alarmable{
         }
 
         currentLoad += message.getContents().length;
+        if (currentLoad > loadLimit) {
+            
+        }
         uuidToInMemory.put (uuid, true);
         uuidToMessage.put (uuid, message);
         return message;

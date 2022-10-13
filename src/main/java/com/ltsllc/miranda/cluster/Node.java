@@ -72,6 +72,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public static final String TAKE = "TAKE";
     public static final String TIMEOUT = "TIMEOUT";
 
+    protected boolean online;
+
     public Node(UUID myUUID, String host, int port, Channel channel) {
         this.channel = channel;
         this.uuid = myUUID;
@@ -206,6 +208,9 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         this.port = port;
     }
 
+    public void setOnline(boolean online) {
+        this.online = online;
+    }
 
     /**
      * Send a message to the node informing it that we created a message
@@ -1002,6 +1007,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         sendSynchronizationStart();
         pushState(state);
         setState(SYNCHRONIZING);
+        setOnline(true);
     }
 
     /**
@@ -1068,6 +1074,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             sendSynchronizationStart();
             pushState(state);
             setState(SYNCHRONIZING);
+            setOnline(true);
         }
 
         logger.debug("leaving handleStartGeneral");
@@ -1613,6 +1620,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         port = scanner.nextInt();
 
         setState(GENERAL);
+        setOnline(true);
         timeoutsMet.put(Alarms.START, true);
     }
 
@@ -1682,5 +1690,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         channel.writeAndFlush(ERROR_START);
     }
 
+    public boolean isOnline() {
+        return uuid != null;
+    }
 }
 

@@ -1,6 +1,7 @@
-package com.ltsllc.miranda.netty;
+package com.ltsllc.miranda.logging.netty;
 
 import com.ltsllc.miranda.TestSuperclass;
+import com.ltsllc.miranda.netty.StringEncoder;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;

@@ -272,6 +272,15 @@ public class Miranda implements PropertyListener {
      */
     public static final String PROPERTY_DEFAULT_USE_HEART_BEATS = "on";
 
+    /**
+     * The number of bytes in messages that the system should try and deliver
+     */
+    public static final String PROPERTY_MESSAGE_COPY_LIMIT = "messageCopyLimit";
+
+    /**
+     * The default is 1GB
+     */
+    public static final String PROPERTY_DEFAULT_MESSAGE_COPY_LIMIT = "1000000";
 
     /**
      * The logger to use
@@ -425,6 +434,19 @@ public class Miranda implements PropertyListener {
     }
 
     /**
+     * where we should pick up
+     */
+    protected int restartIndex = 0;
+
+    public int getRestartIndex() {
+        return restartIndex;
+    }
+
+    public void setRestartIndex(int restartIndex) {
+        this.restartIndex = restartIndex;
+    }
+
+    /**
      * The constructor for the class
      *
      * <P>
@@ -539,6 +561,7 @@ public class Miranda implements PropertyListener {
         Miranda.properties = properties;
     }
 
+
     /**
      * Miranda's main loop
      *
@@ -557,24 +580,40 @@ public class Miranda implements PropertyListener {
      */
     public synchronized void mainLoop () throws IOException, LtsllcException {
         logger.debug("starting mainLoop, with keepRunning = " + keepRunning);
+
+        //
+        // run garbage collection to avoid running out of memory
+        //
+        Runtime.getRuntime().gc();
+
         if (keepRunning) {
             /*
-             * Try and deliver all the messages
+             * Try and deliver some messages
              */
-            List<Message> allMessages = MessageLog.getInstance().copyAllMessages();
-            for (Message message : allMessages) {
-                deliver(message);
+            if (MessageLog.getInstance().outOfBounds(restartIndex)) {
+                restartIndex = 0;
             }
 
-            //
-            // if we want to synchronize but we are disconnected from all the other nodes in the cluster then...
-            //
-            if (Cluster.getInstance().getAllNodesFailed() && synchronizationFlag) {
-                logger.debug("getAllNodesFailed and synchronizationFlag set, entering recovery");
-                event.info("We want to synchronize but we are disconnected from all the nodes in the cluster so recovering locally");
-                Miranda.getInstance().setSynchronizationFlag(false);
-                Cluster.getInstance().setAllNodesFailed(false);
-                recoverLocally();
+            List<Message> messages = MessageLog.getInstance().copyMessages(
+                    Miranda.properties.getIntProperty(Miranda.PROPERTY_MESSAGE_COPY_LIMIT),
+                    restartIndex,
+                    restartIndex
+            );
+            if (messages != null) {
+                for (Message message : messages) {
+                    deliver(message);
+                }
+
+                //
+                // if we want to synchronize but we are disconnected from all the other nodes in the cluster then...
+                //
+                if (Cluster.getInstance().getAllNodesFailed() && synchronizationFlag) {
+                    logger.debug("getAllNodesFailed and synchronizationFlag set, entering recovery");
+                    event.info("We want to synchronize but we are disconnected from all the nodes in the cluster so recovering locally");
+                    Miranda.getInstance().setSynchronizationFlag(false);
+                    Cluster.getInstance().setAllNodesFailed(false);
+                    recoverLocally();
+                }
             }
         }
         logger.debug("leaving mainLoop");
@@ -604,9 +643,23 @@ public class Miranda implements PropertyListener {
             System.exit(-1);
         }
 
+        setupClustering();
         setupMessageLog();
+        try {
+            synchronized (this) {
+                wait(6000);
+            }
+        } catch (InterruptedException e) {
+            ;
+        }
         if (shouldRecover()) {
             recover();
+        }
+        else {
+            ImprovedFile temp = new ImprovedFile(Miranda.getProperties().getStringProperty(PROPERTY_MESSAGE_LOG));
+            temp.backup(".backup");
+            temp = new ImprovedFile(Miranda.getProperties().getStringProperty(Miranda.PROPERTY_OWNER_FILE));
+            temp.backup(".backup");
         }
 
         logger.debug("parsing arguments");
@@ -618,15 +671,17 @@ public class Miranda implements PropertyListener {
         logger.debug("Parsing nodes");
         parseNodes();
 
-        logger.debug("Starting cluster");
-        Cluster.defineStatics();
-        Cluster.getInstance().start(specNodes);
-
         logger.debug("starting the message port");
         startMessagePort();
 
         startIdentityNode();
         logger.debug("Leaving startup");
+    }
+
+    public void setupClustering () throws LtsllcException, CloneNotSupportedException {
+        Cluster.defineStatics();
+        parseNodes();
+        Cluster.getInstance().start(specNodes);
     }
 
     /**
@@ -795,6 +850,7 @@ public class Miranda implements PropertyListener {
         properties.setIfNull(PROPERTY_COPY_SIZE, PROPERTY_DEFAULT_COPY_SIZE);
         properties.setIfNull(PROPERTY_SCAN_PERIOD, PROPERTY_DEFAULT_SCAN_PERIOD);
         properties.setIfNull(PROPERTY_USE_HEARTBEATS, PROPERTY_DEFAULT_USE_HEART_BEATS);
+        properties.setIfNull(PROPERTY_MESSAGE_COPY_LIMIT, PROPERTY_DEFAULT_MESSAGE_COPY_LIMIT);
     }
 
     /**
@@ -1000,7 +1056,9 @@ public class Miranda implements PropertyListener {
         PropertiesHolder p = getProperties();
         ImprovedFile messageFile = new ImprovedFile(p.getProperty(PROPERTY_MESSAGE_LOG));
         ImprovedFile ownersFile = new ImprovedFile(p.getProperty(PROPERTY_OWNER_FILE));
-        return MessageLog.shouldRecover(messageFile, ownersFile);
+        boolean messageShouldRecover = MessageLog.shouldRecover(messageFile, ownersFile);
+        boolean isAlone = messageShouldRecover && !Cluster.getInstance().isOnline();
+        return isAlone;
     }
 
     /**
@@ -1022,13 +1080,22 @@ public class Miranda implements PropertyListener {
         ImprovedFile ownerFile = new ImprovedFile(p.getProperty(PROPERTY_OWNER_FILE));
 
         boolean isClustering = !p.getProperty(Miranda.PROPERTY_CLUSTER).equalsIgnoreCase("off");
-        if (isClustering) {
+        try {
+            synchronized (this) {
+                wait(6000);
+            }
+        } catch (InterruptedException e)
+        {
+            ;
+        }
+        boolean isAlone = !isClustering || !Cluster.getInstance().isOnline();
+        if (isAlone) {
+            MessageLog.defineStatics();
+            MessageLog.recover(messageFile, loadLimit, ownerFile);
+        } else {
             messageFile.backup(".backup");
             ownerFile.backup(".backup");
             setSynchronizationFlag(true);
-        } else {
-            MessageLog.defineStatics();
-            MessageLog.recover(messageFile, loadLimit, ownerFile);
         }
 
         logger.debug("leaving recovery");

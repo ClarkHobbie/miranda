@@ -845,4 +845,24 @@ public class Cluster implements Alarmable, PropertyListener {
 
         election.countVotes();
     }
+
+    /**
+     * Is at least one node online?
+     *
+     * @return Whether at least one node is online
+     */
+    public synchronized boolean isOnline () {
+        for (Node node : nodes){
+            ChannelHandler channelHandler = node.getChannel().pipeline().get("HEARTBEAT");
+            if (channelHandler == null)
+                return false;
+
+            HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
+            if (heartBeatHandler.isOnline()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
