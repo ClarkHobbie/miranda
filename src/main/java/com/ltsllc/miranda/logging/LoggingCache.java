@@ -181,18 +181,26 @@ public class LoggingCache implements Alarmable{
         //
         // if we will take too much space then migrate some messages to disk
         //
-        if (currentLoad + message.getContents().length >= loadLimit) {
+        if (currentLoad + message.getContents().length > loadLimit) {
             migrateLeastReferencedMessagesToDisk(loadLimit - message.getContents().length);
         }
 
         //
         // then add it to the cache
         //
+        currentLoad += message.getContents().length;
         uuidToMessage.put (message.getMessageID(), message);
         uuidToLocation.put (message.getMessageID(), location);
         uuidToInMemory.put (message.getMessageID(), true);
         uuidToTimesReferenced.put (message.getMessageID(), 0);
     }
+
+    public void forceInMemory(Message message) {
+        uuidToMessage.put(message.getMessageID(), message);
+        uuidToInMemory.put(message.getMessageID(), true);
+        uuidToTimesReferenced.put(message.getMessageID(), 0);
+    }
+
 
     /**
      * get the message, whether it is in memory or on the disk.
@@ -229,15 +237,19 @@ public class LoggingCache implements Alarmable{
         return uuidToMessage.get(uuid);
     }
 
+    public static class CopyMessagesResult {
+        public List<Message> list;
+        public int restartIndex;
+    }
     /**
      * Copy messages up to some limit
      *
      * @param limit The number of .content.length in the list
-     *
-     * @return A list of messages with, at most. limit number of content.length bytes in it.
+     * @return The resulting list, and the restartIndexIn value for the next call
      */
-    public synchronized List<Message> copyMessages (int limit,int restartIndexIn, int restartIndexOut) {
-        List<Message> list = new ArrayList<>();
+    public synchronized CopyMessagesResult copyMessages (int limit,int restartIndexIn) {
+        CopyMessagesResult temp = new CopyMessagesResult();
+        temp.list = new ArrayList<>();
 
         Iterator<UUID> iter = uuidToMessage.keySet().iterator();
 
@@ -249,7 +261,7 @@ public class LoggingCache implements Alarmable{
         //
         while (iter.hasNext() && (restartIndexIn != index)) {
             index++;
-            restartIndexOut++;
+            temp.restartIndex++;
             iter.next();
         }
 
@@ -265,19 +277,20 @@ public class LoggingCache implements Alarmable{
         //
         while (iter.hasNext()) {
             UUID u = iter.next();
+            temp.restartIndex++;
             Message m = uuidToMessage.get(u);
 
-            if ((spaceUsed + m.getContents().length) < limit) {
-                list.add(m);
-                restartIndexOut++;
+            if ((spaceUsed + m.getContents().length) <= limit) {
+                temp.list.add(m);
+                temp.restartIndex = -1;
                 spaceUsed += m.getContents().length;
             } else {
                 break;
             }
         }
 
-        restartIndexOut++;
-        return list;
+        temp.restartIndex++;
+        return temp;
     }
 
     /**
@@ -296,8 +309,8 @@ public class LoggingCache implements Alarmable{
 
         Collections.sort(list, new TimesReferencedComparator(uuidToTimesReferenced));
 
-        while (currentLoad < desiredLoad) {
-            Message message = list.get(list.size());
+        while (currentLoad >= desiredLoad) {
+            Message message = list.get(list.size() - 1);
             moveMessageToDisk(message);
         }
     }

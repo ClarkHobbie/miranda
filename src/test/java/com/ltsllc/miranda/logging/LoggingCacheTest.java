@@ -1,12 +1,15 @@
 package com.ltsllc.miranda.logging;
 
+import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.Utils;
+import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.message.MessageLog;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -36,17 +39,18 @@ class LoggingCacheTest {
         Message m1 = createMessage();
         Message m2 = createMessage();
 
+        Miranda.getProperties().setProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT, String.valueOf(m1.getContents().length));
+
         MessageLog.defineStatics();
 
         UUID u = UUID.randomUUID();
 
-        getInstance().add(m1, u);
-        getInstance().add(m2, u);
+        MessageLog.getInstance().add(m1, u);
+        MessageLog.getInstance().add(m2, u);
 
-        int junk = 0;
-        List<Message> l = MessageLog.getInstance().copyMessages(9, junk, junk);
+        LoggingCache.CopyMessagesResult temp = MessageLog.getInstance().copyMessages(m1.getContents().length + 1, 0);
 
-        assert (l.size() == 1);
+        assert (MessageLog.getInstance().getCache().getUuidToMessage().size() == 1);
     }
 
     @Test
@@ -54,6 +58,7 @@ class LoggingCacheTest {
         Message m1 = createMessage();
         Message m2 = createMessage();
 
+        Miranda.getProperties().setProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT,String.valueOf(m1.getContents().length));
         MessageLog.defineStatics();
 
         UUID u = UUID.randomUUID();
@@ -61,12 +66,9 @@ class LoggingCacheTest {
         getInstance().add(m1, u);
         getInstance().add(m2, u);
 
-        int restartIndexOut = 0;
-        int restartIndexIn = 1;
+        LoggingCache.CopyMessagesResult temp = MessageLog.getInstance().copyMessages(m1.getContents().length, 0);
 
-        List<Message> l = MessageLog.getInstance().copyMessages(9, restartIndexIn, restartIndexOut);
-
-        assert (l.get(0).equals(m2));
+        assert (MessageLog.getInstance().getCache().getUuidToMessage().size() == 1);
     }
 
     @Test
@@ -81,12 +83,9 @@ class LoggingCacheTest {
         getInstance().add(m1, u);
         getInstance().add(m2, u);
 
-        int restartIndexOut = 0;
-        int restartIndexIn = 2;
+        LoggingCache.CopyMessagesResult temp = MessageLog.getInstance().copyMessages(m1.getContents().length + 1, 3);
 
-        List<Message> l = MessageLog.getInstance().copyMessages(9, restartIndexIn, restartIndexOut);
-
-        assert (l == null);
+        assert (temp == null);
     }
 
     @Test
@@ -98,15 +97,48 @@ class LoggingCacheTest {
 
         UUID u = UUID.randomUUID();
 
-        getInstance().add(m1, u);
+        MessageLog.getInstance().add(m1, u);
         getInstance().add(m2, u);
 
-        int restartIndexOut = 0;
-        int restartIndexIn = -1;
+        LoggingCache.CopyMessagesResult temp = MessageLog.getInstance().copyMessages(
+                m1.getContents().length + 1,
+                m1.getContents().length + 1
+        );
 
-        List<Message> l = MessageLog.getInstance().copyMessages(9, restartIndexIn, restartIndexOut);
-
-        assert (l == null);
+        assert (temp == null);
     }
 
+
+    @Test
+    void copyMessages5()throws Exception {
+        Message m1 = createMessage();
+        Message m2 = createMessage();
+        Message m3 = createMessage();
+
+        ImprovedFile logFile = new ImprovedFile("whatever.log");
+
+        if (logFile.exists()) {
+            logFile.delete();
+        }
+
+        //
+        // Force the cache to have only enough space for m1 & m2
+        //
+        LoggingCache lc = new LoggingCache(logFile, (m1.getContents().length + m2.getContents().length + 1));
+
+        lc.add(m1);
+        lc.add(m2);
+        lc.add(m3);
+
+        LoggingCache.CopyMessagesResult temp =  lc.copyMessages(
+                m1.getContents().length + m2.getContents().length + 1,
+                0
+        );
+
+        if (logFile.exists()) {
+            logFile.delete();
+        }
+
+        assert (2 == lc.getUuidToMessage().size());
+    }
 }

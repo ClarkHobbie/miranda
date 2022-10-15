@@ -7,6 +7,7 @@ import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.cluster.Node;
 import com.ltsllc.miranda.cluster.SpecNode;
+import com.ltsllc.miranda.logging.LoggingCache;
 import com.ltsllc.miranda.netty.ServerChannelToNodeDecoder;
 import com.ltsllc.miranda.netty.StringEncoder;
 import com.ltsllc.miranda.message.Message;
@@ -242,17 +243,6 @@ public class Miranda implements PropertyListener {
     public static final String PROPERTY_DEFAULT_COALESCE_PERIOD = "600000";
 
     /**
-     * How large a chunk of memory to use when copying messages to be delivered.  Is the size of the body of the message
-     * in bytes
-     */
-    public static final String PROPERTY_COPY_SIZE = "copySize";
-
-    /**
-     * Defaults to 100,000,000
-     */
-    public static final String PROPERTY_DEFAULT_COPY_SIZE = "100000000";
-
-    /**
      * The period of time between scans
      */
     public static final String PROPERTY_SCAN_PERIOD = "intervals.scan";
@@ -271,16 +261,6 @@ public class Miranda implements PropertyListener {
      * default is to send heartbeat messages
      */
     public static final String PROPERTY_DEFAULT_USE_HEART_BEATS = "on";
-
-    /**
-     * The number of bytes in messages that the system should try and deliver
-     */
-    public static final String PROPERTY_MESSAGE_COPY_LIMIT = "messageCopyLimit";
-
-    /**
-     * The default is 1GB
-     */
-    public static final String PROPERTY_DEFAULT_MESSAGE_COPY_LIMIT = "1000000";
 
     /**
      * The logger to use
@@ -594,15 +574,16 @@ public class Miranda implements PropertyListener {
                 restartIndex = 0;
             }
 
-            List<Message> messages = MessageLog.getInstance().copyMessages(
-                    Miranda.properties.getIntProperty(Miranda.PROPERTY_MESSAGE_COPY_LIMIT),
-                    restartIndex,
+            LoggingCache.CopyMessagesResult temp = MessageLog.getInstance().copyMessages(
+                    Miranda.properties.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT),
                     restartIndex
             );
-            if (messages != null) {
-                for (Message message : messages) {
+            if (temp != null) {
+                for (Message message : temp.list) {
                     deliver(message);
                 }
+
+                restartIndex = temp.restartIndex;
 
                 //
                 // if we want to synchronize but we are disconnected from all the other nodes in the cluster then...
@@ -847,10 +828,8 @@ public class Miranda implements PropertyListener {
         properties.setIfNull(PROPERTY_HEART_BEAT_TIMEOUT, PROPERTY_DEFAULT_HEART_BEAT_TIMEOUT);
         properties.setIfNull(PROPERTY_DEAD_NODE_TIMEOUT, PROPERTY_DEFAULT_DEAD_NODE_TIMEOUT);
         properties.setIfNull(PROPERTY_COALESCE_PERIOD, PROPERTY_DEFAULT_COALESCE_PERIOD);
-        properties.setIfNull(PROPERTY_COPY_SIZE, PROPERTY_DEFAULT_COPY_SIZE);
         properties.setIfNull(PROPERTY_SCAN_PERIOD, PROPERTY_DEFAULT_SCAN_PERIOD);
         properties.setIfNull(PROPERTY_USE_HEARTBEATS, PROPERTY_DEFAULT_USE_HEART_BEATS);
-        properties.setIfNull(PROPERTY_MESSAGE_COPY_LIMIT, PROPERTY_DEFAULT_MESSAGE_COPY_LIMIT);
     }
 
     /**

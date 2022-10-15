@@ -327,8 +327,8 @@ public class MessageLog implements  PropertyListener {
         return cache.copyAllMessages();
     }
 
-    public List<Message> copyMessages(int limit, int restartIndexIn, int restartIndexOut) {
-        return cache.copyMessages(limit, restartIndexIn, restartIndexOut);
+    public LoggingCache.CopyMessagesResult copyMessages(int limit, int restartIndexIn) {
+        return cache.copyMessages(limit, restartIndexIn);
     }
 
     public UUID getOwnerOf(UUID message) {
