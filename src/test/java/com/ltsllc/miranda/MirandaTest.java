@@ -4,6 +4,7 @@ import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.Cluster;
+import com.ltsllc.miranda.logging.LoggingCache;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.message.MessageLog;
 import com.ltsllc.miranda.properties.PropertiesHolder;
@@ -207,8 +208,13 @@ class MirandaTest extends TestSuperclass {
         list.add(message);
         MessageLog mockMessageLog = Mockito.mock(MessageLog.class);
         MessageLog.setInstance(mockMessageLog);
+        LoggingCache.CopyMessagesResult temp = new LoggingCache.CopyMessagesResult();
+        temp.list = list;
+        temp.restartIndex = 2;
 
-        when(mockMessageLog.copyAllMessages()).thenReturn(list);
+        when(mockMessageLog.copyMessages(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT), 0))
+                .thenReturn(temp);
+
         Miranda.getInstance().setKeepRunning(true);
 
         miranda.mainLoop();

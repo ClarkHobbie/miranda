@@ -309,7 +309,7 @@ public class LoggingCache implements Alarmable{
 
         Collections.sort(list, new TimesReferencedComparator(uuidToTimesReferenced));
 
-        while (currentLoad >= desiredLoad) {
+        while (currentLoad > desiredLoad) {
             Message message = list.get(list.size() - 1);
             moveMessageToDisk(message);
         }
@@ -413,7 +413,7 @@ public class LoggingCache implements Alarmable{
         ImprovedFile messages = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_MESSAGE_LOG));
         if (!messages.exists()) {
             logger.debug("message log, " +
-                    Miranda.getProperties().getProperty(Miranda.PROPERTY_MESSAGE_LOG)
+                    messages
                     + " does not exist, returning");
             return;
         }
@@ -665,4 +665,19 @@ public class LoggingCache implements Alarmable{
 
     }
 
+
+    public void loadMessageAndRebalance (Message message) throws IOException {
+        if (uuidToInMemory.get(message.getMessageID()) == null) {
+            add(message);
+        }
+
+        uuidToMessage.put (message.getMessageID(), message);
+        uuidToInMemory.put (message.getMessageID(), true);
+
+        currentLoad += message.getContents().length;
+
+        if (currentLoad > loadLimit) {
+            migrateLeastReferencedMessagesToDisk(loadLimit);
+        }
+    }
 }

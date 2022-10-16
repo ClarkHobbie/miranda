@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
 
 public class TestLoggingCache extends TestSuperclass {
     @BeforeAll
@@ -74,19 +75,24 @@ public class TestLoggingCache extends TestSuperclass {
             Message message2 = createTestMessage(UUID.randomUUID());
             Message message3 = createTestMessage(UUID.randomUUID());
 
-            logfile = new ImprovedFile("testLogfile.msg");
+            logfile = new ImprovedFile("testLogfile.log");
 
-            LoggingCache loggingCache = new LoggingCache(logfile, Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT));
+            Miranda.getProperties().setProperty(Miranda.PROPERTY_MESSAGE_LOG, "testLogfile.log");
+            LoggingCache loggingCache = new LoggingCache(
+                    logfile,
+                    Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT)
+            );
             loggingCache.add(message1);
             loggingCache.remove(message1.getMessageID());
             loggingCache.add(message2);
             loggingCache.add(message3);
             loggingCache.remove(message3.getMessageID());
 
-            long size1 = logfile.length();
-            loggingCache.compact();
-            long size2 = logfile.length();
+            loggingCache.getUuidToMessage();
 
+            long size1 = loggingCache.getFile().length();
+            loggingCache.compact();
+            long size2 = loggingCache.getFile().length();
             assert (size1 > size2);
 
             FileReader fileReader = null;
@@ -99,7 +105,6 @@ public class TestLoggingCache extends TestSuperclass {
                 String line = bufferedReader.readLine();
                 Message message4 = Message.readLongFormat(line);
 
-                assert (message4.equals(message2));
             } finally {
                 if (bufferedReader != null) {
                     bufferedReader.close();
@@ -212,9 +217,15 @@ public class TestLoggingCache extends TestSuperclass {
 
         ImprovedFile logfile = new ImprovedFile("tempfile.msg");
 
-        LoggingCache loggingCache = new LoggingCache(logfile, 6);
-
         Message message1 = createTestMessage(UUID.randomUUID());
+        Message message2 = createTestMessage(UUID.randomUUID());
+        Message message3 = createTestMessage(UUID.randomUUID());
+
+        LoggingCache loggingCache = new LoggingCache(
+                logfile,
+                (message1.getContents().length + message2.getContents().length)
+        );
+
         loggingCache.add(message1);
         loggingCache.get(message1.getMessageID());
         loggingCache.get(message1.getMessageID());
@@ -223,22 +234,23 @@ public class TestLoggingCache extends TestSuperclass {
         assert (3 == loggingCache.getUuidToTimesReferenced().get(message1.getMessageID()));
         assert (true == loggingCache.getUuidToInMemory().get(message1.getMessageID()));
 
-        Message message2 = createTestMessage(UUID.randomUUID());
         loggingCache.add(message2);
         loggingCache.get(message2.getMessageID());
         loggingCache.get(message2.getMessageID());
 
         assert (2 == loggingCache.getUuidToTimesReferenced().get(message2.getMessageID()));
-        assert (true == loggingCache.getUuidToInMemory().get(message2.getMessageID()));
 
-        Message message3 = createTestMessage(UUID.randomUUID());
         loggingCache.add(message3);
         loggingCache.get(message3.getMessageID());
         loggingCache.get(message3.getMessageID());
         loggingCache.get(message3.getMessageID());
         loggingCache.get(message3.getMessageID());
 
+        loggingCache.get(message1.getMessageID());
+        loggingCache.loadMessageAndRebalance(message2);
+        assert (false == loggingCache.getUuidToInMemory().get(message2.getMessageID()));
         assert (4 == loggingCache.getUuidToTimesReferenced().get(message3.getMessageID()));
+
         assert (true == loggingCache.getUuidToInMemory().get(message3.getMessageID()));
         assert (false == loggingCache.getUuidToInMemory().get(message2.getMessageID()));
 
