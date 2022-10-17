@@ -205,7 +205,7 @@ public class Miranda implements PropertyListener {
     /**
      * The default period to wait between heart beat start messages is 5 sec
      */
-    public static final String PROPERTY_DEFAULT_PROPERTY_HEART_BEAT_INTERVAL = "5000";
+    public static final String PROPERTY_DEFAULT_HEART_BEAT_INTERVAL = "5000";
 
     /**
      * The timeout (in milliseconds) for another node to respond to an auction message
@@ -823,7 +823,7 @@ public class Miranda implements PropertyListener {
         properties.setIfNull(PROPERTY_MESSAGE_LOG, PROPERTY_DEFAULT_MESSAGE_LOG);
         properties.setIfNull(PROPERTY_CLUSTER_PORT, PROPERTY_DEFAULT_CLUSTER_PORT);
         properties.setIfNull(PROPERTY_COMPACTION_TIME, PROPERTY_DEFAULT_COMPACTION_TIME);
-        properties.setIfNull(PROPERTY_HEART_BEAT_INTERVAL, PROPERTY_DEFAULT_PROPERTY_HEART_BEAT_INTERVAL);
+        properties.setIfNull(PROPERTY_HEART_BEAT_INTERVAL, PROPERTY_DEFAULT_HEART_BEAT_INTERVAL);
         properties.setIfNull(PROPERTY_START_TIMEOUT, PROPERTY_DEFAULT_START_TIMEOUT);
         properties.setIfNull(PROPERTY_HEART_BEAT_TIMEOUT, PROPERTY_DEFAULT_HEART_BEAT_TIMEOUT);
         properties.setIfNull(PROPERTY_DEAD_NODE_TIMEOUT, PROPERTY_DEFAULT_DEAD_NODE_TIMEOUT);

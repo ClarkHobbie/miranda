@@ -2,6 +2,7 @@ package com.ltsllc.miranda.properties;
 
 import com.ltsllc.commons.UncheckedLtsllcException;
 import com.ltsllc.commons.util.ImprovedProperties;
+import com.ltsllc.commons.util.Property;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,7 +13,7 @@ import java.util.Properties;
 /**
  * A class that manages some properties and notifies classes of changes to those properties.
  */
-public class PropertiesHolder extends Properties {
+public class PropertiesHolder extends Properties  {
     protected ImprovedProperties properties = new ImprovedProperties();
     protected Map<com.ltsllc.miranda.properties.Properties, List<PropertyListener>> listeners = new HashMap<>();
 
@@ -316,6 +317,7 @@ public class PropertiesHolder extends Properties {
      * @return True if the row has a different value from the row; false otherwise.
      */
     public boolean propertyIsDifferent (String[] row) {
+        String name = row[0];
         String value = getProperty(row[0]);
         String newValue = row[1];
         return !value.equals(newValue);
@@ -324,5 +326,31 @@ public class PropertiesHolder extends Properties {
     public Set<Object> keySet () {
         return properties.keySet();
     }
+
+    @Override
+    public synchronized String toString() {
+        return properties.toString();
+    }
+
+    public synchronized int size() {
+        return properties.size();
+    }
+
+
+    public synchronized String[][] getTable () {
+
+        String[][] table = new String[properties.size()][2];
+        Enumeration enumeration = properties.keys();
+        int i = 0;
+        while (enumeration.hasMoreElements()) {
+            String propertyName = (String) enumeration.nextElement();
+            String value = properties.getProperty(propertyName);
+            table[i][0] = propertyName;
+            table[i][1] = value;
+            i++;
+        }
+        return table;
+    }
+
 
 }
