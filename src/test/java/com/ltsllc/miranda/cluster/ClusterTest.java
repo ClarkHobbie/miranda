@@ -215,7 +215,7 @@ class ClusterTest extends TestSuperclass {
         assert (Cluster.getInstance().allConnected());
     }
 
-    @Test
+
     public void deadNode() throws LtsllcException, IOException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
@@ -251,7 +251,7 @@ class ClusterTest extends TestSuperclass {
         Message message3 = createTestMessage(message3Uuid);
         MessageLog.getInstance().add(message3, node2Uuid);
 
-        // Cluster.getInstance().deadNode(node2Uuid);
+
 
         assert (!MessageLog.getInstance().getOwnerOf(message1Uuid).equals(node2Uuid));
         assert (!MessageLog.getInstance().getOwnerOf(message2Uuid).equals(node2Uuid));

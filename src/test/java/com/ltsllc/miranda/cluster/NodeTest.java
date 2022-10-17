@@ -7,8 +7,10 @@ import com.ltsllc.commons.util.Utils;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.message.MessageLog;
 import com.ltsllc.miranda.Miranda;
+import com.ltsllc.miranda.cluster.Node;
 import com.ltsllc.miranda.logging.LoggingCache;
 import com.ltsllc.miranda.message.MessageType;
+import com.ltsllc.miranda.netty.HeartBeatHandler;
 import com.ltsllc.miranda.properties.PropertiesHolder;
 import io.netty.channel.embedded.EmbeddedChannel;
 import org.apache.logging.log4j.Level;
@@ -357,11 +359,12 @@ public class NodeTest {
     @Test
     public void handleMessageDelivered () throws LtsllcException, IOException {
         Miranda miranda = new Miranda();
+        miranda.loadProperties();
+
         EmbeddedChannel channel = new EmbeddedChannel();
+        channel.pipeline().addLast("HEARTBEAT", new HeartBeatHandler(channel));
         Node node = new Node(null,"192.168.0.12",2020, channel);
         node.setUuid(UUID.randomUUID());
-
-        MessageLog.defineStatics();
 
         MessageLog.defineStatics();
         MessageLog mockMessageLog = mock(MessageLog.class);

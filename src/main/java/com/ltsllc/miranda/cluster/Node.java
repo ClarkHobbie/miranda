@@ -865,7 +865,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      */
     public synchronized void handleMessageDelivered(String input) throws IOException {
         Scanner scanner = new Scanner(input);
-        scanner.skip(MESSAGE_DELIVERED);
+        scanner.next();scanner.next();
         String strUuid = scanner.next();
         UUID uuid = UUID.fromString(strUuid);
         registerUuid(uuid);
