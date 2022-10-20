@@ -175,6 +175,11 @@ public class NodeTest {
         strMessage += " ";
         strMessage += random.nextInt();
 
+        List<Node> list = new ArrayList<>();
+        list.add(node);
+        Election election = new Election(list);
+        Cluster.getInstance().setElection(election);
+
         node.messageReceived(strMessage);
 
         StringBuffer stringBuffer = new StringBuffer();
@@ -192,6 +197,8 @@ public class NodeTest {
         Cluster.defineStatics();
         MessageLog.defineStatics();
         EmbeddedChannel channel = new EmbeddedChannel();
+        HeartBeatHandler heartBeatHandler = new HeartBeatHandler(channel);
+        channel.pipeline().addLast("HEARTBEAT",heartBeatHandler);
         Node node = new Node(null,"192.168.0.12",2020, channel);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
@@ -207,6 +214,8 @@ public class NodeTest {
         String strMessage = Node.MESSAGE_DELIVERED;
         strMessage += " ";
         strMessage += uuid;
+        EmbeddedChannel embeddedChannel = new EmbeddedChannel();
+        embeddedChannel.pipeline().addLast(new HeartBeatHandler(embeddedChannel));
 
         node.messageReceived(strMessage);
 
@@ -320,6 +329,7 @@ public class NodeTest {
 
         EmbeddedChannel channel = new EmbeddedChannel();
         Node node = new Node(null,"192.168.0.12",2020, channel);
+        channel.pipeline().addLast("HEARTBEAT", new HeartBeatHandler(channel));
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         LoggingCache cache = new LoggingCache(messages,104857600);
@@ -414,6 +424,8 @@ public class NodeTest {
         miranda.loadProperties();
         Cluster.defineStatics();
         EmbeddedChannel channel = new EmbeddedChannel();
+        HeartBeatHandler heartBeatHandler = new HeartBeatHandler(channel);
+        channel.pipeline().addLast("HEARTBEAT", heartBeatHandler);
         Node node = new Node(null,"192.168.0.12",2020, channel);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
@@ -679,6 +691,11 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
         stringBuffer.append(UUID.randomUUID());
         stringBuffer.append(" 192.164.0.12 2020");
 
+        EmbeddedChannel embeddedChannel = new EmbeddedChannel();
+        embeddedChannel.pipeline().addLast("HEARTBEAT", new HeartBeatHandler(embeddedChannel));
+
+        node.setChannel(embeddedChannel);
+
         node.messageReceived(stringBuffer.toString());
 
         StringBuffer stringBuffer2 = new StringBuffer();
@@ -764,6 +781,12 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
         stringBuffer.append(nodeUuid);
         stringBuffer.append(" ");
         stringBuffer.append(random.nextInt());
+
+        ArrayList<Node> list = new ArrayList<Node>();
+        list.add(node);
+        Election election = new Election(list);
+        Cluster.getInstance().setElection(election);
+
         node.messageReceived(stringBuffer.toString());
 
         synchronized (this) {

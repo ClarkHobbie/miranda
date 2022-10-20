@@ -620,7 +620,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("entering handleStart");
         Scanner scanner = new Scanner(input);
         scanner.next();
-        scanner.next(); // START START
 
         uuid = UUID.fromString(scanner.next());
         registerUuid(uuid);
@@ -1360,9 +1359,10 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         timeoutsMet.put(Alarms.DEAD_NODE, true);
         Scanner scanner = new Scanner(input);
 
-        scanner.next();
-        scanner.next(); // DEAD NODE
-        scanner.next(); // uuid
+        scanner.next(); // DEAD
+        scanner.next(); // NODE
+        scanner.next(); // START
+        UUID uuid = UUID.fromString(scanner.next()); // uuid
         int vote = scanner.nextInt();
 
         Cluster.getInstance().vote(uuid, vote);
