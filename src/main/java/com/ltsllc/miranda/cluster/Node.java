@@ -387,6 +387,11 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             case ERROR: {
                 break;
             }
+
+            case SYNCHRONIZE: {
+                handleSynchronize(s);
+                break;
+            }
         }
     }
 
@@ -619,7 +624,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     protected synchronized void handleStartStart(String input) {
         logger.debug("entering handleStart");
         Scanner scanner = new Scanner(input);
-        scanner.next();
+        scanner.next();scanner.next();
 
         uuid = UUID.fromString(scanner.next());
         registerUuid(uuid);

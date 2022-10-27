@@ -211,12 +211,17 @@ public class MessageLog implements  PropertyListener {
      * @throws IOException If there is a problem reading the file
      */
     public void restoreOwnersFile(ImprovedFile file) throws IOException {
+        if (!file.exists()) {
+            file.touch();
+            return;
+        }
+
+
         FileReader fileReader = null;
         BufferedReader bufferedReader = null;
         Map<UUID, UUID> temp = new HashMap<>();
 
         try {
-
             fileReader = new FileReader(file);
             bufferedReader = new BufferedReader(fileReader);
 

@@ -348,6 +348,16 @@ public class Miranda implements PropertyListener {
         this.myUuid = myUuid;
     }
 
+    protected long iterations = 0;
+
+    public long getIterations() {
+        return iterations;
+    }
+
+    public void setIterations(long iterations) {
+        this.iterations = iterations;
+    }
+
     /**
      * The time when the node started
      */
@@ -564,7 +574,8 @@ public class Miranda implements PropertyListener {
         //
         // run garbage collection to avoid running out of memory
         //
-        Runtime.getRuntime().gc();
+        if (iterations % 1000 == 0)
+            Runtime.getRuntime().gc();
 
         if (keepRunning) {
             /*
@@ -596,6 +607,7 @@ public class Miranda implements PropertyListener {
                     recoverLocally();
                 }
             }
+            iterations++;
         }
         logger.debug("leaving mainLoop");
     }
