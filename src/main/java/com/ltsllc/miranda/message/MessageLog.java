@@ -270,11 +270,17 @@ public class MessageLog implements  PropertyListener {
      */
     public void restoreMessages(ImprovedFile file) throws LtsllcException {
         if (!file.exists()) {
-            throw new LtsllcException("the file," + file + "does not exist so it cannot be restored.");
+            throw new LtsllcException("the file," + file + ", does not exist so it cannot be restored.");
         }
     }
 
-    public synchronized void setOwner(UUID message, UUID owner) throws IOException {
+    /**
+     * Set the owner of a message
+     *
+     * @param message The message
+     * @param owner The owner
+     */
+    public synchronized void setOwner(UUID message, UUID owner) {
         try {
             uuidToOwner.remove(message);
             uuidToOwner.add(message, owner);
@@ -290,6 +296,7 @@ public class MessageLog implements  PropertyListener {
     public boolean outOfBounds (int value) {
         return cache.outOfBounds(value);
     }
+
     /**
      * Add the message to the logfile and record the ownership of the message
      *
@@ -481,7 +488,4 @@ public class MessageLog implements  PropertyListener {
     public boolean contains(UUID uuid) {
         return uuidToOwner.get(uuid) != null;
     }
-
-
-
 }
