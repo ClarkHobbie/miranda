@@ -189,8 +189,8 @@ public class MessageLog implements  PropertyListener {
             logger.info("removing backup " + ownersBackup);
         }
 
-        logfile.renameTo(messageBackup);
-        ownersFile.renameTo(ownersBackup);
+        logfile.copyTo(messageBackup);
+        ownersFile.copyTo(ownersBackup);
         cache = new LoggingCache(logfile, loadLimit);
         uuidToOwner = new LoggingMap(ownersFile);
 
@@ -270,7 +270,7 @@ public class MessageLog implements  PropertyListener {
      */
     public void restoreMessages(ImprovedFile file) throws LtsllcException {
         if (!file.exists()) {
-            throw new LtsllcException("the file," + file + ", does not exist so it cannot be restored.");
+            throw new LtsllcException("the file, " + file + ", does not exist so it cannot be restored.");
         }
     }
 

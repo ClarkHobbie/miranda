@@ -1624,6 +1624,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         host = scanner.next();
         port = scanner.nextInt();
 
+        logger.error("Connected to " + host +":" + port);
+
         setState(GENERAL);
         setOnline(true);
         timeoutsMet.put(Alarms.START, true);
