@@ -675,9 +675,6 @@ public class Miranda implements PropertyListener {
         logger.debug("parsing arguments");
         processArguments(args);
 
-        logger.debug("initializing MessageLog");
-        MessageLog.defineStatics();
-
         logger.debug("Parsing nodes");
         parseNodes();
 
@@ -1163,9 +1160,8 @@ public class Miranda implements PropertyListener {
      */
     public void setupMessageLog () {
         ImprovedFile messageLogfile = new ImprovedFile(properties.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
-        int messageLoadLimit = properties.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
         ImprovedFile ownersFile = new ImprovedFile(properties.getProperty(Miranda.PROPERTY_OWNER_FILE));
-
+        MessageLog.defineStatics();
     }
 
     /**
