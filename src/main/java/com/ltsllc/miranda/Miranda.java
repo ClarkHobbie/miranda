@@ -613,18 +613,9 @@ public class Miranda implements PropertyListener {
     }
 
     /**
-     * start up miranda
-     * <P>
-     *     When Miranda starts up, check for the existence of a sendQueue.  If it exists then copy the file and enter
-     *     the bidding mode.
-     * </P>
+     * setup miscellaneous properties
      */
-    public void startUp (String[] args) throws Exception {
-        event.info("Miranda starting up");
-        logger.debug("Miranda starting up");
-        logger.debug("Checking to see if we should recover");
-        loadProperties();
-
+    public void setupMisc () {
         myHost = properties.getProperty(PROPERTY_HOST);
         myPort = properties.getIntProperty(PROPERTY_PORT);
         myUuid = UUID.fromString(properties.getProperty(PROPERTY_UUID));
@@ -635,9 +626,12 @@ public class Miranda implements PropertyListener {
             System.err.println("UUID, host and port must be set in the properties file");
             System.exit(-1);
         }
+    }
 
-        setupClustering();
-        setupMessageLog();
+    /**
+     * determine if we should recover and if we should do so
+     */
+    public void checkRecovery () throws IOException, LtsllcException{
         try {
             synchronized (this) {
                 wait(6000);
@@ -646,14 +640,37 @@ public class Miranda implements PropertyListener {
             ;
         }
         if (shouldRecover()) {
+            event.info("preforming recovery");
             recover();
         }
         else {
+            event.info("No recovery needed backing up files");
             ImprovedFile temp = new ImprovedFile(Miranda.getProperties().getStringProperty(PROPERTY_MESSAGE_LOG));
             temp.backup(".backup");
             temp = new ImprovedFile(Miranda.getProperties().getStringProperty(Miranda.PROPERTY_OWNER_FILE));
             temp.backup(".backup");
         }
+    }
+
+
+    /**
+     * start up miranda
+     * <P>
+     *     When Miranda starts up, check for the existence of a sendQueue.  If it exists then copy the file and enter
+     *     the bidding mode.
+     * </P>
+     */
+    public void startUp (String[] args) throws Exception {
+        event.info("Miranda starting up");
+        logger.debug("Miranda starting up");
+        loadProperties();
+
+        setupMisc();
+        setupClustering();
+        setupMessageLog();
+
+        logger.debug("determine if we should recover");
+        checkRecovery();
 
         logger.debug("parsing arguments");
         processArguments(args);

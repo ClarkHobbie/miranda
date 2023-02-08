@@ -625,6 +625,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("entering handleStart");
         Scanner scanner = new Scanner(input);
         scanner.next();
+        scanner.next();
 
         uuid = UUID.fromString(scanner.next());
         registerUuid(uuid);
