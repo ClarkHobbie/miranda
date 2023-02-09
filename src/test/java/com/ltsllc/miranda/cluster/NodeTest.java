@@ -177,7 +177,7 @@ public class NodeTest {
 
         List<Node> list = new ArrayList<>();
         list.add(node);
-        Election election = new Election(list);
+        Election election = new Election(list,uuid);
         Cluster.getInstance().setElection(election);
 
         node.messageReceived(strMessage);
@@ -774,7 +774,8 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
         Node node = new Node(nodeUuid, "192.168.0.20", 2020, channel);
         node.setState(ClusterConnectionStates.GENERAL);
 
-        node.sendDeadNodeStart(UUID.randomUUID());
+        UUID uuid = UUID.randomUUID();
+        node.sendDeadNodeStart(uuid);
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append(Node.DEAD_NODE_START);
         stringBuffer.append(" ");
@@ -784,7 +785,7 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
 
         ArrayList<Node> list = new ArrayList<Node>();
         list.add(node);
-        Election election = new Election(list);
+        Election election = new Election(list,uuid);
         Cluster.getInstance().setElection(election);
 
         node.messageReceived(stringBuffer.toString());

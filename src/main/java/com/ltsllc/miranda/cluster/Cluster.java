@@ -659,7 +659,7 @@ public class Cluster implements Alarmable, PropertyListener {
      * @throws IOException If there is a problem transferring ownership.
      */
     public synchronized void deadNode(UUID uuid, Node node) throws IOException {
-        election = new Election(nodes);
+        election = new Election(nodes,uuid);
         election.setDeadNode(uuid);
 
         for (Node n : nodes) {

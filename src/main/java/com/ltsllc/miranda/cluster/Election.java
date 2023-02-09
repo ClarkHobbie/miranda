@@ -57,8 +57,12 @@ public class Election {
         this.leader = leader;
     }
 
-    public Election (List<Node> list) {
+    public Election (List<Node> list, UUID deadNode) {
         for (Node node : list) {
+            if (node.getUuid().equals(deadNode)) {
+                continue;
+            }
+
             if ((node.getChannel() != null) && (node.getUuid() != null)) {
                 Voter voter = new Voter();
                 voter.node = node;
