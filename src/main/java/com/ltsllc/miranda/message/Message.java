@@ -3,6 +3,8 @@ package com.ltsllc.miranda.message;
 import com.ltsllc.commons.util.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.asynchttpclient.AsyncCompletionHandler;
+import org.asynchttpclient.Response;
 
 import java.util.Arrays;
 import java.util.Scanner;
@@ -13,6 +15,19 @@ import java.util.UUID;
  * URL to which this instance will be delivered to.
  */
 public class Message implements Comparable<Message> {
+    public static int Delivered = 1;
+    public static int Pending = 0;
+
+    protected AsyncCompletionHandler<Response> completionHandler;
+
+    public AsyncCompletionHandler<Response> getCompletionHandler() {
+        return completionHandler;
+    }
+
+    public void setCompletionHandler(AsyncCompletionHandler<Response> completionHandler) {
+        this.completionHandler = completionHandler;
+    }
+
     protected static Logger logger = LogManager.getLogger();
 
     protected int status;
@@ -264,10 +279,9 @@ public class Message implements Comparable<Message> {
         newMessage.statusURL = scanner.next();
         scanner.next(); // DELIVERY:
         newMessage.deliveryURL = scanner.next();
-        scanner.next(); scanner.next(); // LAST STATUS:
-        newMessage.status = Integer.parseInt(scanner.next());
-        scanner.next(); // CONTENTS:
-        newMessage.contents = Utils.hexDecode(scanner.next());
+        scanner.next(); // CONTENTS
+        String raw = scanner.next();
+        newMessage.contents = Utils.hexDecode(raw);
 
         return newMessage;
     }

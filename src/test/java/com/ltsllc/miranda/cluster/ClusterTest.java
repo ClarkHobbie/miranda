@@ -250,8 +250,7 @@ class ClusterTest extends TestSuperclass {
 
         Message message3 = createTestMessage(message3Uuid);
         MessageLog.getInstance().add(message3, node2Uuid);
-
-
+        
 
         assert (!MessageLog.getInstance().getOwnerOf(message1Uuid).equals(node2Uuid));
         assert (!MessageLog.getInstance().getOwnerOf(message2Uuid).equals(node2Uuid));

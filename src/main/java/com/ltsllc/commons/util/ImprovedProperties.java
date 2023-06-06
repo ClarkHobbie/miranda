@@ -34,14 +34,12 @@ public class ImprovedProperties extends Properties {
      * is null, the method returns 0.
      */
     public int getIntProperty (String name) {
-        logger.debug("entering getIntProperty with name = " + name);
         String value = getProperty(name);
 
         if (null == value) {
             value = "0";
         }
         
-        logger.debug("leaving getIntProperty with value = " + value);
         return Integer.parseInt(value);
     }
 
@@ -87,7 +85,6 @@ public class ImprovedProperties extends Properties {
      * @param properties The properties to define if they are currently null
      */
     public void setIfNull (Properties properties){
-        logger.debug("entering setIfNull with properties = " + properties);
         for (Object keyObject : properties.keySet()) {
             String key = keyObject.toString();
             String value = getProperty(key);
@@ -98,7 +95,6 @@ public class ImprovedProperties extends Properties {
 
             setProperty(key, value);
         }
-        logger.debug("leaving setIfNull with properties = " + this);
     }
 
     /*
@@ -107,11 +103,9 @@ public class ImprovedProperties extends Properties {
      * This method set a property only if it is currently null, otherwise, it does nothing
      */
     public void setIfNull (String key, String value) {
-        logger.debug("entering setIfNull with key = " + key + " and value = " + value);
         if (getProperty(key) == null) {
             setProperty(key, value);
         }
-        logger.debug("leaving setIfNull with properties = " + this);
     }
 
     /**
@@ -124,17 +118,13 @@ public class ImprovedProperties extends Properties {
      * @return The properties value or the default value if the property is not defined
      */
     public long getLongProperty (String property, String defaultValue) {
-        logger.debug("entering getLongProperty whith property = " + property + ", and defaultValue = " + defaultValue);
         long returnValue = 0;
         if (getProperty(property) == null) {
-            logger.debug("null property, using defaultValue");
             if (null == defaultValue) {
-                logger.debug("null defaultVale returning 0");
             } else {
                 try {
                     returnValue = Long.parseLong(defaultValue);
                 } catch (Exception e) {
-                    logger.error("caught an exception in getLongProperty while parsing a long, returning 0",e);
                     returnValue = 0;
                 }
             }
@@ -142,12 +132,9 @@ public class ImprovedProperties extends Properties {
             try {
                 returnValue = Long.parseLong(getProperty(property));
             } catch (Exception e) {
-                logger.error("caught an exception in getLongProperty while parsing a long, returning 0",e);
                 returnValue = 0;
             }
         }
-
-        logger.debug ("leaving getLongProperty with return value = " + returnValue);
         return returnValue;
     }
 
@@ -160,11 +147,9 @@ public class ImprovedProperties extends Properties {
      * is null
      */
     public long getLongProperty (String property) {
-        logger.debug("entering getLongProperty with property = " + property);
 
         long returnValue = 0;
         if (null == getProperty(property)) {
-            logger.error ("null property, returning 0");
         } else {
             try {
                 returnValue = Long.parseLong(getProperty(property));
@@ -173,7 +158,6 @@ public class ImprovedProperties extends Properties {
                 returnValue = 0;
             }
         }
-        logger.debug("leaving getLongProperty with " + returnValue);
         return returnValue;
     }
 
@@ -181,11 +165,8 @@ public class ImprovedProperties extends Properties {
      * Get a boolean property
      */
     public boolean getBooleanProperty (String property) {
-        logger.debug("entering getBooleanProperty with property = " + property);
-
         boolean returnValue = false;
         if (null == getProperty(property)) {
-            logger.error ("null property, returning false");
         } else {
             try {
                 returnValue = Boolean.parseBoolean(getProperty(property));
@@ -194,7 +175,6 @@ public class ImprovedProperties extends Properties {
                 returnValue = false;
             }
         }
-        logger.debug("leaving getBooleanProperty with " + returnValue);
         return returnValue;
     }
 }

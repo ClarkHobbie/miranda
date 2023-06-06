@@ -8,6 +8,7 @@ import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.cluster.Node;
 import com.ltsllc.miranda.cluster.SpecNode;
 import com.ltsllc.miranda.logging.LoggingCache;
+import com.ltsllc.miranda.logging.LoggingMap;
 import com.ltsllc.miranda.netty.ServerChannelToNodeDecoder;
 import com.ltsllc.miranda.netty.StringEncoder;
 import com.ltsllc.miranda.message.Message;
@@ -29,8 +30,15 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.util.ResourceLeakDetector;
 import io.netty.util.ResourceLeakDetectorFactory;
+import org.apache.log4j.Appender;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.ConfigurationSource;
+import org.apache.logging.log4j.core.config.Configurator;
+import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.asynchttpclient.*;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
@@ -39,11 +47,12 @@ import org.eclipse.jetty.server.handler.ResourceHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
-import java.io.FileInputStream;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.net.InetSocketAddress;
+import java.net.URL;
 import java.util.*;
+
+import static org.apache.logging.log4j.Level.DEBUG;
 
 
 public class Miranda implements PropertyListener {
@@ -66,10 +75,7 @@ public class Miranda implements PropertyListener {
     public static final String PROPERTY_LONG_LOGGING_LEVEL = "loggingLevel";
     public static final String PROPERTY_SHORT_LOGGING_LEVEL = "l";
 
-    /**
-     * The logging level to use.
-     */
-    public static final String PROPERTY_LOGGING_LEVEL = "loggingLevel";
+    public static final String PROPERTY_LOGGING_LEVEL_DEBUG = "debug";
 
     /**
      * The default Logging level to use if the user doesn't specify one.  The default is ERROR.
@@ -262,10 +268,11 @@ public class Miranda implements PropertyListener {
      */
     public static final String PROPERTY_DEFAULT_USE_HEART_BEATS = "on";
 
+
     /**
      * The logger to use
      */
-    protected static final Logger logger = LogManager.getLogger();
+    protected static final Logger logger = LogManager.getLogger(Miranda.class);
 
     /**
      * The logger to use for system events like system startup, shutdown, message creation, delivery, etc.
@@ -436,11 +443,13 @@ public class Miranda implements PropertyListener {
         this.restartIndex = restartIndex;
     }
 
+
+
     /**
      * The constructor for the class
      *
      * <P>
-     *     This set the instance to the newly created instance and tries to load the properties for that instance.  If
+     *     This sets the static instance to the newly created instance and tries to load the properties for that instance.  If
      *     there is a problem loading the properties the method throws an UncheckedLtsllcException.  It checks for the
      *     existence of the myUuid, the myHost and the myPort properties and throws an UncheckedLtsllcException if the
      *     property is not defined.
@@ -489,6 +498,13 @@ public class Miranda implements PropertyListener {
         rld = ResourceLeakDetectorFactory.instance().newResourceLeakDetector(ByteBuf.class);
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID);
 
+
+        LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+        Configuration config = ctx.getConfiguration();
+        LoggerConfig loggerConfig = config.getLoggerConfig("STDOUT");
+
+        //loggerConfig.setLevel(DEBUG);
+        //ctx.updateLoggers();
     }
 
     /**
@@ -557,10 +573,15 @@ public class Miranda implements PropertyListener {
      *
      * <P>
      *     <PRE>
+     *     if this iteration is divisible by 1,000
+     *          run garbage collection
      *     copy all the messages we are responsible for delivering
      *     foreach of those messages
      *         try and deliver the message
-     *     check if we need to recover locally
+     *         if the message was deliver
+     *              remove it from the collection of messages that we are responsible for
+     *              if the message has a status URL
+     *                  send a notification that we delivered it
      *     </PRE>
      *
      * <P>
@@ -596,17 +617,7 @@ public class Miranda implements PropertyListener {
 
                 restartIndex = temp.restartIndex;
 
-                //
-                // if we want to synchronize but we are disconnected from all the other nodes in the cluster then...
-                //
-                if (Cluster.getInstance().getAllNodesFailed() && synchronizationFlag) {
-                    logger.debug("getAllNodesFailed and synchronizationFlag set, entering recovery");
-                    event.info("We want to synchronize but we are disconnected from all the nodes in the cluster so recovering locally");
-                    Miranda.getInstance().setSynchronizationFlag(false);
-                    Cluster.getInstance().setAllNodesFailed(false);
-                    recoverLocally();
-                }
-            }
+             }
             iterations++;
         }
         logger.debug("leaving mainLoop");
@@ -843,7 +854,6 @@ public class Miranda implements PropertyListener {
         properties.setIfNull(PROPERTY_BID_TIMEOUT, PROPERTY_DEFAULT_BID_TIMEOUT);
         properties.setIfNull(PROPERTY_OWNER_FILE, PROPERTY_DEFAULT_OWNER_FILE);
         properties.setIfNull(PROPERTY_PROPERTIES_FILE, PROPERTY_DEFAULT_PROPERTIES_FILE);
-        properties.setIfNull(PROPERTY_LOGGING_LEVEL, PROPERTY_DEFAULT_LOGGING_LEVEL);
         properties.setIfNull(PROPERTY_CLUSTER, PROPERTY_DEFAULT_CLUSTER);
         properties.setIfNull(PROPERTY_CLUSTER_RETRY, PROPERTY_DEFAULT_CLUSTER_RETRY);
         properties.setIfNull(PROPERTY_MESSAGE_LOG, PROPERTY_DEFAULT_MESSAGE_LOG);
@@ -934,33 +944,36 @@ public class Miranda implements PropertyListener {
                                 .build();
 
 
-        boundRequestBuilder
-                .execute(new AsyncCompletionHandler<Response>() {
-                    @Override
-                    public Response onCompleted(Response response) throws IOException {
-                        //
-                        // we should check for an exception, for example when the destination is not listening, but
-                        // response doesn't offer one
-                        //
-                        if ((response.getStatusCode() > 199) && (response.getStatusCode() < 300)) {
+        if (null == message.getCompletionHandler()) {
+            boundRequestBuilder
+                    .execute(new AsyncCompletionHandler<Response>() {
+                        @Override
+                        public Response onCompleted(Response response) throws IOException {
                             //
-                            // if we successfully delivered the message then tell everyone and remove the
-                            // message from the set of messages we are trying to deliver
+                            // we should check for an exception, for example when the destination is not listening, but
+                            // response doesn't offer one
                             //
-                            successfulMessage(message);
-                            event.info("Delivered message (" + message.getMessageID() + ")");
-                        } else {
-                            //
-                            // otherwise note the status and try again
-                            //
-                            message.setStatus(response.getStatusCode());
-                        }
+                            if ((response.getStatusCode() > 199) && (response.getStatusCode() < 300)) {
+                                //
+                                // if we successfully delivered the message then tell everyone and remove the
+                                // message from the set of messages we are trying to deliver
+                                //
+                                successfulMessage(message);
+                                event.info("Delivered message (" + message.getMessageID() + ")");
+                            } else {
+                                //
+                                // otherwise note the status and try again
+                                //
+                                message.setStatus(response.getStatusCode());
+                            }
 
-                        httpClient.close();
-                        // otherwise, keep trying
-                        return response;
-                    }
-                });
+                            httpClient.close();
+                            // otherwise, keep trying
+                            return response;
+                        }
+                    });
+        }
+
 
 
     }
@@ -1060,10 +1073,14 @@ public class Miranda implements PropertyListener {
     public static boolean shouldRecover () {
         PropertiesHolder p = getProperties();
         ImprovedFile messageFile = new ImprovedFile(p.getProperty(PROPERTY_MESSAGE_LOG));
+        boolean messageFileExists = messageFile.exists();
+
         ImprovedFile ownersFile = new ImprovedFile(p.getProperty(PROPERTY_OWNER_FILE));
-        boolean messageShouldRecover = MessageLog.shouldRecover(messageFile, ownersFile);
-        boolean isAlone = messageShouldRecover && !Cluster.getInstance().isOnline();
-        return isAlone;
+        boolean ownerFileExists = ownersFile.exists();
+
+        boolean isAlone = Cluster.getInstance().isAlone(Miranda.getInstance().getMyUuid());
+
+        return (messageFileExists || ownerFileExists) && isAlone;
     }
 
     /**
@@ -1079,29 +1096,13 @@ public class Miranda implements PropertyListener {
     public void recover () throws IOException, LtsllcException {
         logger.debug("entering recovery");
         event.info("Recovering");
+
         PropertiesHolder p = properties;
         ImprovedFile messageFile = new ImprovedFile(p.getProperty(PROPERTY_MESSAGE_LOG));
-        int loadLimit = p.getIntProperty(PROPERTY_CACHE_LOAD_LIMIT);
         ImprovedFile ownerFile = new ImprovedFile(p.getProperty(PROPERTY_OWNER_FILE));
-
-        boolean isClustering = !p.getProperty(Miranda.PROPERTY_CLUSTER).equalsIgnoreCase("off");
-        try {
-            synchronized (this) {
-                wait(6000);
-            }
-        } catch (InterruptedException e)
-        {
-            ;
-        }
-        boolean isAlone = !isClustering || !Cluster.getInstance().isOnline();
-        if (isAlone) {
-            MessageLog.defineStatics();
-            MessageLog.recover(messageFile, loadLimit, ownerFile);
-        } else {
-            messageFile.backup(".backup");
-            ownerFile.backup(".backup");
-            setSynchronizationFlag(true);
-        }
+        int loadLimit = p.getIntProperty(PROPERTY_CACHE_LOAD_LIMIT);
+        UUID owner = UUID.fromString(p.getProperty(PROPERTY_UUID));
+        MessageLog.recover(messageFile, loadLimit, ownerFile, owner);
 
         logger.debug("leaving recovery");
     }
@@ -1112,7 +1113,7 @@ public class Miranda implements PropertyListener {
      * @throws LtsllcException If there are problems with the files.
      * @throws IOException If there are problems recovering.
      */
-    public synchronized void recoverLocally() throws LtsllcException, IOException {
+    public synchronized void recoverLocally(UUID owner) throws LtsllcException, IOException {
         logger.debug("entering recoverLocally");
         event.warn("The other nodes in the cluster are not responding, recovering locally.");
 
@@ -1139,7 +1140,8 @@ public class Miranda implements PropertyListener {
             throw new LtsllcException("failed to rename " + ownersBackup + " to " + owners);
         }
 
-        MessageLog.recover(messages, loadLimit, owners);
+        MessageLog.recover(messages, loadLimit, owners, owner);
+
         logger.debug("leaving recoverLocally");
     }
 

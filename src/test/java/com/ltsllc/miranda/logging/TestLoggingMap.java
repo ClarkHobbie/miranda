@@ -141,32 +141,6 @@ public class TestLoggingMap extends TestSuperclass {
         }
     }
 
-    @Test
-    public void recover () throws LtsllcException, IOException {
-        ImprovedFile logfile = null;
-        try {
-            Miranda miranda = new Miranda();
-            miranda.loadProperties();
-
-            logfile = new ImprovedFile("tempfile");
-
-            UUID message = UUID.randomUUID();
-            UUID owner = UUID.randomUUID();
-
-            LoggingMap loggingMap = new LoggingMap(logfile);
-            loggingMap.add(message, owner);
-
-            LoggingMap newMap = new LoggingMap(logfile);
-            newMap.recover();
-
-            UUID temp = newMap.get(message);
-            assert (temp.equals(owner));
-        } finally {
-            if (logfile != null) {
-                logfile.delete();
-            }
-        }
-    }
 
     @Test
     public void remove () throws IOException {

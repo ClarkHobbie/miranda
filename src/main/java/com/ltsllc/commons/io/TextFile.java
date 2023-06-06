@@ -35,6 +35,12 @@ public class TextFile {
     }
 
 
+    public TextFile(String s) throws IOException {
+        file =  new File(s);
+        if (file.exists()) {
+            readFile();
+        }
+    }
     /*
      * read in the associated text file
      *

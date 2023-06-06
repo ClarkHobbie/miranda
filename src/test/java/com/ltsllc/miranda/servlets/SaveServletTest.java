@@ -39,7 +39,6 @@ public class SaveServletTest {
                 {Miranda.PROPERTY_UUID, "00000000-0000-0000-0000-000000000000"},
                 {Miranda.PROPERTY_HEART_BEAT_TIMEOUT, Miranda.PROPERTY_DEFAULT_HEART_BEAT_TIMEOUT},
                 {Miranda.PROPERTY_PROPERTIES_FILE, Miranda.PROPERTY_DEFAULT_PROPERTIES_FILE},
-                {Miranda.PROPERTY_LOGGING_LEVEL, Miranda.PROPERTY_DEFAULT_LOGGING_LEVEL},
                 {Miranda.PROPERTY_START_TIMEOUT, Miranda.PROPERTY_DEFAULT_START_TIMEOUT}
         };
 
@@ -70,7 +69,6 @@ public class SaveServletTest {
                 {Miranda.PROPERTY_UUID, "00000000-0000-0000-0000-000000000000"},
                 {Miranda.PROPERTY_HEART_BEAT_TIMEOUT, Miranda.PROPERTY_DEFAULT_HEART_BEAT_TIMEOUT},
                 {Miranda.PROPERTY_PROPERTIES_FILE, Miranda.PROPERTY_DEFAULT_PROPERTIES_FILE},
-                {Miranda.PROPERTY_LOGGING_LEVEL, Miranda.PROPERTY_DEFAULT_LOGGING_LEVEL},
                 {Miranda.PROPERTY_START_TIMEOUT, "5"}
         };
 

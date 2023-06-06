@@ -8,6 +8,9 @@ package com.ltsllc.miranda.cluster;
  * </P>
  */
 public enum ClusterConnectionStates {
+    AWAITING_ACK,
+    AWAITING_ASSIGNMENTS,
+    STATE_DEAD_NODE,
     ELECTION,
     GENERAL,
     MESSAGE,

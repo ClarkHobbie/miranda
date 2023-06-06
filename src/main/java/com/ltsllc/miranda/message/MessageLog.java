@@ -3,6 +3,7 @@ package com.ltsllc.miranda.message;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.UncheckedLtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
+import com.ltsllc.commons.io.TextFile;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.alarm.AlarmClock;
 import com.ltsllc.miranda.alarm.Alarmable;
@@ -15,9 +16,8 @@ import com.ltsllc.miranda.properties.PropertyListener;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
+import java.nio.CharBuffer;
 import java.util.*;
 
 /**
@@ -41,6 +41,10 @@ public class MessageLog implements  PropertyListener {
     protected static MessageLog instance;
 
     protected LoggingCache cache;
+
+    public void removeMessage(Message message) {
+        cache.remove(message.getMessageID());
+    }
 
     public LoggingCache getCache() {
         return cache;
@@ -114,7 +118,6 @@ public class MessageLog implements  PropertyListener {
      * @param logfile   The logfile to check for.
      * @param ownerFile The owners file to check for.
      * @return True if the logfile exists, false otherwise.
-     * @see #recover(ImprovedFile, int, ImprovedFile)
      */
     public static boolean shouldRecover(ImprovedFile logfile, ImprovedFile ownerFile) {
         logger.debug("entering shouldRecover");
@@ -153,8 +156,8 @@ public class MessageLog implements  PropertyListener {
      * @return A new instance, based on the parameters passed to the method.
      * @throws IOException If there are problems reading the various input logfiles.
      */
-    public static MessageLog recover(ImprovedFile logfile, int loadLimit, ImprovedFile ownersFile) throws IOException, LtsllcException {
-        return getInstance().performRecover(logfile, loadLimit, ownersFile);
+    public static MessageLog recover(ImprovedFile logfile, int loadLimit, ImprovedFile ownersFile, UUID owner) throws IOException, LtsllcException {
+        return getInstance().performRecover(logfile, loadLimit, ownersFile,owner);
     }
 
     /**
@@ -176,7 +179,7 @@ public class MessageLog implements  PropertyListener {
      * @throws IOException     If there are problems reading the various input logfiles.
      * @throws LtsllcException If backup files already exist.
      */
-    public MessageLog performRecover(ImprovedFile logfile, int loadLimit, ImprovedFile ownersFile) throws IOException, LtsllcException {
+    public MessageLog performRecover(ImprovedFile logfile, int loadLimit, ImprovedFile ownersFile, UUID owner) throws IOException, LtsllcException {
         ImprovedFile messageBackup = new ImprovedFile(logfile.getName() + ".backup");
         ImprovedFile ownersBackup = new ImprovedFile(ownersFile.getName() + ".backup");
 
@@ -194,9 +197,8 @@ public class MessageLog implements  PropertyListener {
         cache = new LoggingCache(logfile, loadLimit);
         uuidToOwner = new LoggingMap(ownersFile);
 
-        restoreOwnersFile(ownersFile);
-        restoreMessages(logfile);
-
+        loadMessages(logfile, loadLimit);
+        setOwnerTo(owner);
         return this;
     }
 
@@ -210,7 +212,7 @@ public class MessageLog implements  PropertyListener {
      * @param file The file to restore from.
      * @throws IOException If there is a problem reading the file
      */
-    public void restoreOwnersFile(ImprovedFile file) throws IOException {
+    public void restoreOwnersFile(ImprovedFile file, UUID owner) throws IOException {
         if (!file.exists()) {
             file.touch();
             return;
@@ -230,9 +232,8 @@ public class MessageLog implements  PropertyListener {
             while (line != null) {
                 Scanner scanner = new Scanner(line);
                 UUID messageUuid = UUID.fromString(scanner.next());
-                UUID ownerUuid = UUID.fromString(scanner.next());
 
-                temp.put(messageUuid, ownerUuid);
+                temp.put(messageUuid, owner);
 
                 line = bufferedReader.readLine();
             }
@@ -487,5 +488,59 @@ public class MessageLog implements  PropertyListener {
 
     public boolean contains(UUID uuid) {
         return uuidToOwner.get(uuid) != null;
+    }
+
+    public void loadMessages (ImprovedFile logfile, int loadLimit)
+        throws FileNotFoundException, IOException
+    {
+        Reader reader = null;
+        try {
+            TextFile tf = new TextFile(logfile);
+            tf.readFile();
+            reader = tf.getReader();
+            BufferedReader br = new BufferedReader(reader);
+            Message m = readMessage(br);
+            while (m != null) {
+                add(m, Miranda.getInstance().getMyUuid());
+                m = readMessage(br);
+            }
+
+        } finally {
+            if (reader != null)
+                reader.close();
+        }
+    }
+
+    /**
+     * read in a single message from the provided Reader or return null
+     * if we have reached end of file.
+     *
+     * @param reader The stream to read from.
+     * @return The message or null if we have reached end of file.
+     * @throws IOException If an IOException is encountered while reading.
+     */
+    public Message readMessage(BufferedReader reader) throws IOException{
+        String s = reader.readLine();
+        if (null == s)
+        {
+            return null;
+        }
+        else {
+            Message m = Message.readEverything(s);
+            return m;
+        }
+
+    }
+
+    /**
+     * change the ownership of all messages to a specified value.
+     *
+     * @param owner The new owner.
+     * @throws IOException if an IOException is thrown while trying to set the ownership
+     */
+    public void setOwnerTo (UUID owner) throws IOException {
+        for (Message m : cache.getAllMessages()) {
+            uuidToOwner.add(m.getMessageID(), owner);
+        }
     }
 }

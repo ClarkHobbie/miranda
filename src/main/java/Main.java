@@ -3,12 +3,21 @@ import com.ltsllc.miranda.Miranda;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.net.URL;
+
 public class Main {
 
-    protected static final Logger logger = LogManager.getLogger();
+    protected static final Logger logger = LogManager.getLogger(Main.class);
+
+
+    public static void main4 (String[] args) {
+        int i;
+        i = 5;
+        i++;
+    }
 
     public static void main(String[] args) throws Exception {
-        Miranda miranda = new Miranda();
+        Miranda miranda = Miranda.getInstance();
         try {
             miranda.startUp(args);
             for (;;) {

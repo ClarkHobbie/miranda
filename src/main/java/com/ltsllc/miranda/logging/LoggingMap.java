@@ -185,7 +185,7 @@ public class LoggingMap {
      * This method reads the logfile into memory.  Note that this method assumes that there is a logfile to recover
      * from.  A recover should immediately be followed by a compaction but this is not a requirement.
      */
-    public synchronized void recover () throws IOException {
+    public synchronized void recover (UUID owner) throws IOException {
         FileReader fileReader = null;
         BufferedReader bufferedReader = null;
 
@@ -197,7 +197,6 @@ public class LoggingMap {
             while (line != null) {
                 Scanner scanner = new Scanner(line);
                 UUID message = UUID.fromString(scanner.next());
-                UUID owner = UUID.fromString(scanner.next());
                 uuidToUuid.put(message, owner);
 
                 line = bufferedReader.readLine();
@@ -209,6 +208,26 @@ public class LoggingMap {
 
             if (fileReader != null) {
                 fileReader.close();
+            }
+        }
+
+        file.delete();
+
+        FileWriter fileWriter = new FileWriter(file);
+        BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+        try {
+            for (UUID message : uuidToUuid.keySet() ) {
+                bufferedWriter.write(message.toString());
+                bufferedWriter.write(" ");
+                bufferedWriter.write(owner.toString());
+                bufferedWriter.newLine();
+            }
+
+        } finally {
+            if (bufferedWriter != null)
+                bufferedWriter.close();
+            if (fileWriter != null) {
+                fileWriter.close();
             }
         }
     }

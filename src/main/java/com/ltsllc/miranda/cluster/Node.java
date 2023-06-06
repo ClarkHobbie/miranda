@@ -21,8 +21,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.util.*;
 
-import static com.ltsllc.miranda.cluster.ClusterConnectionStates.GENERAL;
-import static com.ltsllc.miranda.cluster.ClusterConnectionStates.SYNCHRONIZING;
+import static com.ltsllc.miranda.cluster.ClusterConnectionStates.*;
 
 
 /**
@@ -45,7 +44,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public static final String ASSIGN_MESSAGE = "ASSIGN MESSAGE";
     public static final String BID = "BID";
     public static final String DEAD_NODE = "DEAD NODE";
-    public static final String DEAD_NODE_START = "DEAD NODE START";
     public static final String ERROR = "ERROR";
     public static final String ERROR_START = "ERROR_START";
     public static final String GET_MESSAGE = "GET MESSAGE";
@@ -62,6 +60,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public static final String NEW_NODE_CONFIRMED = "NEW NODE CONFIRMED";
     public static final String NEW_NODE_OVER = "NEW NODE OVER";
     public static final String OWNER = "OWNER";
+    public static final String OWNER_END = "OWNER END";
     public static final String OWNERS = "OWNERS";
     public static final String OWNERS_END = "OWNERS END";
     public static final String START_START = "START START";
@@ -140,6 +139,20 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         this.uuid = uuid;
     }
 
+
+    /**
+     * The UUID of a dead node that was issued
+     */
+    protected UUID deadNode = null;
+
+    public UUID getDeadNode() {
+        return deadNode;
+    }
+
+    public void setDeadNode(UUID deadNode) {
+        this.deadNode = deadNode;
+    }
+
     /**
      * The hostname or IP address of our partner node
      */
@@ -212,6 +225,19 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         this.online = online;
     }
 
+    public UUID getLeader() {
+        return leader;
+    }
+
+    public void setLeader(UUID leader) {
+        this.leader = leader;
+    }
+
+    /**
+     * The UUID of the node who issued the dead node
+     */
+    protected UUID leader;
+
     /**
      * Send a message to the node informing it that we created a message
      * <p>
@@ -259,10 +285,18 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         s = s.toUpperCase();
 
         MessageType messageType = determineMessageType(s);
-
         switch (state) {
-            case START: {
-                handleStateStart(messageType, s);
+            case AWAITING_ACK: {
+                handleStateAwaitingAck(messageType, s);
+                break;
+            }
+            case AWAITING_ASSIGNMENTS: {
+                handleStateAwaitingAssignments(messageType, s);
+                break;
+            }
+
+            case GENERAL: {
+                handleStateGeneral(messageType, s);
                 break;
             }
 
@@ -271,8 +305,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                 break;
             }
 
-            case GENERAL: {
-                handleStateGeneral(messageType, s);
+            case START: {
+                handleStateStart(messageType, s);
                 break;
             }
 
@@ -289,6 +323,58 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("leaving messageReceived with state = " + state);
     }
 
+    public void handleStateAwaitingOrders (MessageType messageType,String s) throws IOException {
+        switch(messageType) {
+            case OWNER -> {
+                handleOwner(s);
+            }
+        }
+    }
+
+    public void handleStateAwaitingAck (MessageType messageType, String s) {
+        switch (messageType) {
+            case DEAD_NODE -> {
+                handleStateAwaitingAckDeadNode(messageType, s, Miranda.getInstance().getMyUuid());
+            }
+        }
+    }
+    public void handleStateAwaitingAssignments(MessageType messageType, String s) throws IOException, LtsllcException
+    {
+        logger.debug("Entering handleStateAwaitingAssignments");
+
+        switch (messageType) {
+            case DEAD_NODE -> {
+                handleStateAwaitingOrdersDeadNode(s);
+            }
+
+            case OWNER -> {
+                handleOwner(s);
+            }
+
+            case OWNER_END -> {
+                handleOwnerEnd(s);
+            }
+
+            case NEW_MESSAGE -> {
+                handleStateAwaitingAssignmentsNewMessage(messageType, s);
+            }
+        }
+
+        logger.debug("leaving handleStateAwaitingAssignments");
+    }
+
+
+    public void handleStateDeadNode(MessageType messageType, String s) throws LtsllcException {
+        switch (messageType) {
+            case DEAD_NODE -> {
+                if (!isDeadNodeAcknowledge(s)) {
+                    ignoreMessage(messageType, s);
+                } else {
+                    // start here
+                }
+            }
+        }
+    }
 
     public void handleStateMessage(MessageType messageType, String s) throws LtsllcException, IOException {
         switch (messageType) {
@@ -304,11 +390,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
             case DEAD_NODE: {
                 handleDeadNode(s);
-                break;
-            }
-
-            case DEAD_NODE_START: {
-                handleDeadNodeStart(s);
                 break;
             }
 
@@ -346,7 +427,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             }
 
             case OWNER: {
-                handleReceiveOwner(s);
+                handleOwner(s);
                 break;
             }
 
@@ -379,11 +460,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                 break;
             }
 
-            case DEAD_NODE_START: {
-                handleDeadNodeStart(s);
-                break;
-            }
-
             case ERROR: {
                 break;
             }
@@ -410,11 +486,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
             case DEAD_NODE: {
                 handleDeadNode(s);
-                break;
-            }
-
-            case DEAD_NODE_START: {
-                handleDeadNodeStart(s);
                 break;
             }
 
@@ -472,11 +543,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                 break;
             }
 
-            case DEAD_NODE_START: {
-                handleDeadNodeStart(s);
-                break;
-            }
-
             case GET_MESSAGE: {
                 handleGetMessage(s);
                 break;
@@ -489,6 +555,11 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
             case NEW_MESSAGE: {
                 handleNewMessage(s, uuid);
+                break;
+            }
+
+            case OWNER: {
+                handleOwner(s);
                 break;
             }
 
@@ -539,6 +610,22 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
     }
 
+    public void ignoreMessage (MessageType messageType, String s) {
+
+    }
+
+    public void sendDeadNode(UUID deadNode, UUID senderID) {
+        StringBuilder sb = new StringBuilder(Node.DEAD_NODE);
+        sb.append(" ");
+        sb.append(deadNode);
+        sb.append(" ");
+        sb.append(senderID);
+
+        channel.writeAndFlush(sb.toString());
+
+        timeoutsMet.put(Alarms.DEAD_NODE, false);
+    }
+
 
     /**
      * Convert a string to a MessageType
@@ -552,9 +639,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("entering determineMessageType with " + s);
         MessageType messageType = MessageType.UNKNOWN;
 
-        if (s.equals(DEAD_NODE_START)) {
-            messageType = MessageType.DEAD_NODE_START;
-        } else if (s.startsWith(DEAD_NODE)) {
+        if (s.startsWith(DEAD_NODE)) {
             messageType = MessageType.DEAD_NODE;
         } else if (s.startsWith(ERROR_START)) {
             messageType = MessageType.ERROR_START;
@@ -590,6 +675,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             messageType = MessageType.OWNERS_END;
         } else if (s.startsWith(OWNERS)) {
             messageType = MessageType.OWNERS;
+        } else if (s.startsWith(OWNER_END)) {
+            messageType = MessageType.OWNER_END;
         } else if (s.startsWith(OWNER)) {
             messageType = MessageType.OWNER;
         } else if (s.startsWith(START_ACKNOWLEDGED)) {
@@ -613,19 +700,48 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         return messageType;
     }
 
+    public boolean isDeadNodeAcknowledge(String input) {
+        Scanner scanner = new Scanner(input);
+
+        //
+        // This message has the form: DEAD NODE <UUID of dead node> <UUID of leader>
+        //
+        scanner.next(); // DEAD
+        scanner.next(); // NODE
+
+        UUID deadNodeID = UUID.fromString(scanner.next());
+        if (!deadNodeID.equals(deadNode)) {
+            return false;
+        }
+
+        UUID leaderID = UUID.fromString(scanner.next());
+        if (!leaderID.equals(Miranda.getInstance().getMyUuid())) {
+            return false;
+        }
+
+        return true;
+    }
     /**
      * Handle a start message.
      * <p>
      * This method sets the partnerID and the state by side effect.  The response to this is to send a start of our own,
      * with our UUID and to go into the general state.
+     * </p>
      *
+     * <P>
+     *     <PRE>
+     *     The message has the form:
+     *
+     *     START START &lt;UUID of the remote node&gt; &lt;ip of the remote node&gt; &lt;port of the remote node&gt; &lt;start time of the remote node&gt;
+     *     </PRE>
+     * </P>
      * @param input The string that came to us.
      */
     protected synchronized void handleStartStart(String input) {
-        logger.debug("entering handleStart");
+        logger.debug("entering handleStartStart");
         Scanner scanner = new Scanner(input);
-        scanner.next();
-        scanner.next();
+        scanner.next(); // START
+        scanner.next(); // START
 
         uuid = UUID.fromString(scanner.next());
         registerUuid(uuid);
@@ -657,7 +773,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             sendStart(true);
         }
 
-        logger.debug("leaving handleStart");
+        logger.debug("leaving handleStartStart");
     }
 
     /**
@@ -936,13 +1052,16 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     /**
      * Receive some owner information
      * <p>
-     * The owner information is expected to be in the form "OWNER &lt;message UUID&gt; &lt;owner UUID&gt;."
+     * The owner information is expected to be in the form
+     * <PRE>
+     * OWNER &lt;message UUID&gt; &lt;owner UUID&gt;.
+     * </PRE>
      * </P>
      *
-     * @param input The owner information
+     * @param input The message
      * @throws IOException If there is a problem setting the owner
      */
-    public void handleReceiveOwner(String input) throws IOException {
+    public void handleOwner(String input) throws IOException {
         logger.debug("entering handleOwner");
         Scanner scanner = new Scanner(input);
         scanner.next(); // OWNER
@@ -1358,25 +1477,44 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * <p>
      * This consists of setting a timeoutsMet flag.
      * </P>
+     *
+     * <P>
+     * The message is expected to have the form
+     * <PRE>
+     * DEAD NODE &lt;UUID of dead node&gt; &lt;UUID of leader&gt;
+     * </PRE>
+     * </P>
      */
     public void handleDeadNode(String input) throws LtsllcException {
         logger.debug("entering handleDeadNode");
 
+        pushState(state);
+        logger.debug("Saved state");
+        state = AWAITING_ASSIGNMENTS;
+
+        //
+        // a dead node message has the form: DEAD NODE <UUID of dead node> <UUID of leader>
+        //
         timeoutsMet.put(Alarms.DEAD_NODE, true);
         Scanner scanner = new Scanner(input);
 
         scanner.next(); // DEAD
         scanner.next(); // NODE
-        scanner.next(); // START
-        UUID uuid = UUID.fromString(scanner.next()); // uuid
-        int vote = scanner.nextInt();
+        UUID deadNode = UUID.fromString(scanner.next()); // uuid of dead node
+        UUID leader = UUID.fromString(scanner.next());
 
-        Cluster.getInstance().vote(uuid, vote);
-        if (Cluster.getInstance().allVotesIn()) {
-            Cluster.getInstance().countVotes();
-            Cluster.getInstance().sendLeader();
-        }
+        //
+        // send acknowledgment
+        //
+        StringBuilder sb = new StringBuilder(DEAD_NODE);
+        sb.append(" ");
+        sb.append(deadNode.toString());
+        sb.append(" ");
+        sb.append(leader.toString());
 
+        channel.writeAndFlush(sb.toString());
+
+        logger.debug("Sent " + sb.toString());
         logger.debug("leaving handleDeadNode");
     }
 
@@ -1385,6 +1523,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      *
      * @param uuid The uuid of the dead node
      */
+    /*
     public void sendDeadNodeStart(UUID uuid) {
         logger.debug("entering sendDeadNode with " + uuid);
 
@@ -1405,6 +1544,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
         logger.debug("leaving sendDeadNode");
     }
+    */
+
 
     /**
      * The node has timed out waiting for a reply to a dead node start message
@@ -1690,6 +1831,116 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     }
 
     /**
+     * handle a message while in state AWAITING_ASSIGNMENTS
+     *
+     * <P>
+     *     the input sting has the format
+     *     <PRE>
+     *     CREATED MESSAGE &lt;UUID of the node that created the message&gt; &lt;message in long format&gt;
+     *     </PRE>
+     * </P>
+     *
+     */
+    public void handleStateAwaitingAssignmentsNewMessage(MessageType messageType, String s) throws IOException
+    {
+        logger.debug("Entering handleMessageAwaitingAssignments");
+
+        Scanner scanner = new Scanner(s);
+        scanner.next(); // CREATED
+        scanner.next(); // MESSAGE
+        UUID.fromString(scanner.next());
+        Message message = Message.readLongFormat(scanner);
+        MessageLog.getInstance().add(message, uuid);
+
+        logger.debug("Leaving handleMessageAwaitingAssignments");
+    }
+
+    /**
+     * Handle the end of a dead node
+     *
+     * <P>
+     * The String is expected to have the form:
+     * <PRE>
+     * OWNER END
+     * </PRE>
+     * </P>
+     *
+     * <P>
+     *     This switches state to whatever it was before.
+     * </P>
+     */
+    public void handleOwnerEnd (String s) throws IOException, LtsllcException {
+        state = popState();
+    }
+
+
+    /**
+     * Handle the situation where we get another dead node while we are already
+     * processing a dead node.
+     *
+     * <P>
+     *     Basically, the method does nothing.
+     * </P>
+     * <P>
+     * The message is expected to have the form
+     * <PRE>
+     * DEAD NODE &lt;UUID of dead node&gt; &lt;UUID of leader node&gt;
+     * </PRE>
+     * </P>
+     */
+    public void handleStateAwaitingOrdersDeadNode(String s) {
+
+    }
+
+    /**
+     * Wait for an acknowledgement of a dead node.
+     *
+     * <P>
+     *     Save whatever state we're in and switch to AWAITING_ACK. Call back
+     *     if we have received all the acks or we receive an ack of a different
+     *     dead node.
+     * </P>
+     *
+     */
+    public void awaitAck (UUID deadNode, UUID leader) {
+        pushState(state);
+        state = ClusterConnectionStates.AWAITING_ACK;
+        this.deadNode = deadNode;
+        this.leader = leader;
+    }
+
+    /**
+     * handle a dead node message while waiting for a dead node message
+     *
+     * <P>
+     *     Call the cluster if this is the ack we were waiting for or
+     *     if this was an ack to a different dead node.
+     * </P>
+     *
+     * <P>
+     * The message is expected to have the form:
+     * <PRE>
+     * DEAD NODE &lt;UUID of dead node&gt; &lt;UUID of leader&gt;
+     * </PRE>
+     * </P>
+     */
+    public void handleStateAwaitingAckDeadNode(MessageType messageType, String message, UUID node) {
+        Scanner scanner = new Scanner(message);
+        scanner.next(); // DEAD
+        scanner.next(); // NODE
+        UUID tempDeadNode = UUID.fromString(scanner.next());
+        UUID tempLeader = UUID.fromString(scanner.next());
+
+        if (!deadNode.equals(tempDeadNode)) {
+            Cluster.getInstance().awaitingDeadNodeWrongNode(uuid, tempDeadNode);
+        } else if (!leader.equals(tempLeader)) {
+            Cluster.getInstance().awaitingDeadNodeWrongLeader(uuid, tempLeader);
+        } else {
+            Cluster.getInstance().awaitingDeadNodeAck(node);
+        }
+
+    }
+    /**
      * send an error start over the channel
      */
     public void sendErrorStart() {
@@ -1698,6 +1949,20 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
     public boolean isOnline() {
         return uuid != null;
+    }
+
+    /**
+     * send a OWNER statement that establishes a new owner
+     * @param newOwner
+     */
+    public void sendNewOwner(UUID message, UUID newOwner) {
+        StringBuilder stringBuilder = new StringBuilder(OWNER);
+        stringBuilder.append (" ");
+        stringBuilder.append (message.toString());
+        stringBuilder.append (" ");
+        stringBuilder.append (newOwner.toString());
+
+        channel.writeAndFlush(stringBuilder.toString());
     }
 }
 

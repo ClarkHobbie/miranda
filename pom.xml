@@ -6,7 +6,6 @@
 
     <groupId>miranda</groupId>
     <artifactId>ltsllc</artifactId>
-    <packaging>pom</packaging>
     <version>1.0-SNAPSHOT</version>
     <repositories>
         <repository>
@@ -14,13 +13,13 @@
             <name>Maven Central</name>
             <url>https://repo1.maven.org/maven2/</url>
         </repository>
+
     </repositories>
 
+
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
-
-
+        <maven.compiler.source>20</maven.compiler.source>
+        <maven.compiler.target>20</maven.compiler.target>
     </properties>
     <build>
         <plugins>
@@ -32,12 +31,6 @@
                             <mainClass>Main</mainClass>
                         </manifest>
                     </archive>
-                    <descriptorRefs>
-                        <descriptorRef>miranda.jar</descriptorRef>
-                    </descriptorRefs>
-                    <descriptors>
-                        <descriptor>src/main/assembly/miranda.xml</descriptor>
-                    </descriptors>
                 </configuration>
                 <executions>
                     <execution>
@@ -165,16 +158,38 @@
         </dependency>
 
         <!-- log4j -->
+        <!-- Add the BOM, so you don't need to specify version -->
+
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-bom</artifactId>
+            <version>2.10.0</version>
+            <scope>import</scope>
+            <type>pom</type>
+        </dependency>
+
+
+        <!-- Used in your code -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>
-            <version>2.17.2</version>
         </dependency>
+        <!-- Only necessary at runtime -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
-            <version>2.17.2</version>
+            <scope>runtime</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-reload4j</artifactId>
+            <version>1.7.36</version>
+        </dependency>
+
+
+
+
 
         <!-- jetty -->
 
@@ -191,14 +206,6 @@
         </dependency>
 
 
-        <!-- slf -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-log4j12</artifactId>
-            <version>1.7.36</version>
-        </dependency>
-
-
         <!-- apache commons-io  -->
         <dependency>
             <groupId>commons-io</groupId>
@@ -212,7 +219,6 @@
             <artifactId>netty-all</artifactId>
             <version>4.1.77.Final</version>
         </dependency>
-
     </dependencies>
 
 

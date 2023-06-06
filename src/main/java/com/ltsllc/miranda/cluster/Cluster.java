@@ -2,6 +2,7 @@ package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.UncheckedLtsllcException;
+import com.ltsllc.commons.util.Bag;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.alarm.AlarmClock;
@@ -16,6 +17,7 @@ import com.ltsllc.miranda.message.MessageLog;
 import com.ltsllc.miranda.properties.Properties;
 import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import com.ltsllc.miranda.properties.PropertyListener;
+import com.ltsllc.miranda.cluster.Node;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -195,7 +197,28 @@ public class Cluster implements Alarmable, PropertyListener {
         nodes = n;
     }
 
+    protected Map<UUID, Boolean> awaitingDeadNodeAcks;
+
+    public Map<UUID, Boolean> getAwaitingDeadNodeAcks() {
+        return awaitingDeadNodeAcks;
+    }
+
+    public void setAwaitingDeadNodeAcks(Map<UUID, Boolean> awaitingDeadNodeAcks) {
+        this.awaitingDeadNodeAcks = awaitingDeadNodeAcks;
+    }
+
     protected Map<HeartBeatHandler, UUID> heartBeatHandlerToUUIDMap = new HashMap<>();
+
+    protected UUID deadNode;
+
+    public UUID getDeadNode() {
+        return deadNode;
+    }
+
+    public void setDeadNode(UUID deadNode) {
+        this.deadNode = deadNode;
+    }
+
     /**
      * Set the random number generator that this node uses
      *
@@ -205,14 +228,6 @@ public class Cluster implements Alarmable, PropertyListener {
      */
     public static void setRandomNumberGenerator(ImprovedRandom randomNumberGenerator) {
         Cluster.randomNumberGenerator = randomNumberGenerator;
-    }
-
-    public boolean allVotesIn() throws LtsllcException {
-        if (null == election) {
-            throw new LtsllcException("null election");
-        }
-
-        return election.allVotesIn();
     }
 
 
@@ -597,6 +612,10 @@ public class Cluster implements Alarmable, PropertyListener {
                 break;
             }
 
+            case DEAD_NODE: {
+                deadNodeTimeout();
+                break;
+            }
             default: {
                 String msg = "unrecognized alarm: " + alarm;
                 logger.error(msg);
@@ -659,25 +678,148 @@ public class Cluster implements Alarmable, PropertyListener {
      * @throws IOException If there is a problem transferring ownership.
      */
     public synchronized void deadNode(UUID uuid, Node node) throws IOException {
-        election = new Election(nodes,uuid);
-        election.setDeadNode(uuid);
+        sendDeadNode(uuid, Miranda.getInstance().getMyUuid());
+        awaitAcks(node.getUuid());
+        setDeadNodeTimeout();
+    }
 
-        for (Node n : nodes) {
-            if (n.getChannel() != null) {
-                n.sendDeadNode(uuid);
-            } else if (n.getChannel() != null && null != n.getUuid() && !n.getUuid().equals(uuid)) {
-                n.sendDeadNodeStart(uuid);
+    public void setDeadNodeTimeout() {
+        AlarmClock.getInstance().schedule(getInstance(), Alarms.DEAD_NODE,
+                Miranda.getProperties().getLongProperty(Miranda.PROPERTY_DEAD_NODE_TIMEOUT));
+
+    }
+
+
+    /**
+     * a dead node timeout occurred
+     *
+     * <P>
+     *     See if this is due to our being the only survivor or because some node
+     *     took too long to respond.
+     * </P>
+     */
+    public void deadNodeTimeout () throws IOException {
+        //
+        // sole survivor
+        //
+        if (nodes.size() == 1) {
+            divideUpNodesMessagesOnlyNode(nodes.get(0).getUuid());
+        }
+        //
+        // a node took too long
+        //
+        else {
+            sendError();
+        }
+    }
+
+    /**
+     * Send an error to all nodes in the cluster
+     */
+    public void sendError () {
+        for (Node node: nodes) {
+            node.sendErrorStart();
+            node.setState(ClusterConnectionStates.START);
+        }
+    }
+
+
+    public void sendNewOwners () {
+        Bag<Node> survivingNodes = new Bag<>();
+
+        for (Node node: nodes) {
+            if (node.getUuid().equals(deadNode)) {
+                continue;
+            } else {
+                survivingNodes.add(node);
+            }
+        }
+        Bag<Node> tempSurvivors = new Bag<Node>(survivingNodes);
+
+        for (UUID messageUuid: MessageLog.getInstance().getAllMessagesOwnedBy(deadNode)) {
+            UUID newOwner = tempSurvivors.get().getUuid();
+            for (Node node : survivingNodes) {
+                node.sendNewOwner(messageUuid, newOwner);
             }
         }
 
-        if (election.getVoters().size() == 1) {
-            List<UUID> messages = MessageLog.getInstance().getAllMessagesOwnedBy(uuid);
-            for (UUID message: messages) {
-                MessageLog.getInstance().setOwner(message, Miranda.getInstance().getMyUuid());
+    }
+
+    /**
+     * Await the arrival of an acknowledgements to a dead node.
+     */
+    public void awaitAcks(UUID deadNode) {
+        for (Node node: nodes) {
+            if (node.getUuid().equals(deadNode)) {
+                continue;
+            } else {
+                node.awaitAck(deadNode, Miranda.getInstance().getMyUuid());
             }
         }
     }
 
+    /**
+     * We received an ack, but it was for a node other than what we indicated
+     * was the dead node.
+     */
+    public void awaitingDeadNodeWrongNode (UUID sendingNode, UUID actualNode) {
+        awaitingDeadNodeAcks.put (sendingNode, false);
+    }
+
+    /**
+     * We received an ack, but it specified a leader other than we wanted.
+     */
+    public void awaitingDeadNodeWrongLeader (UUID sendingNode, UUID actualLeader) {
+        awaitingDeadNodeAcks.put (sendingNode, false);
+    }
+
+
+    /**
+     * We received an ack to our dead node
+     */
+    public void awaitingDeadNodeAck (UUID node) {
+        awaitingDeadNodeAcks.put(node, true);
+        if (deadNodeAllAcksReceived()) {
+            sendNewOwners();
+        } else {
+
+        }
+    }
+
+    /**
+     * Have all the nodes that we were waiting on sent out acks?
+     *
+     * @return true if all the nodes we were waiting on returned an ack,
+     * false otherwise.
+     */
+    public boolean deadNodeAllAcksReceived () {
+        for (UUID uuid: awaitingDeadNodeAcks.keySet()) {
+            if (!awaitingDeadNodeAcks.get(uuid)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+
+    /**
+     * Send a dead node message to everyone in the cluster aside from the dead node.
+     *
+     * @param deadNode
+     * @param sender
+     */
+    public void sendDeadNode (UUID deadNode, UUID sender) {
+        StringBuilder sb = new StringBuilder(Node.DEAD_NODE);
+
+        for (Node node : nodes) {
+            if (node.getUuid().equals(deadNode)) {
+                continue;
+            } else {
+                node.sendDeadNode(deadNode, sender);
+            }
+        }
+    }
     /**
      * Notify the cluster of a message delivery
      * <p>
@@ -864,5 +1006,15 @@ public class Cluster implements Alarmable, PropertyListener {
         }
 
         return false;
+    }
+
+    public boolean isAlone(UUID localID) {
+        for (Node node : nodes) {
+            if (node.isOnline() && node.getUuid() !=localID) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
