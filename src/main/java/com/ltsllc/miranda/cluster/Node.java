@@ -191,6 +191,20 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     }
 
     /**
+     * is this node a loopback node? If it is, then ignore any messages from it
+     */
+    protected boolean isLoopback;
+
+    public boolean getIsLoopback()
+    {
+        return isLoopback;
+    }
+
+    public void setIsLoopback (boolean value)
+    {
+        isLoopback = value;
+    }
+    /**
      * When the last time we sent anything or received anything
      */
     protected Long timeOfLastActivity = System.currentTimeMillis();
@@ -284,6 +298,13 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("entering messageReceived with state = " + state + " and message = " + s);
         s = s.toUpperCase();
 
+        /* if this is a loopback node, then ignore messages from it.
+        if (isLoopback) {
+            return;
+        }
+
+
+         */
         MessageType messageType = determineMessageType(s);
         switch (state) {
             case AWAITING_ACK: {

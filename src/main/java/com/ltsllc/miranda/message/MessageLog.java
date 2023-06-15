@@ -197,8 +197,7 @@ public class MessageLog implements  PropertyListener {
         cache = new LoggingCache(logfile, loadLimit);
         uuidToOwner = new LoggingMap(ownersFile);
 
-        loadMessages(logfile, loadLimit);
-        setOwnerTo(owner);
+        setOwnerTo(Miranda.getInstance().getMyUuid());
         return this;
     }
 

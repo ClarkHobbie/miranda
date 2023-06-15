@@ -279,6 +279,7 @@ public class Cluster implements Alarmable, PropertyListener {
      * @param node      The node to add.
      */
     public synchronized void addNode(Node node) {
+
         logger.debug("adding node " + node + " to nodes");
 
         boolean alreadyPresent = false;
@@ -292,6 +293,12 @@ public class Cluster implements Alarmable, PropertyListener {
 
         if (!alreadyPresent) {
             nodes.add(node);
+        }
+
+        // if this is a loopback node, then ignore messages from
+        if (node.getUuid().equals(Miranda.getInstance().getMyUuid()))
+        {
+            node.setIsLoopback(true);
         }
     }
 

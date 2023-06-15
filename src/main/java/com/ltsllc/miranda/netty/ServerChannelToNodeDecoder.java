@@ -34,12 +34,6 @@ public class ServerChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
      * @throws CloneNotSupportedException This exception is thrown by the node when the message is delivered.
      */
     public void channelRead(ChannelHandlerContext ctx, Object message) throws LtsllcException, IOException, CloneNotSupportedException {
-        if (this.node == null) {
-            Node node = new Node(null, null, -1, ctx.channel());
-            this.node = node;
-            Cluster.getInstance().addNode(node);
-            Cluster.getInstance().coalesce();
-        }
         String s = (String) message;
         node.messageReceived(s);
     }
