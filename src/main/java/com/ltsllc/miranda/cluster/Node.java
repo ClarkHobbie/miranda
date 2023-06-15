@@ -1,6 +1,7 @@
 package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.commons.util.Utils;
 import com.ltsllc.miranda.Miranda;
@@ -298,13 +299,10 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("entering messageReceived with state = " + state + " and message = " + s);
         s = s.toUpperCase();
 
-        /* if this is a loopback node, then ignore messages from it.
-        if (isLoopback) {
+        if (getIsLoopback()) {
             return;
         }
 
-
-         */
         MessageType messageType = determineMessageType(s);
         switch (state) {
             case AWAITING_ACK: {
@@ -758,7 +756,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * </P>
      * @param input The string that came to us.
      */
-    protected synchronized void handleStartStart(String input) {
+    protected synchronized void handleStartStart(String input) throws IOException {
         logger.debug("entering handleStartStart");
         Scanner scanner = new Scanner(input);
         scanner.next(); // START
@@ -786,6 +784,10 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             sendSynchronizationStart();
             pushState(state);
             setState(SYNCHRONIZING);
+            ImprovedFile logs = new ImprovedFile("messages.log");
+            logs.touch();
+            ImprovedFile owners = new ImprovedFile("owners.log");
+            logs.touch();
         }
         //
         // otherwise just treat it like any other node
@@ -1131,7 +1133,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     /**
      * The IoSession has been opened --- start synchronizing if the Miranda synchronization flag has been set.
      */
-    public void sessionOpened() {
+    public void sessionOpened() throws IOException {
         if (Miranda.getInstance().getSynchronizationFlag()) {
             synchronize();
         }
@@ -1146,7 +1148,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * start message
      * </P>
      */
-    public void synchronize() {
+    public void synchronize() throws IOException {
         Miranda.getInstance().setSynchronizationFlag(false);
 
         sendSynchronizationStart();
@@ -1199,7 +1201,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      *
      * @param input The START message.
      */
-    public void handleStartStartGeneral(String input) {
+    public void handleStartStartGeneral(String input) throws IOException {
         logger.debug("entering handleStartGeneral");
         Scanner scanner = new Scanner(input);
         scanner.next(); scanner.next(); // START START
@@ -1291,7 +1293,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * This method takes care of setting the time of last activity and the contents of the synchronization message.
      * </P>
      */
-    public void sendSynchronizationStart() {
+    public void sendSynchronizationStart() throws IOException {
         logger.debug("entering sendSynchronizationStart");
 
         StringBuffer stringBuffer = new StringBuffer();
@@ -1304,6 +1306,12 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         stringBuffer.append(Miranda.getInstance().getMyPort());
         stringBuffer.append(" ");
         stringBuffer.append(Miranda.getInstance().getMyStart());
+
+        ImprovedFile logs = new ImprovedFile("messages.log");
+        logs.touch();
+
+        ImprovedFile owners = new ImprovedFile("owners.log");
+        owners.touch();
 
         channel.writeAndFlush(stringBuffer.toString());
         logger.debug("wrote " + stringBuffer);
