@@ -1,8 +1,8 @@
 package com.ltsllc.miranda.message;
 
 import com.ltsllc.commons.util.Utils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.asynchttpclient.AsyncCompletionHandler;
 import org.asynchttpclient.Response;
 
@@ -28,7 +28,7 @@ public class Message implements Comparable<Message> {
         this.completionHandler = completionHandler;
     }
 
-    protected static Logger logger = LogManager.getLogger();
+    protected static Logger logger = LogManager.getLogger(Message.class);
 
     protected int status;
     protected String deliveryURL;

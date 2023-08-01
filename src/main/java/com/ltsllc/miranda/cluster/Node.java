@@ -15,15 +15,15 @@ import com.ltsllc.miranda.netty.HeartBeatHandler;
 import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import com.ltsllc.miranda.properties.PropertyListener;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
 import java.io.IOException;
 import java.util.*;
 
 import static com.ltsllc.miranda.cluster.ClusterConnectionStates.*;
-
 
 /**
  * A node in the cluster
@@ -36,7 +36,7 @@ import static com.ltsllc.miranda.cluster.ClusterConnectionStates.*;
  * </P>
  */
 public class Node implements Cloneable, Alarmable, PropertyListener {
-    public static final Logger logger = LogManager.getLogger();
+    public static final Logger logger = LogManager.getLogger(Node.class);
     public static final Logger events = LogManager.getLogger("events");
 
     /*
@@ -79,6 +79,16 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         this.uuid = myUUID;
         this.host = host;
         this.port = port;
+
+        if (channel != null && uuid.equals(Miranda.getInstance().getMyUuid())) {
+            ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
+            if (channelHandler == null || !(channelHandler instanceof HeartBeatHandler)) {
+                throw new RuntimeException("couldn't find HeartBeatHandler");
+            } else {
+                HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
+                heartBeatHandler.setLoopback(true);
+            }
+        }
     }
 
     /**
@@ -196,15 +206,14 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      */
     protected boolean isLoopback;
 
-    public boolean getIsLoopback()
-    {
+    public boolean getIsLoopback() {
         return isLoopback;
     }
 
-    public void setIsLoopback (boolean value)
-    {
+    public void setIsLoopback(boolean value) {
         isLoopback = value;
     }
+
     /**
      * When the last time we sent anything or received anything
      */
@@ -252,6 +261,26 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * The UUID of the node who issued the dead node
      */
     protected UUID leader;
+
+    /**
+     * Connect the node
+     * <p>
+     * This actually just calls Cluster.connectToNode
+     * </P>
+     */
+    public boolean connect() {
+        boolean result = false;
+
+        try {
+            result = Cluster.getInstance().connectToNode(this);
+        } catch (LtsllcException e) {
+            throw new RuntimeException(e);
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
+
+        return result;
+    }
 
     /**
      * Send a message to the node informing it that we created a message
@@ -339,26 +368,27 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             }
         }
 
+
         logger.debug("leaving messageReceived with state = " + state);
     }
 
-    public void handleStateAwaitingOrders (MessageType messageType,String s) throws IOException {
-        switch(messageType) {
+    public void handleStateAwaitingOrders(MessageType messageType, String s) throws IOException {
+        switch (messageType) {
             case OWNER -> {
                 handleOwner(s);
             }
         }
     }
 
-    public void handleStateAwaitingAck (MessageType messageType, String s) {
+    public void handleStateAwaitingAck(MessageType messageType, String s) {
         switch (messageType) {
             case DEAD_NODE -> {
                 handleStateAwaitingAckDeadNode(messageType, s, Miranda.getInstance().getMyUuid());
             }
         }
     }
-    public void handleStateAwaitingAssignments(MessageType messageType, String s) throws IOException, LtsllcException
-    {
+
+    public void handleStateAwaitingAssignments(MessageType messageType, String s) throws IOException, LtsllcException {
         logger.debug("Entering handleStateAwaitingAssignments");
 
         switch (messageType) {
@@ -438,8 +468,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         }
     }
 
-    public void handleStateSynchronizing(MessageType messageType, String s) throws IOException, LtsllcException
-    {
+    public void handleStateSynchronizing(MessageType messageType, String s) throws IOException, LtsllcException {
         switch (messageType) {
             case OWNERS: {
                 break;
@@ -629,7 +658,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
     }
 
-    public void ignoreMessage (MessageType messageType, String s) {
+    public void ignoreMessage(MessageType messageType, String s) {
 
     }
 
@@ -740,6 +769,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
         return true;
     }
+
     /**
      * Handle a start message.
      * <p>
@@ -747,13 +777,14 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * with our UUID and to go into the general state.
      * </p>
      *
-     * <P>
-     *     <PRE>
-     *     The message has the form:
-     *
-     *     START START &lt;UUID of the remote node&gt; &lt;ip of the remote node&gt; &lt;port of the remote node&gt; &lt;start time of the remote node&gt;
-     *     </PRE>
+     * <p>
+     * <PRE>
+     * The message has the form:
+     * <p>
+     * START START &lt;UUID of the remote node&gt; &lt;ip of the remote node&gt; &lt;port of the remote node&gt; &lt;start time of the remote node&gt;
+     * </PRE>
      * </P>
+     *
      * @param input The string that came to us.
      */
     protected synchronized void handleStartStart(String input) throws IOException {
@@ -768,6 +799,23 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         port = scanner.nextInt();
         nodeStart = scanner.nextLong();
 
+        if (
+                uuid.equals(Miranda.getInstance().getMyUuid())
+                        && host.equalsIgnoreCase(Miranda.getInstance().getMyHost())
+                        && port == Miranda.getInstance().getMyPort()
+                        && nodeStart == Miranda.getInstance().getMyStart()
+        ) {
+            isLoopback = true;
+
+            ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
+            if (channelHandler == null || !(channelHandler instanceof HeartBeatHandler)) {
+                throw new RuntimeException("couldn't find HeartBeatHandler");
+            } else {
+                HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
+                heartBeatHandler.setLoopback(true);
+            }
+        }
+
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append(Node.START_ACKNOWLEDGED);
         stringBuffer.append(" ");
@@ -777,9 +825,15 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("wrote " + stringBuffer);
 
         //
+        // if it's a loopback node then don't synchronize with it
+        //
+        if (isLoopback) {
+        }
+        //
         // if the node is eldest, then synchronize with it
         //
-        if ((Miranda.getInstance().getMyStart() == -1) || (Miranda.getInstance().getEldest() > nodeStart)) {
+        else if ((Miranda.getInstance().getMyStart() == -1)
+                || (Miranda.getInstance().getEldest() > nodeStart)) {
             Miranda.getInstance().setEldest(nodeStart);
             sendSynchronizationStart();
             pushState(state);
@@ -789,6 +843,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             ImprovedFile owners = new ImprovedFile("owners.log");
             logs.touch();
         }
+
         //
         // otherwise just treat it like any other node
         //
@@ -813,6 +868,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             return;
         }
 
+
         channelToSentStart.put(channel, true);
         logger.debug("entering sendStart");
         StringBuilder stringBuilder = new StringBuilder();
@@ -826,14 +882,35 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         stringBuilder.append(" ");
         stringBuilder.append(Miranda.getInstance().getMyStart());
 
-        channel.writeAndFlush(stringBuilder.toString());
+        ChannelFuture future = channel.writeAndFlush(stringBuilder.toString());
+        try {
+            future.await();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        if (!future.isSuccess()) {
+            throw new RuntimeException(future.exceptionNow());
+        }
         logger.debug("wrote " + stringBuilder);
 
-        //AlarmClock.getInstance().scheduleOnce(this, Alarms.START,
-        //        Miranda.getProperties().getLongProperty(Miranda.PROPERTY_START_TIMEOUT));
-        timeoutsMet.put(Alarms.START, false);
-
+        if (uuid.equals(Miranda.getInstance().getMyUuid())) {
+            isLoopback = true;
+            ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
+            if (channelHandler == null || !(channelHandler instanceof HeartBeatHandler)) {
+                throw new RuntimeException("couldn't find HeartBeatHandler");
+            } else {
+                HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
+                heartBeatHandler.setLoopback(true);
+            }
+        } else {
+            AlarmClock.getInstance().scheduleOnce(this, Alarms.START,
+                    Miranda.getProperties().getLongProperty(Miranda.PROPERTY_START_TIMEOUT));
+            timeoutsMet.put(Alarms.START, false);
+        }
         logger.debug("leaving sendStart");
+
+
     }
 
     /**
@@ -865,6 +942,14 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         this.host = host;
         this.port = port;
         this.nodeStart = start;
+
+        ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
+        if (channelHandler == null || !(channelHandler instanceof HeartBeatHandler)) {
+            throw new RuntimeException("couldn't find HeartBeatHandler");
+        } else {
+            HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
+            heartBeatHandler.setLoopback(true);
+        }
 
         sendSynchronize();
 
@@ -1009,7 +1094,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      */
     public synchronized void handleMessageDelivered(String input) throws IOException {
         Scanner scanner = new Scanner(input);
-        scanner.next();scanner.next();
+        scanner.next();
+        scanner.next();
         String strUuid = scanner.next();
         UUID uuid = UUID.fromString(strUuid);
         registerUuid(uuid);
@@ -1204,7 +1290,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public void handleStartStartGeneral(String input) throws IOException {
         logger.debug("entering handleStartGeneral");
         Scanner scanner = new Scanner(input);
-        scanner.next(); scanner.next(); // START START
+        scanner.next();
+        scanner.next(); // START START
         uuid = UUID.fromString(scanner.next());
         registerUuid(uuid);
         host = scanner.next();
@@ -1215,6 +1302,17 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         stringBuffer.append(" ");
         addId(stringBuffer);
         channel.writeAndFlush(stringBuffer.toString());
+
+        if (uuid.equals(Miranda.getInstance().getMyUuid())) {
+            isLoopback = true;
+            ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
+            if (channelHandler == null || !(channelHandler instanceof HeartBeatHandler)) {
+                throw new RuntimeException("couldn't find HeartBeatHandler");
+            } else {
+                HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
+                heartBeatHandler.setLoopback(true);
+            }
+        }
 
         if ((Miranda.getInstance().getEldest() == -1) || (Miranda.getInstance().getEldest() > nodeStart)) {
             Miranda.getInstance().setEldest(nodeStart);
@@ -1278,10 +1376,21 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         int port = scanner.nextInt();
         long start = scanner.nextLong();
 
+
         this.uuid = uuid;
         this.host = host;
         this.port = port;
         this.nodeStart = start;
+        if (uuid.equals(Miranda.getInstance().getMyUuid())) {
+            ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
+            if (channelHandler == null || !(channelHandler instanceof HeartBeatHandler)) {
+                throw new RuntimeException("couldn't find HeartBeatHandler");
+            } else {
+                HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
+                heartBeatHandler.setLoopback(true);
+            }
+        }
+
     }
 
 
@@ -1380,6 +1489,17 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         host = scanner.next();
         port = scanner.nextInt();
 
+        if (uuid.equals(Miranda.getInstance().getMyUuid())) {
+            ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
+            if (channelHandler == null || !(channelHandler instanceof HeartBeatHandler)) {
+                throw new RuntimeException("couldn't find HeartBeatHandler");
+            } else {
+                HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
+                heartBeatHandler.setLoopback(true);
+            }
+        }
+
+
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append(START_ACKNOWLEDGED);
         stringBuffer.append(" ");
@@ -1428,11 +1548,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("entering startTimeout");
 
         setState(ClusterConnectionStates.START);
-        if (channel != null) {
-            sendStart(true);
-        }
+        throw new RuntimeException("start timeOut");
 
-        logger.debug("leaving startTimeout");
     }
 
     /**
@@ -1507,7 +1624,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * This consists of setting a timeoutsMet flag.
      * </P>
      *
-     * <P>
+     * <p>
      * The message is expected to have the form
      * <PRE>
      * DEAD NODE &lt;UUID of dead node&gt; &lt;UUID of leader&gt;
@@ -1798,6 +1915,19 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         setState(GENERAL);
         setOnline(true);
         timeoutsMet.put(Alarms.START, true);
+
+        if (uuid.equals(Miranda.getInstance().getMyUuid())) {
+            isLoopback = true;
+
+            ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
+
+            if (null == channelHandler || !(channelHandler instanceof HeartBeatHandler)) {
+                throw new RuntimeException("could not find HeartBeatHandler");
+            } else {
+                HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
+                heartBeatHandler.setLoopback(true);
+            }
+        }
     }
 
     public void handleStartAcknowledgedGeneral(String input) {
@@ -1809,6 +1939,16 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         registerUuid(uuid);
         host = scanner.next();
         port = scanner.nextInt();
+
+        if (uuid.equals(Miranda.getInstance().getMyUuid())) {
+            ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
+            if (channelHandler == null || !(channelHandler instanceof HeartBeatHandler)) {
+                throw new RuntimeException("couldn't find HeartBeatHandler");
+            } else {
+                HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
+                heartBeatHandler.setLoopback(true);
+            }
+        }
 
         timeoutsMet.put(Alarms.START, true);
     }
@@ -1822,7 +1962,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         ChannelHandler channelHandler = channel.pipeline().get("HEARTBEAT");
         HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
         heartBeatHandler.setUuid(uuid);
-        heartBeatHandler.setNode(this);
     }
 
     public void sendLeader() throws LtsllcException {
@@ -1862,16 +2001,14 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     /**
      * handle a message while in state AWAITING_ASSIGNMENTS
      *
-     * <P>
-     *     the input sting has the format
-     *     <PRE>
-     *     CREATED MESSAGE &lt;UUID of the node that created the message&gt; &lt;message in long format&gt;
-     *     </PRE>
+     * <p>
+     * the input sting has the format
+     * <PRE>
+     * CREATED MESSAGE &lt;UUID of the node that created the message&gt; &lt;message in long format&gt;
+     * </PRE>
      * </P>
-     *
      */
-    public void handleStateAwaitingAssignmentsNewMessage(MessageType messageType, String s) throws IOException
-    {
+    public void handleStateAwaitingAssignmentsNewMessage(MessageType messageType, String s) throws IOException {
         logger.debug("Entering handleMessageAwaitingAssignments");
 
         Scanner scanner = new Scanner(s);
@@ -1887,18 +2024,18 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     /**
      * Handle the end of a dead node
      *
-     * <P>
+     * <p>
      * The String is expected to have the form:
      * <PRE>
      * OWNER END
      * </PRE>
      * </P>
      *
-     * <P>
-     *     This switches state to whatever it was before.
+     * <p>
+     * This switches state to whatever it was before.
      * </P>
      */
-    public void handleOwnerEnd (String s) throws IOException, LtsllcException {
+    public void handleOwnerEnd(String s) throws IOException, LtsllcException {
         state = popState();
     }
 
@@ -1907,10 +2044,10 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * Handle the situation where we get another dead node while we are already
      * processing a dead node.
      *
-     * <P>
-     *     Basically, the method does nothing.
+     * <p>
+     * Basically, the method does nothing.
      * </P>
-     * <P>
+     * <p>
      * The message is expected to have the form
      * <PRE>
      * DEAD NODE &lt;UUID of dead node&gt; &lt;UUID of leader node&gt;
@@ -1924,14 +2061,13 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     /**
      * Wait for an acknowledgement of a dead node.
      *
-     * <P>
-     *     Save whatever state we're in and switch to AWAITING_ACK. Call back
-     *     if we have received all the acks or we receive an ack of a different
-     *     dead node.
+     * <p>
+     * Save whatever state we're in and switch to AWAITING_ACK. Call back
+     * if we have received all the acks or we receive an ack of a different
+     * dead node.
      * </P>
-     *
      */
-    public void awaitAck (UUID deadNode, UUID leader) {
+    public void awaitAck(UUID deadNode, UUID leader) {
         pushState(state);
         state = ClusterConnectionStates.AWAITING_ACK;
         this.deadNode = deadNode;
@@ -1941,12 +2077,12 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     /**
      * handle a dead node message while waiting for a dead node message
      *
-     * <P>
-     *     Call the cluster if this is the ack we were waiting for or
-     *     if this was an ack to a different dead node.
+     * <p>
+     * Call the cluster if this is the ack we were waiting for or
+     * if this was an ack to a different dead node.
      * </P>
      *
-     * <P>
+     * <p>
      * The message is expected to have the form:
      * <PRE>
      * DEAD NODE &lt;UUID of dead node&gt; &lt;UUID of leader&gt;
@@ -1969,6 +2105,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         }
 
     }
+
     /**
      * send an error start over the channel
      */
@@ -1982,14 +2119,15 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
     /**
      * send a OWNER statement that establishes a new owner
+     *
      * @param newOwner
      */
     public void sendNewOwner(UUID message, UUID newOwner) {
         StringBuilder stringBuilder = new StringBuilder(OWNER);
-        stringBuilder.append (" ");
-        stringBuilder.append (message.toString());
-        stringBuilder.append (" ");
-        stringBuilder.append (newOwner.toString());
+        stringBuilder.append(" ");
+        stringBuilder.append(message.toString());
+        stringBuilder.append(" ");
+        stringBuilder.append(newOwner.toString());
 
         channel.writeAndFlush(stringBuilder.toString());
     }

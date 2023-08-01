@@ -1,9 +1,7 @@
 package com.ltsllc.miranda.alarm;
 
-import com.ltsllc.miranda.alarm.Alarmable;
-import com.ltsllc.miranda.alarm.Alarms;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
 import java.util.TimerTask;
 
@@ -11,7 +9,7 @@ import java.util.TimerTask;
  * A TimerTask that notifies other classes
  */
 public class AlarmTimerTask extends TimerTask {
-    public static final Logger logger = LogManager.getLogger();
+    public static final Logger logger = LogManager.getLogger(AlarmTimerTask.class);
 
     protected Alarmable receiver;
     protected Alarms alarm;

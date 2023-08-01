@@ -6,13 +6,13 @@ import com.ltsllc.commons.UncheckedLtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.cluster.Node;
+import com.ltsllc.miranda.cluster.NodeThread;
 import com.ltsllc.miranda.cluster.SpecNode;
 import com.ltsllc.miranda.logging.LoggingCache;
-import com.ltsllc.miranda.logging.LoggingMap;
-import com.ltsllc.miranda.netty.ServerChannelToNodeDecoder;
-import com.ltsllc.miranda.netty.StringEncoder;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.message.MessageLog;
+import com.ltsllc.miranda.netty.ServerChannelToNodeDecoder;
+import com.ltsllc.miranda.netty.StringEncoder;
 import com.ltsllc.miranda.properties.PropertiesHolder;
 import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import com.ltsllc.miranda.properties.PropertyListener;
@@ -20,25 +20,16 @@ import com.ltsllc.miranda.servlets.Properties;
 import com.ltsllc.miranda.servlets.*;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.util.ResourceLeakDetector;
 import io.netty.util.ResourceLeakDetectorFactory;
-import org.apache.log4j.Appender;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.config.Configuration;
-import org.apache.logging.log4j.core.config.ConfigurationSource;
-import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.asynchttpclient.*;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
@@ -47,12 +38,10 @@ import org.eclipse.jetty.server.handler.ResourceHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
-import java.io.*;
-import java.net.InetSocketAddress;
-import java.net.URL;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
-
-import static org.apache.logging.log4j.Level.DEBUG;
 
 
 public class Miranda implements PropertyListener {
@@ -105,8 +94,8 @@ public class Miranda implements PropertyListener {
     /**
      * The value that is used for the message cache.
      *
-     * <P>
-     *     This is the size, in two character bytes, for the message cache.
+     * <p>
+     * This is the size, in two character bytes, for the message cache.
      * </P>
      */
     public static final String PROPERTY_CACHE_LOAD_LIMIT = "cache.loadLimit";
@@ -187,8 +176,8 @@ public class Miranda implements PropertyListener {
     /**
      * The universally unique identifier (UUID) of this node.
      *
-     * <P>
-     *     Note that there is no default value for this property the user MUST supply one to avoid system shutdown.
+     * <p>
+     * Note that there is no default value for this property the user MUST supply one to avoid system shutdown.
      * </P>
      */
     public static final String PROPERTY_UUID = "UUID";
@@ -382,8 +371,8 @@ public class Miranda implements PropertyListener {
      * What was the time when the oldest node started?
      *
      * <H>
-     *     This is used when first starting to determine if the node should sync with another node.  A value of -1
-     *     signifies that we're not currently connected to any other nodes.
+     * This is used when first starting to determine if the node should sync with another node.  A value of -1
+     * signifies that we're not currently connected to any other nodes.
      * </H>
      */
     protected long eldest = -1;
@@ -444,15 +433,14 @@ public class Miranda implements PropertyListener {
     }
 
 
-
     /**
      * The constructor for the class
      *
-     * <P>
-     *     This sets the static instance to the newly created instance and tries to load the properties for that instance.  If
-     *     there is a problem loading the properties the method throws an UncheckedLtsllcException.  It checks for the
-     *     existence of the myUuid, the myHost and the myPort properties and throws an UncheckedLtsllcException if the
-     *     property is not defined.
+     * <p>
+     * This sets the static instance to the newly created instance and tries to load the properties for that instance.  If
+     * there is a problem loading the properties the method throws an UncheckedLtsllcException.  It checks for the
+     * existence of the myUuid, the myHost and the myPort properties and throws an UncheckedLtsllcException if the
+     * property is not defined.
      * </P>
      */
     public Miranda() {
@@ -499,9 +487,10 @@ public class Miranda implements PropertyListener {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID);
 
 
-        LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
-        Configuration config = ctx.getConfiguration();
-        LoggerConfig loggerConfig = config.getLoggerConfig("STDOUT");
+        //LoggerContext ctx = (LoggerContext) LogManager.
+        //                .getContext(false);
+        //Configuration config = ctx.getConfiguration();
+        //LoggerConfig loggerConfig = config.getLoggerConfig("STDOUT");
 
         //loggerConfig.setLevel(DEBUG);
         //ctx.updateLoggers();
@@ -512,28 +501,30 @@ public class Miranda implements PropertyListener {
      *
      * @param port The port number to listen at.
      */
-    public void setupClusterPort (int port) {
+    public void setupClusterPort(int port) {
         EventLoopGroup bossGroup = new NioEventLoopGroup();
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         ServerBootstrap bootstrap = new ServerBootstrap();
         bootstrap.group(bossGroup, workerGroup);
         bootstrap.channel(NioServerSocketChannel.class);
         bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
+        bootstrap.option(ChannelOption.SO_REUSEADDR, true);
         bootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
             public void initChannel(SocketChannel ch) throws Exception {
                 ch.pipeline().addLast(
-                    new StringEncoder(),
-                    new LengthFieldBasedFrameDecoder(2048, 0, 4, 0, 4),
-                    new ServerChannelToNodeDecoder());
+                        new StringEncoder(),
+                        //new LengthFieldBasedFrameDecoder(2048, 0, 4, 0, 4),
+                        new ServerChannelToNodeDecoder("whatever"));
             }
         });
     }
 
+
     /**
      * Get the jetty server
      *
-     * <P>
-     *     The system uses a Jetty sever for messages.
+     * <p>
+     * The system uses a Jetty sever for messages.
      * </P>
      *
      * @return The Jetty server
@@ -571,25 +562,26 @@ public class Miranda implements PropertyListener {
     /**
      * Miranda's main loop
      *
-     * <P>
-     *     <PRE>
-     *     if this iteration is divisible by 1,000
-     *          run garbage collection
-     *     copy all the messages we are responsible for delivering
-     *     foreach of those messages
-     *         try and deliver the message
-     *         if the message was deliver
-     *              remove it from the collection of messages that we are responsible for
-     *              if the message has a status URL
-     *                  send a notification that we delivered it
-     *     </PRE>
+     * <p>
+     * <PRE>
+     * if this iteration is divisible by 1,000
+     * run garbage collection
+     * copy all the messages we are responsible for delivering
+     * foreach of those messages
+     * try and deliver the message
+     * if the message was deliver
+     * remove it from the collection of messages that we are responsible for
+     * if the message has a status URL
+     * send a notification that we delivered it
+     * </PRE>
      *
-     * <P>
-     *     Note that this is only used if keepRunning is true.
+     * <p>
+     * Note that this is only used if keepRunning is true.
      * </P>
-     * @exception IOException If there is a problem copying the messages
+     *
+     * @throws IOException If there is a problem copying the messages
      */
-    public synchronized void mainLoop () throws IOException, LtsllcException {
+    public synchronized void mainLoop() throws IOException, LtsllcException {
         logger.debug("starting mainLoop, with keepRunning = " + keepRunning);
 
         //
@@ -617,7 +609,7 @@ public class Miranda implements PropertyListener {
 
                 restartIndex = temp.restartIndex;
 
-             }
+            }
             iterations++;
         }
         logger.debug("leaving mainLoop");
@@ -626,7 +618,7 @@ public class Miranda implements PropertyListener {
     /**
      * setup miscellaneous properties
      */
-    public void setupMisc () {
+    public void setupMisc() {
         myHost = properties.getProperty(PROPERTY_HOST);
         myPort = properties.getIntProperty(PROPERTY_PORT);
         myUuid = UUID.fromString(properties.getProperty(PROPERTY_UUID));
@@ -642,7 +634,7 @@ public class Miranda implements PropertyListener {
     /**
      * determine if we should recover and if we should do so
      */
-    public void checkRecovery () throws IOException, LtsllcException{
+    public void checkRecovery() throws IOException, LtsllcException {
         try {
             synchronized (this) {
                 wait(6000);
@@ -653,8 +645,7 @@ public class Miranda implements PropertyListener {
         if (shouldRecover()) {
             event.info("preforming recovery");
             recover();
-        }
-        else {
+        } else {
             event.info("No recovery needed backing up files");
             ImprovedFile temp = new ImprovedFile(Miranda.getProperties().getStringProperty(PROPERTY_MESSAGE_LOG));
             temp.backup(".backup");
@@ -666,18 +657,19 @@ public class Miranda implements PropertyListener {
 
     /**
      * start up miranda
-     * <P>
-     *     When Miranda starts up, check for the existence of a sendQueue.  If it exists then copy the file and enter
-     *     the bidding mode.
+     * <p>
+     * When Miranda starts up, check for the existence of a sendQueue.  If it exists then copy the file and enter
+     * the bidding mode.
      * </P>
      */
-    public void startUp (String[] args) throws Exception {
+    public void startUp(String[] args) throws Exception {
         event.info("Miranda starting up");
         logger.debug("Miranda starting up");
         loadProperties();
-
         setupMisc();
         setupClustering();
+        setupClusterPort();
+
         setupMessageLog();
 
         logger.debug("determine if we should recover");
@@ -696,7 +688,16 @@ public class Miranda implements PropertyListener {
         logger.debug("Leaving startup");
     }
 
-    public void setupClustering () throws LtsllcException, CloneNotSupportedException {
+    /**
+     * A method that sets up the port that other nodes in
+     * the cluster use to communicate.
+     */
+    public void setupClusterPort() {
+        Cluster.getInstance().startServerOn(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_PORT));
+    }
+
+
+    public void setupClustering() throws LtsllcException, CloneNotSupportedException {
         Cluster.defineStatics();
         parseNodes();
         Cluster.getInstance().start(specNodes);
@@ -705,7 +706,7 @@ public class Miranda implements PropertyListener {
     /**
      * listen for new messages
      */
-    protected void startMessagePort () throws Exception {
+    protected void startMessagePort() throws Exception {
         logger.debug("entering startMessagePort");
 
         // Create and configure a ThreadPool.
@@ -713,19 +714,6 @@ public class Miranda implements PropertyListener {
         threadPool.setName("server");
 
         server = new Server(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_MESSAGE_PORT));
-        ChannelHandler serverHandler = null;
-
-        // Create a ServerConnector to accept connections from clients.
-        ServerBootstrap serverBootstrap = new ServerBootstrap();
-        serverBootstrap.channel(NioServerSocketChannel.class)
-                .localAddress(new InetSocketAddress(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT)))
-                .childHandler(new ChannelInitializer<SocketChannel>() {
-                    @Override
-                    public void initChannel(SocketChannel ch) throws Exception {
-                        ch.pipeline().addLast(new StringEncoder(),
-                                new LengthFieldBasedFrameDecoder( Integer.MAX_VALUE, 0, 4, 0, 4));
-                    }
-                });
 
         ResourceHandler rh0 = new ResourceHandler();
         rh0.setWelcomeFiles(new String[]{"index.html"});
@@ -735,14 +723,14 @@ public class Miranda implements PropertyListener {
         servletContextHandler.addServlet(NumberOfConnections.class, "/api/numberOfConnections");
         servletContextHandler.addServlet(Properties.class, "/api/properties");
         servletContextHandler.addServlet(SaveProperties.class, "/api/saveProperties");
-        servletContextHandler.addServlet(NumberOfMessages.class, "/api/numberOfMessages" );
+        servletContextHandler.addServlet(NumberOfMessages.class, "/api/numberOfMessages");
         servletContextHandler.addServlet(Status.class, "/api/status");
         servletContextHandler.addServlet(Coalesce.class, "/api/coalesce");
         servletContextHandler.addServlet(ConnectionDetails.class, "/api/connections/details");
         servletContextHandler.addServlet(com.ltsllc.miranda.servlets.Message.class, "/api/newMessage");
 
         HandlerList handlers = new HandlerList();
-        handlers.setHandlers(new Handler[] { rh0, servletContextHandler });
+        handlers.setHandlers(new Handler[]{rh0, servletContextHandler});
         server.setHandler(handlers);
 
         // Start the Server, so it starts accepting connections from clients.
@@ -756,7 +744,7 @@ public class Miranda implements PropertyListener {
      *
      * process the arguments to the program --- at this point this consists of the logging level.
      */
-    protected java.util.Properties processArguments (String[] arguments) {
+    protected java.util.Properties processArguments(String[] arguments) {
         logger.debug("starting processArguments with arguments = " + arguments);
 
         java.util.Properties temp = new java.util.Properties();
@@ -771,7 +759,7 @@ public class Miranda implements PropertyListener {
                 if (!arguments[i - 1].startsWith("-")) {
                     prev = arguments[i - 1];
                 } else {
-                    String previous = arguments[i-1].substring(1);
+                    String previous = arguments[i - 1].substring(1);
                     prev = String.valueOf(previous.toCharArray()[previous.toCharArray().length - 1]);
                 }
             }
@@ -785,11 +773,12 @@ public class Miranda implements PropertyListener {
 
     /**
      * Process a single command line argument
-     * @param prev The previous argument.
+     *
+     * @param prev     The previous argument.
      * @param argument The argument.
-     * @param map The map of keys to values.
+     * @param map      The map of keys to values.
      */
-    protected void processArgument (String prev, String argument, java.util.Properties map) {
+    protected void processArgument(String prev, String argument, java.util.Properties map) {
         logger.debug("processing argument with argument = " + argument + ", prev = " + prev + " and map = " + map);
 
         if (argument.startsWith("-")) {
@@ -800,7 +789,7 @@ public class Miranda implements PropertyListener {
                 for (char arg : argument.toCharArray()) {
                     String key = String.valueOf(arg);
                     String value = key;
-                    map.put(key,value);
+                    map.put(key, value);
                     logger.debug("put key = " + key + " and value = " + value);
                 }
             }
@@ -817,14 +806,14 @@ public class Miranda implements PropertyListener {
 
     /**
      * reload the system properties
-     * <P>
-     *     This simply tells the system to reload the system properties, but it also defines default values for most
-     *     properties.
+     * <p>
+     * This simply tells the system to reload the system properties, but it also defines default values for most
+     * properties.
      * </P>
      */
     public void loadProperties() throws LtsllcException {
         FileInputStream in = null;
-        if (properties ==  null) {
+        if (properties == null) {
             properties = new PropertiesHolder();
         }
         try {
@@ -873,7 +862,7 @@ public class Miranda implements PropertyListener {
      *
      * @throws IOException If there is a problem dealing with the properties files.
      */
-    public void storeProperties () throws IOException {
+    public void storeProperties() throws IOException {
         FileWriter fileWriter = null;
 
         try {
@@ -886,25 +875,25 @@ public class Miranda implements PropertyListener {
         }
     }
 
-    public void stop () {
+    public void stop() {
         keepRunning = false;
     }
 
     /**
      * Release all the ports we are bound to
      *
-     * @exception Exception If there is a problem stopping Jetty.
+     * @throws Exception If there is a problem stopping Jetty.
      */
-    public void releasePorts () throws Exception {
+    public void releasePorts() throws Exception {
         releaseMessagePort();
     }
 
     /**
      * Unbind the message port
      *
-     * @exception Exception If there is a problem stopping Jetty
+     * @throws Exception If there is a problem stopping Jetty
      */
-    public synchronized void releaseMessagePort () throws Exception {
+    public synchronized void releaseMessagePort() throws Exception {
         logger.debug("entering releaseMessagePort.");
         logger.debug("server = " + server);
         if (server != null) {
@@ -916,14 +905,14 @@ public class Miranda implements PropertyListener {
 
     /**
      * Try to deliver a message
-     *
+     * <p>
      * This method tries to deliver a message asynchronously.  On success it calls successfulMessage to signal that this
      * is so.
      *
      * @param message The message to
-     * @exception IOException If there is a problem with the manipulation of the logfiles
+     * @throws IOException If there is a problem with the manipulation of the logfiles
      */
-    public void deliver (Message message) throws IOException {
+    public void deliver(Message message) throws IOException {
         if (null == message) {
             return;
         }
@@ -939,9 +928,9 @@ public class Miranda implements PropertyListener {
         AsyncHttpClient httpClient = Dsl.asyncHttpClient();
         BoundRequestBuilder boundRequestBuilder = httpClient.preparePost(message.getDeliveryURL());
 
-        Request request =  httpClient.preparePost(message.getDeliveryURL())
-                        .setBody(message.getContents())
-                                .build();
+        Request request = httpClient.preparePost(message.getDeliveryURL())
+                .setBody(message.getContents())
+                .build();
 
 
         if (null == message.getCompletionHandler()) {
@@ -975,15 +964,14 @@ public class Miranda implements PropertyListener {
         }
 
 
-
     }
 
     /**
      * Called when a message has been successfully delivered
      *
-     * <P>
-     *     This method calls cluster.informOfDelivery to signal to the cluster that the message has been delivered,
-     *     removes the message from the send queue and notifying the client that we have delivered the message.
+     * <p>
+     * This method calls cluster.informOfDelivery to signal to the cluster that the message has been delivered,
+     * removes the message from the send queue and notifying the client that we have delivered the message.
      * </P>
      *
      * @param message The message
@@ -1001,7 +989,7 @@ public class Miranda implements PropertyListener {
 
     /**
      * Asynchronously tell a client that we delivered their message
-     *
+     * <p>
      * NOTE: this method ignores the state code of the client's response to this POST.
      *
      * @param message The message that was delivered
@@ -1031,14 +1019,14 @@ public class Miranda implements PropertyListener {
     /**
      * Parse out the list of other nodes
      *
-     * <P>
-     *     Note that this method assumes that if PROPERTY_CLUSTER + "." &lt;number&gt; + ".host" is defined then the
-     *     corresponding port is also defined.
+     * <p>
+     * Note that this method assumes that if PROPERTY_CLUSTER + "." &lt;number&gt; + ".host" is defined then the
+     * corresponding port is also defined.
      * </P>
      *
      * @see SpecNode
      */
-    public void parseNodes () {
+    public void parseNodes() {
         if (null != properties.getProperty(PROPERTY_CLUSTER_1)) {
             String rootProperty = Miranda.PROPERTY_CLUSTER + ".1";
             SpecNode specNode = new SpecNode();
@@ -1053,7 +1041,7 @@ public class Miranda implements PropertyListener {
                 if (null != properties.getProperty(rootProperty + ".host")) {
                     specNode = new SpecNode();
                     specNode.setHost(properties.getProperty(rootProperty + ".host"));
-                    specNode.setPort(properties.getIntProperty(rootProperty  + ".port"));
+                    specNode.setPort(properties.getIntProperty(rootProperty + ".port"));
                     list.add(specNode);
                     count++;
                 }
@@ -1065,12 +1053,13 @@ public class Miranda implements PropertyListener {
 
     /**
      * Should the message log attempt to recover?
-     * <P>
-     *     This method is essentially a call to MessageLog.shouldRecover
+     * <p>
+     * This method is essentially a call to MessageLog.shouldRecover
      * </P>
+     *
      * @return Whether the system should recover.
      */
-    public static boolean shouldRecover () {
+    public static boolean shouldRecover() {
         PropertiesHolder p = getProperties();
         ImprovedFile messageFile = new ImprovedFile(p.getProperty(PROPERTY_MESSAGE_LOG));
         boolean messageFileExists = messageFile.exists();
@@ -1086,14 +1075,15 @@ public class Miranda implements PropertyListener {
     /**
      * Attempt to recover from a crash
      *
-     * <P>
-     *     This method attempts to recover from a crash by restoring the message and ownership information that the
-     *     system had when it crashed.
+     * <p>
+     * This method attempts to recover from a crash by restoring the message and ownership information that the
+     * system had when it crashed.
      * </P>
-     * @throws IOException If there is a problem reading the files
+     *
+     * @throws IOException     If there is a problem reading the files
      * @throws LtsllcException
      */
-    public void recover () throws IOException, LtsllcException {
+    public void recover() throws IOException, LtsllcException {
         logger.debug("entering recovery");
         event.info("Recovering");
 
@@ -1111,7 +1101,7 @@ public class Miranda implements PropertyListener {
      * Recover as if we were not clustering
      *
      * @throws LtsllcException If there are problems with the files.
-     * @throws IOException If there are problems recovering.
+     * @throws IOException     If there are problems recovering.
      */
     public synchronized void recoverLocally(UUID owner) throws LtsllcException, IOException {
         logger.debug("entering recoverLocally");
@@ -1145,22 +1135,22 @@ public class Miranda implements PropertyListener {
         logger.debug("leaving recoverLocally");
     }
 
-    public void setUuid () {
+    public void setUuid() {
         myUuid = UUID.fromString(properties.getProperty(PROPERTY_UUID));
     }
 
-    public void setHost () {
+    public void setHost() {
         myHost = properties.getProperty(PROPERTY_HOST);
     }
 
-    public void setClusterPort () {
+    public void setClusterPort() {
         myPort = properties.getIntProperty(PROPERTY_PORT);
     }
 
     /**
      * Setup the message log
      */
-    public void setupMessageLog () {
+    public void setupMessageLog() {
         ImprovedFile messageLogfile = new ImprovedFile(properties.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
         ImprovedFile ownersFile = new ImprovedFile(properties.getProperty(Miranda.PROPERTY_OWNER_FILE));
         MessageLog.defineStatics();
@@ -1169,15 +1159,16 @@ public class Miranda implements PropertyListener {
     /**
      * A property we were watching changed
      * <H>
-     *     The properties we watch include the node's uuid, the node's host, and the node's messaging port
+     * The properties we watch include the node's uuid, the node's host, and the node's messaging port
      * </H>
+     *
      * @param propertyChangedEvent The property change event that kicked off the whole process.
      * @throws Throwable If we don't recognize the property.
      */
     @Override
     public void propertyChanged(PropertyChangedEvent propertyChangedEvent) throws Throwable {
         switch (propertyChangedEvent.getProperty()) {
-            case uuid : {
+            case uuid: {
                 setUuid();
                 break;
             }
@@ -1200,12 +1191,13 @@ public class Miranda implements PropertyListener {
 
     /**
      * Start up a node that represents us
-     * @throws LtsllcException This exception is thrown by connectToNode.
+     *
+     * @throws LtsllcException            This exception is thrown by connectToNode.
      * @throws CloneNotSupportedException This exception is thrown by connectToNode.
      */
-    public void startIdentityNode () throws LtsllcException, CloneNotSupportedException {
+    public void startIdentityNode() throws LtsllcException, CloneNotSupportedException {
         Node node = new Node(myUuid, myHost, myPort, null);
-        Cluster.getInstance().connectToNode(node);
-        Cluster.getInstance().addNode(node);
+        NodeThread nodeThread = new NodeThread(node);
+        nodeThread.start();
     }
 }

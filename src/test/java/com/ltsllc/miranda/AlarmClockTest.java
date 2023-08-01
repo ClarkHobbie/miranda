@@ -3,10 +3,11 @@ package com.ltsllc.miranda;
 import com.ltsllc.miranda.alarm.AlarmClock;
 import com.ltsllc.miranda.alarm.Alarmable;
 import com.ltsllc.miranda.alarm.Alarms;
-import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
+import org.apache.logging.log4j.Level;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+
 
 public class AlarmClockTest extends TestSuperclass implements Alarmable {
     int timesCalled = 0;

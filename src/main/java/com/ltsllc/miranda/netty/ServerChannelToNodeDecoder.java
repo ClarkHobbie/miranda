@@ -16,6 +16,15 @@ import java.nio.charset.Charset;
  */
 public class ServerChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
     protected Node node;
+    protected String name;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
 
     public Node getNode() {
         return node;
@@ -25,16 +34,35 @@ public class ServerChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
         this.node = node;
     }
 
+    public ServerChannelToNodeDecoder (String newName) {
+        setName(newName);
+    }
     /**
      * This method handles the situation where another node connects to us
      * @param ctx The context in which this took place.
      * @param message A String that is the message that the other node sent.
      * @throws LtsllcException This exception is thrown by the node when the message is delivered.
      * @throws IOException This exception is thrown by the node when the message is delivered.
-     * @throws CloneNotSupportedException This exception is thrown by the node when the message is delivered.
      */
-    public void channelRead(ChannelHandlerContext ctx, Object message) throws LtsllcException, IOException, CloneNotSupportedException {
-        String s = (String) message;
+    public void channelRead(ChannelHandlerContext ctx, Object message) throws LtsllcException, IOException {
+        String s = ((ByteBuf) message).toString(Charset.defaultCharset());
+        ((ByteBuf)message).release();
+
+        //
+        // if this is a new connection then make a new node for it
+        //
+        if (node == null) {
+            node = new Node(null,null, -1, ctx.channel());
+            Cluster.getInstance().addNode(node);
+        }
+
         node.messageReceived(s);
+
+        //
+        // if this is a loopback then remove it
+        //
+        if (node.getIsLoopback()) {
+            Cluster.getInstance().removeNode(node);
+        }
     }
 }

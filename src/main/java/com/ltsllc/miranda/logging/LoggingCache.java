@@ -3,13 +3,13 @@ package com.ltsllc.miranda.logging;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.UncheckedLtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
+import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.alarm.AlarmClock;
 import com.ltsllc.miranda.alarm.Alarmable;
 import com.ltsllc.miranda.alarm.Alarms;
 import com.ltsllc.miranda.message.Message;
-import com.ltsllc.miranda.Miranda;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.util.*;
@@ -24,7 +24,7 @@ import java.util.*;
  * </P>
  */
 public class LoggingCache implements Alarmable{
-    public static final Logger logger = LogManager.getLogger();
+    public static final Logger logger = LogManager.getLogger(LoggingCache.class);
 
     /**
      * The file where it logs to

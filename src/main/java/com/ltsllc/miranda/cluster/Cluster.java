@@ -8,16 +8,14 @@ import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.alarm.AlarmClock;
 import com.ltsllc.miranda.alarm.Alarmable;
 import com.ltsllc.miranda.alarm.Alarms;
+import com.ltsllc.miranda.message.Message;
+import com.ltsllc.miranda.message.MessageLog;
 import com.ltsllc.miranda.netty.ClientChannelToNodeDecoder;
 import com.ltsllc.miranda.netty.HeartBeatHandler;
 import com.ltsllc.miranda.netty.ServerChannelToNodeDecoder;
-import com.ltsllc.miranda.netty.StringEncoder;
-import com.ltsllc.miranda.message.Message;
-import com.ltsllc.miranda.message.MessageLog;
 import com.ltsllc.miranda.properties.Properties;
 import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import com.ltsllc.miranda.properties.PropertyListener;
-import com.ltsllc.miranda.cluster.Node;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -25,15 +23,13 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
+import io.netty.handler.codec.string.StringEncoder;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.security.SecureRandom;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -93,12 +89,41 @@ public class Cluster implements Alarmable, PropertyListener {
     public static final long IONM_TIMEOUT = 1000;
     public static final TimeUnit IONM_TIMEOUT_UNITS = TimeUnit.MILLISECONDS;
 
+    public static final String STRING_ENCODER = "STRING";
+    public static final String HEART_BEAT = "HEARTBEAT";
+    public static final String DECODER = "DECODER";
+    public static final String LENGTH = "LENGTH";
+
+    protected int nodeCount = 0;
+
+    public int getNodeCount() {
+        return nodeCount;
+    }
+
+    public void setNodeCount(int nodeCount) {
+        this.nodeCount = nodeCount;
+    }
+
+    /**
+     * this controls what is put on new pipelines
+     */
+    protected static boolean severMode;
+
+    public static boolean getServerMode ()
+    {
+        return severMode;
+    }
+
+    public static void setServerMode(boolean value) {
+        severMode = value;
+    }
+
     /**
      * The random number generator.  Usually swapped out when you want to win (or lose) a bid.
      */
     protected static ImprovedRandom randomNumberGenerator = new ImprovedRandom();
 
-    protected static final Logger logger = LogManager.getLogger();
+    protected static final Logger logger = LogManager.getLogger(Cluster.class);
     public static final Logger events = LogManager.getLogger("events");
     protected static Cluster instance = null;
 
@@ -237,14 +262,13 @@ public class Cluster implements Alarmable, PropertyListener {
         bootstrap.group(workerGroup);
         bootstrap.channel(NioSocketChannel.class);
         bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
-        bootstrap.handler(new ChannelInitializer<SocketChannel>() {
-            @Override
-            public void initChannel(SocketChannel ch) throws Exception {
-                ch.pipeline().addLast(
-                        "LENGTH", new LengthFieldBasedFrameDecoder(2048, 0, 4, 0, 4));
-                ch.pipeline().addLast("STRING",new StringEncoder());
-                ch.pipeline().addLast("HEARTBEAT", new HeartBeatHandler(ch));
-                ch.pipeline().addLast("DECODER", new ClientChannelToNodeDecoder());
+        bootstrap.handler(new ChannelInitializer<Channel>() {
+            public void initChannel (Channel c) {
+                ChannelPipeline cp = c.pipeline();
+                cp.addLast(STRING_ENCODER, new StringEncoder());
+                //cp.addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0,4,0,4));
+                cp.addLast(DECODER, new ClientChannelToNodeDecoder());
+                cp.addLast(HEART_BEAT, new HeartBeatHandler(c));
             }
         });
         EventLoopGroup bossGroup = new NioEventLoopGroup();
@@ -253,19 +277,17 @@ public class Cluster implements Alarmable, PropertyListener {
         serverBootstrap = new ServerBootstrap();
         serverBootstrap.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
-                .childHandler(new ChannelInitializer<SocketChannel>() {
-                    @Override
-                   public void initChannel(SocketChannel ch) throws Exception {
-                        ch.pipeline().addLast(
-                                "LENGTH", new LengthFieldBasedFrameDecoder(2048, 0, 4, 0, 4)
-                                );
-                        ch.pipeline().addLast("ENCODER",new StringEncoder());
-                        ch.pipeline().addLast("HEARTBEAT",new HeartBeatHandler(ch));
-                        ch.pipeline().addLast("DECODER", new ServerChannelToNodeDecoder());
+                .option(ChannelOption.SO_BACKLOG, 128)
+                .childHandler(new ChannelInitializer<Channel>() {
+                    public void initChannel (Channel c) {
+                        ChannelPipeline cp = c.pipeline();
+                        cp.addLast(STRING_ENCODER, new StringEncoder());
+                        //cp.addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
+                        cp.addLast(DECODER, new ServerChannelToNodeDecoder("#" + nodeCount++));
+                        cp.addLast(HEART_BEAT, new HeartBeatHandler(c));
                     }
                 })
-                .option(ChannelOption.SO_BACKLOG, 128)
-                .childOption(ChannelOption.SO_KEEPALIVE, true);
+                .childOption(ChannelOption.SO_REUSEADDR, true);
     }
 
     /**
@@ -295,10 +317,17 @@ public class Cluster implements Alarmable, PropertyListener {
             nodes.add(node);
         }
 
-        // if this is a loopback node, then ignore messages from
+        // if this is a loopback node, then ignore messages from it
         if (node.getUuid().equals(Miranda.getInstance().getMyUuid()))
         {
             node.setIsLoopback(true);
+            ChannelHandler handler = node.getChannel().pipeline().get(Cluster.HEART_BEAT);
+            if (handler == null) {
+                throw new RuntimeException("no heartbeat handler");
+            } else {
+                HeartBeatHandler heartBeatHandler = (HeartBeatHandler) handler;
+                heartBeatHandler.setLoopback(true);
+            }
         }
     }
 
@@ -395,14 +424,23 @@ public class Cluster implements Alarmable, PropertyListener {
             nodes = new ArrayList<>();
         }
 
-        int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
+        int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_PORT);
         Miranda.getProperties().listen(this, Properties.cluster);
 
         SocketAddress socketAddress = new InetSocketAddress(port);
 
-        logger.debug("listening at port " + port);
-        serverBootstrap.bind(socketAddress);
-        bound = true;
+        ChannelFuture channelFuture = serverBootstrap.bind(socketAddress);
+        try {
+            channelFuture.await();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        if (channelFuture.isSuccess()) {
+            bound = true;
+            logger.error("listening at port " + socketAddress);
+        } else {
+            throw new RuntimeException("bind failed");
+        }
 
         logger.debug("leaving listen");
     }
@@ -426,7 +464,10 @@ public class Cluster implements Alarmable, PropertyListener {
 
         for (SpecNode specNode : list) {
             Node node = new Node(null, specNode.getHost(), specNode.getPort(), null);
-            nodes.add(node);
+            if (node.connect()) {
+                nodes.add(node);
+                allNodesFailed = false;
+            }
         }
 
         boolean tempAllNodesFailed = true;
@@ -452,7 +493,8 @@ public class Cluster implements Alarmable, PropertyListener {
      * @return true if we were able to connect to the node, false otherwise.
      */
     public boolean connectToNode(Node node) throws LtsllcException, CloneNotSupportedException {
-        boolean returnValue = true;
+        boolean returnValue = false;
+        severMode = false; // we are trying to connect to someone
         logger.debug("entering connectToNode with " + node.getHost() + ":" + node.getPort());
         if ((node.getHost() == null) || (node.getPort() == -1)) {
             logger.error("connectToNode called with null host or -1 port, returning");
@@ -460,37 +502,65 @@ public class Cluster implements Alarmable, PropertyListener {
         }
 
         InetSocketAddress addrRemote = new InetSocketAddress(node.getHost(), node.getPort());
-        ChannelFuture channelFuture = bootstrap.connect(addrRemote);
+        bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
+        bootstrap.option(ChannelOption.SO_REUSEADDR, true);
+        bootstrap.handler(new ChannelInitializer<SocketChannel>() {
+            public void initChannel(SocketChannel ch) throws Exception {
+                ch.pipeline().addLast(STRING_ENCODER, new io.netty.handler.codec.string.StringEncoder());
+                //ch.pipeline().addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
+                ch.pipeline().addLast(DECODER, new ServerChannelToNodeDecoder("#" + nodeCount++));
+                ch.pipeline().addLast(HEART_BEAT, new HeartBeatHandler(ch));
+            }
+        });
+
+        ChannelFuture channelFuture = bootstrap
+                .option(ChannelOption.SO_REUSEADDR,true)
+                .connect(addrRemote);
         try {
             channelFuture.await();
-            node.setChannel(channelFuture.channel());
-            Channel channel = channelFuture.channel();
-            ChannelPipeline pipeline = channel.pipeline();
-            ChannelHandler channelHandler = pipeline.get("DECODER");
-            if (channelHandler instanceof ClientChannelToNodeDecoder) {
-                ClientChannelToNodeDecoder decoder = (ClientChannelToNodeDecoder) channelHandler;
-                decoder.setNode(node);
-            } else {
-                throw new LtsllcException("decoder is not an instance of ClientChannelToNodeDecoder");
-            }
-            channelHandler = pipeline.get("HEARTBEAT");
-            if (channelHandler instanceof HeartBeatHandler) {
-                HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
-                heartBeatHandler.setUuid(node.getUuid());
-                heartBeatHandler.setNode(node);
+            if (channelFuture.isSuccess()) {
+                node.setChannel(channelFuture.channel());
+                Channel channel = channelFuture.channel();
+                ChannelPipeline pipeline = channel.pipeline();
+                ChannelHandler channelHandler = pipeline.get(Cluster.DECODER);
+                if (channelHandler instanceof ClientChannelToNodeDecoder) {
+                    ClientChannelToNodeDecoder decoder = (ClientChannelToNodeDecoder) channelHandler;
+                    decoder.setNode(node);
+                } else if (channelHandler instanceof ServerChannelToNodeDecoder) {
+                    ServerChannelToNodeDecoder decoder = (ServerChannelToNodeDecoder) channelHandler;
+                    decoder.setNode(node);
+                } else {
+                    if (channel != null) {
+                        channel.close();
+                    }
+                    throw new LtsllcException("unrecognized decoder");
+                }
+                channelHandler = pipeline.get(Cluster.HEART_BEAT);
+                if (channelHandler instanceof HeartBeatHandler) {
+                    HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
+                    heartBeatHandler.setUuid(node.getUuid());
+                }
+
+                logger.error("connected to " +  node.getHost() + ":" + node.getPort());
+
+                returnValue = true;
             }
         } catch (InterruptedException e) {
             logger.debug("failed to connect to " + node.getHost() + ":" + node.getPort());
             returnValue = false;
         }
 
+        //
+        // go back to being a server
+        //
+        setServerMode(true);
         if (returnValue) {
             events.info("Connected to " + node.getHost() + ":" + node.getPort());
+            node.sendStart(true);
+            coalesce();
+        } else {
+            logger.error("Could not connect to " + node.getHost() + ":" + node.getPort());
         }
-
-        node.sendStart(true);
-
-        coalesce();
 
         logger.debug("leaving connectToNode with " + returnValue);
         return returnValue;
@@ -1023,5 +1093,28 @@ public class Cluster implements Alarmable, PropertyListener {
         }
 
         return true;
+    }
+
+    public void startServerOn (int port) {
+        ServerBootstrap serverBootstrap = new ServerBootstrap();
+        serverBootstrap.group(new NioEventLoopGroup());
+        serverBootstrap.channel(NioServerSocketChannel.class);
+        serverBootstrap.option(ChannelOption.SO_REUSEADDR, true);
+        serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
+            public void initChannel(SocketChannel ch) throws Exception {
+                ch.pipeline().addLast(STRING_ENCODER,new StringEncoder());
+                //ch.pipeline().addLast(LENGTH,new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE,0,4,0,4));
+                ch.pipeline().addLast(DECODER,new ServerChannelToNodeDecoder("#" + nodeCount++));
+                ch.pipeline().addLast(HEART_BEAT,new HeartBeatHandler(ch));
+            }
+        });
+        serverBootstrap.validate();
+        ChannelFuture channelFuture = serverBootstrap.bind(port);
+        try {
+            channelFuture.await();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 }

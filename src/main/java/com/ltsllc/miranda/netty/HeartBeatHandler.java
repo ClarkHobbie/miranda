@@ -5,15 +5,14 @@ import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.alarm.AlarmClock;
 import com.ltsllc.miranda.alarm.Alarmable;
 import com.ltsllc.miranda.alarm.Alarms;
-import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.cluster.Node;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageCodec;
 import io.netty.util.ReferenceCountUtil;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -24,10 +23,20 @@ import java.util.UUID;
  * A class that enforces the heart beat protocol
  */
 public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> implements Alarmable {
-    protected static final Logger logger = LogManager.getLogger();
+    protected static final Logger logger = LogManager.getLogger(HeartBeatHandler.class);
 
     protected Channel channel;
     protected boolean metTimeout = false;
+
+    protected boolean isLoopback = false;
+
+    public boolean isLoopback() {
+        return isLoopback;
+    }
+
+    public void setLoopback(boolean loopback) {
+        isLoopback = loopback;
+    }
 
     protected long timeOfLastActivity = -1;
 
@@ -51,15 +60,6 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
         this.uuid = uuid;
     }
 
-    protected Node node;
-
-    public Node getNode() {
-        return node;
-    }
-
-    public void setNode(Node node) {
-        this.node = node;
-    }
 
     public HeartBeatHandler (Channel channel) {
         this.channel = channel;
@@ -70,8 +70,10 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
 
     @Override
     protected void encode(ChannelHandlerContext channelHandlerContext, String s, List<Object> list) {
-        timeOfLastActivity = System.currentTimeMillis();
-        list.add(s);
+        if (!isLoopback) {
+            timeOfLastActivity = System.currentTimeMillis();
+            list.add(s);
+        }
    }
 
     /**
@@ -89,15 +91,17 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
     @Override
     protected void decode(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf, List<Object> list) {
         try {
-            String s = byteBuf.toString(Charset.defaultCharset());
-            timeOfLastActivity = System.currentTimeMillis();
-            if (s.equals(Node.HEART_BEAT)) {
-                metTimeout = true;
-                online = true;
-            } else if (s.equals(Node.HEART_BEAT_START)) {
-                channelHandlerContext.writeAndFlush(Node.HEART_BEAT);
-            } else {
-                list.add(s);
+            if (!isLoopback) {
+                String s = byteBuf.toString(Charset.defaultCharset());
+                timeOfLastActivity = System.currentTimeMillis();
+                if (s.equals(Node.HEART_BEAT)) {
+                    metTimeout = true;
+                    online = true;
+                } else if (s.equals(Node.HEART_BEAT_START)) {
+                    channelHandlerContext.writeAndFlush(Node.HEART_BEAT);
+                } else {
+                    list.add(s);
+                }
             }
         }
         finally {
@@ -130,13 +134,13 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
      * @throws LtsllcException
      */
     public void heartBeatTimeout() throws IOException, LtsllcException {
-        if (!metTimeout) {
-            logger.error("Node has gone offline.");
-            channel.close();
-            Cluster.getInstance().removeNode(node);
-            Cluster.getInstance().deadNode(uuid,node);
-        } else {
-            metTimeout = false;
+        if (!isLoopback) {
+            if (!metTimeout) {
+                logger.error("Node has gone offline.");
+                channel.close();
+            } else {
+                metTimeout = false;
+            }
         }
     }
 
@@ -147,16 +151,18 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
      * </P>
      */
     public void sendHeartBeat() {
-        AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT,
-                Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL));
+        if (!isLoopback) {
+            AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT,
+                    Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL));
 
-        if (Miranda.getProperties().getBooleanProperty(Miranda.PROPERTY_USE_HEARTBEATS)) {
-            if (System.currentTimeMillis() >
-                    timeOfLastActivity + Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL)) {
-                channel.writeAndFlush(Node.HEART_BEAT_START);
-                AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT,
-                        Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_TIMEOUT));
+            if (Miranda.getProperties().getBooleanProperty(Miranda.PROPERTY_USE_HEARTBEATS)) {
+                if (System.currentTimeMillis() >
+                        timeOfLastActivity + Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL)) {
+                    channel.writeAndFlush(Node.HEART_BEAT_START);
+                    AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT,
+                            Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_TIMEOUT));
 
+                }
             }
         }
     }
@@ -172,8 +178,6 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         if (cause.getMessage().endsWith("Connection reset")) {
             ctx.close();
-            Cluster.getInstance().removeNode(node);
-            Cluster.getInstance().deadNode(uuid,node);
         }
     }
 

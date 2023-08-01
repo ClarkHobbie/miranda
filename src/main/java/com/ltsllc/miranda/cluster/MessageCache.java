@@ -3,12 +3,11 @@ package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
-
-import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.Miranda;
+import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.properties.PropertiesHolder;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.util.*;
@@ -23,7 +22,7 @@ import java.util.*;
  * </P>
  */
 public class MessageCache {
-    public static final Logger logger = LogManager.getLogger();
+    public static final Logger logger = LogManager.getLogger(MessageCache.class);
     public static final Logger events = LogManager.getLogger("events");
 
     /**

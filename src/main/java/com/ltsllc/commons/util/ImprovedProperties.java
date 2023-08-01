@@ -1,9 +1,9 @@
 package com.ltsllc.commons.util;
 
-import java.util.Properties;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import java.util.Properties;
 
 /*
  * An improved version of the Properties class
@@ -15,7 +15,7 @@ import org.apache.logging.log4j.Logger;
  * </UL>
  */
 public class ImprovedProperties extends Properties {
-    public static final Logger logger = LogManager.getLogger();
+    public static final Logger logger = LogManager.getLogger(ImprovedProperties.class);
 
     /*
      * create an empty properties

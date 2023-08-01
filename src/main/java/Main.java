@@ -1,9 +1,7 @@
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.miranda.Miranda;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.net.URL;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
 public class Main {
 

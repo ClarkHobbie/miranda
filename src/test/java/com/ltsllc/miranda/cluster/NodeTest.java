@@ -2,27 +2,23 @@ package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
-import com.ltsllc.commons.util.ImprovedRandom;
-import com.ltsllc.commons.util.Utils;
+import com.ltsllc.miranda.Miranda;
+import com.ltsllc.miranda.logging.LoggingCache;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.message.MessageLog;
-import com.ltsllc.miranda.Miranda;
-import com.ltsllc.miranda.cluster.Node;
-import com.ltsllc.miranda.logging.LoggingCache;
 import com.ltsllc.miranda.message.MessageType;
 import com.ltsllc.miranda.netty.HeartBeatHandler;
 import com.ltsllc.miranda.properties.PropertiesHolder;
 import io.netty.channel.embedded.EmbeddedChannel;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mockito;
-import org.mockito.internal.matchers.Any;
 
 import java.io.IOException;
 import java.security.SecureRandom;
@@ -31,7 +27,6 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.times;
 
 public class NodeTest {
 
@@ -90,7 +85,7 @@ public class NodeTest {
         temp = temp;
     }
 
-    public static final Logger logger = LogManager.getLogger();
+    public static final Logger logger = LogManager.getLogger(NodeTest.class);
 
     @BeforeAll
     public static void setup () {

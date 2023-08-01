@@ -2,8 +2,7 @@ package com.ltsllc.miranda;
 
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.properties.PropertiesHolder;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.core.config.Configurator;
+import org.apache.log4j.Level;
 import org.junit.jupiter.api.BeforeAll;
 
 import java.net.InetSocketAddress;
@@ -35,7 +34,7 @@ public class TestSuperclass {
 
     @BeforeAll
     public static void setup () {
-        Configurator.setRootLevel(Level.DEBUG);
+        //Configurator.setRootLevel(Level.DEBUG);
 
     }
 }

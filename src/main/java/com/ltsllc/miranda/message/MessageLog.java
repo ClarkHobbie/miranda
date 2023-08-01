@@ -1,23 +1,17 @@
 package com.ltsllc.miranda.message;
 
 import com.ltsllc.commons.LtsllcException;
-import com.ltsllc.commons.UncheckedLtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.io.TextFile;
 import com.ltsllc.miranda.Miranda;
-import com.ltsllc.miranda.alarm.AlarmClock;
-import com.ltsllc.miranda.alarm.Alarmable;
-import com.ltsllc.miranda.alarm.Alarms;
 import com.ltsllc.miranda.logging.LoggingCache;
 import com.ltsllc.miranda.logging.LoggingMap;
-import com.ltsllc.miranda.properties.Properties;
 import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import com.ltsllc.miranda.properties.PropertyListener;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
 import java.io.*;
-import java.nio.CharBuffer;
 import java.util.*;
 
 /**
@@ -35,7 +29,7 @@ import java.util.*;
  * </P>
  */
 public class MessageLog implements  PropertyListener {
-    public static final Logger logger = LogManager.getLogger();
+    public static final Logger logger = LogManager.getLogger(MessageLog.class);
     public static final Logger events = LogManager.getLogger("events");
 
     protected static MessageLog instance;

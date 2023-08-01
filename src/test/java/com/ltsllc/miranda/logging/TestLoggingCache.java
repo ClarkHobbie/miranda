@@ -2,9 +2,9 @@ package com.ltsllc.miranda.logging;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
-import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.TestSuperclass;
+import com.ltsllc.miranda.message.Message;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.junit.jupiter.api.BeforeAll;
@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.Map;
 
 public class TestLoggingCache extends TestSuperclass {
     @BeforeAll
