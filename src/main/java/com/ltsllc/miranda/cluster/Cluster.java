@@ -437,7 +437,7 @@ public class Cluster implements Alarmable, PropertyListener {
         }
         if (channelFuture.isSuccess()) {
             bound = true;
-            logger.error("listening at port " + socketAddress);
+            logger.info("listening at port " + Miranda.getProperties().getProperty(Miranda.PROPERTY_PORT));
         } else {
             throw new RuntimeException("bind failed");
         }
@@ -541,7 +541,7 @@ public class Cluster implements Alarmable, PropertyListener {
                     heartBeatHandler.setUuid(node.getUuid());
                 }
 
-                logger.error("connected to " +  node.getHost() + ":" + node.getPort());
+                logger.info("connected to " +  node.getHost() + ":" + node.getPort());
 
                 returnValue = true;
             }
