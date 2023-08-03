@@ -894,7 +894,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         }
         logger.debug("wrote " + stringBuilder);
 
-        if (uuid.equals(Miranda.getInstance().getMyUuid())) {
+        if (uuid != null && uuid.equals(Miranda.getInstance().getMyUuid())) {
             isLoopback = true;
             ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
             if (channelHandler == null || !(channelHandler instanceof HeartBeatHandler)) {
