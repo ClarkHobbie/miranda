@@ -1,0 +1,166 @@
+Cluster.connectNodes never calls connect
+
+Rather it creates a node for each one in the cluster and that's it.
+
+The question is how do you set up a connection that is the result of an incomming connection?
+
+The error seems to happen when setting up the identity node: and what's more
+it seems to happen regardless of whether writeAndFlush is called.  Putting a
+breakpoint in the first statement of sendStart and terminating the program
+still results in the exception getting thrown.
+
+Commenting out the call to sendStart worked!  The process did throw an
+exception!
+
+The bug happens immediately after the port (2020) is up and ready to go.
+Modified the code to send "hi there" after starting the server and it
+resulted in the refcount exception.
+
+The server never sets SO_REUSEADDR.  One thing I learned from examining
+the startup code for miranda is that the jetty code uses a server object
+instead of a bootstrap.  Using a Server object provides no way of setting
+SO_REUSEADDR. It also doesn't provide a way of specifying a ChannelHandler
+so there is no way of using a HeartBeatHandler.
+
+Got it to work! The important point was to use ServerSocket with the bind
+rather than Bootstrap.  Don't know why it makes a difference but it does.
+Needless to say this won't work for miranda --- it will have to use a different
+port for node communications.  The working project is "whatever."
+
+Even the working project doesn't show up on a netstat -a.  The versions that
+use Bootstrap don't show up at all.
+
+7/19/2023
+
+Started work on the new communications port.  Tried using a different port,
+but I still got the refcount exception.  Checked the server and it is running
+the connection is successful it's just the call to writeAndFlush that's not
+working.  I get the refcount exception even if I just write "hi there." Writing
+"hi there" right after getting a connection worked.
+
+Tried waiting 30 sec and then sending "hi there" that worked.  So something
+is being done in between a connection being opened and writing the send
+start. Tried putting the pause in between the time when the channel was
+opened and the time when "hi there" was written that worked.
+
+The sendStart is called as soon as Cluster.connectNodeTo returns.
+
+Tried moving startIdentityNode sooner. That didn't work.  So,
+whatever is messing up netty happens in: loadProperties();setupMisc();
+setupClustering(); setupMessageLog(); setupClusterPort();or
+startIdentityNode();
+
+Tried rearranging things so that startIdentityNode gets called as soon
+as properties are loaded but Cluster.getInstance (which is needed) returns
+null.
+
+Rearranged things so that startIdentityNode() is called before
+setupMessageLog() and I still got the refcount exception, so at least
+setupMessageLog is not part of the problem.  Next step is probably to make
+"inline" calls instead of calling Cluster.getInstance().startServerOn and
+then moving startIdentityNode wherever I want.
+
+7/20/2023
+
+inlined code and tried moving startIdentityNode to after setupMisc and
+loadProperties. It worked.  So setupMisc and loadProperties are not part
+of the problem. Moved startIdentityNode to after setupClustering and
+setupClusterPort.  It worked. So those two are not part of the problem.
+Moved startIdentityNode to where it was originally (the last part of
+startup) and it worked - so now I don't know what's going on.
+
+7/21/2023
+
+Replaced startIdentityNode with what I would think of as expected code.
+Got the refcount exception.  Next step is to replace the code to the
+cluster with an inline version and move startIdentityNode to someplace
+earlier.
+
+inlined the connect code and it worked so the problem must be in the connect
+code.
+
+Added a bunch of channel code. It worked. Maybe that code should be added
+to connectToNode?
+
+Added the channel code to Cluster.connectToNode and it worked - didn't
+get a refcount exception.  Don't add bootstrap.group and bootstap.channel
+because they've already been set.
+
+Now I don't seem to be getting the start.  Don't know why it's not getting
+there, isSuccess returns true and the channel looks OK.  Keeps coming back
+to sendStart.  I'm getting sendStart over and over because startTimeout
+keeps calling it.
+
+Removed the sendStart problem. ServerChannelToNodeDecoder never gets called.
+
+7/23/2023
+
+No messages get through netty.  This is after getting a success on the connect
+and the writeAndFlush.  No idea why.  Tried sending "hi there" and that didn't
+get through.  Wondering if the receiver needs to be in a different thread.
+The send and receive are in different threads (send is in a NodeThread).
+
+7/24/2023
+
+Have a 'simple' program which works.  It just makes a connection and sends
+information.  Going to try and simplify Miranda to the point that it
+works.
+
+Started getting warnings about a memory leak. No contact with my code can
+be found.
+
+ServerChannelToNodeDecoder.channelRead is getting called --- showing that
+*something* is making it across --- this is after removing the LENGTH
+component.  Get an exception while trying to cast the byte buffer to a String.
+
+node is null at ServerChannelToNodeDecoder.channelRead which is why
+Node.messageReceived never gets called.
+
+ServerChannelToNodeDecoder.setNode is being called with a non-null argument
+but when it gets to ServerChannelToNodeDecoder.channelRead it's null.
+ServerChannelToNodeDecoder gets called three times: once by connectToNode,
+when Miranda is trying to connect to 192.168.0.12 once when it is trying to
+connect to 192.168.0.20 and once as a server.  The server instance never has
+setNode called, so it is always null.
+
+From one standpoint this make sense: when a server connection comes in, there
+is no node associated with the connection.  It is only after the connection
+receives the first start message that it "knows" who it's talking to.
+
+Calling ByteBuf.toString (Charset.defaultCharset()) results in a String that
+can be passed on to Node.messageReceived and processed.  The node is 'empty'
+at that point (has a null for uuid and host) because we don't know who we are
+talking to.  The node needs to be added to the Cluster.  At that point we will
+have *two* nodes for the local node: one for the client side of the connection
+and one for the server side.
+
+This brings up all the 'if it's a loopback' problem.  How does the system
+deal with loopbacks?  The system should have one node for every computer in
+the system, so we should throw out the new node.
+
+7/26/2023
+
+Seeing heart beat messages in Node.java which should not happen.  All heart
+beat messages should be filtered out by the HeartBeatHandler, but for whatever
+reason, they are making it through, where they cause errors in the protocol.
+
+
+The HeartBeatHandler isn't called.  The first error occurs when the handler
+sends the first message.  It doesn't help that the system discards the server
+node so there is nothing for the client handler to talk to.
+
+Tried adding an isLoopback variable to HeartBeatHandler but I still got the
+error.
+
+7/27/2023
+
+UUID is set at the time of the protocol error, so why is isLoopback not set?
+isLoopback is not set because, at the point that it checks, the UUID is not
+set.  Added some code in handleStartStart to set isLoopback, but I still got
+the error and isLoopback still wasn't set.
+
+Added a bunch of code to set isLoopback.  Still got the error.
+
+Thought of using the address of the node
+
+Put the isLoopback check in sendStart and it worked.
