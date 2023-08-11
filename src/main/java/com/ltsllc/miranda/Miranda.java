@@ -11,6 +11,8 @@ import com.ltsllc.miranda.cluster.SpecNode;
 import com.ltsllc.miranda.logging.LoggingCache;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.message.MessageLog;
+import com.ltsllc.miranda.netty.ChannelMonitor;
+import com.ltsllc.miranda.netty.HeartBeatHandler;
 import com.ltsllc.miranda.netty.ServerChannelToNodeDecoder;
 import com.ltsllc.miranda.netty.StringEncoder;
 import com.ltsllc.miranda.properties.PropertiesHolder;
@@ -511,10 +513,11 @@ public class Miranda implements PropertyListener {
         bootstrap.option(ChannelOption.SO_REUSEADDR, true);
         bootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
             public void initChannel(SocketChannel ch) throws Exception {
-                ch.pipeline().addLast(
-                        new StringEncoder(),
+                ch.pipeline().addLast(Cluster.STRING_ENCODER, new StringEncoder());
                         //new LengthFieldBasedFrameDecoder(2048, 0, 4, 0, 4),
-                        new ServerChannelToNodeDecoder("whatever"));
+                ch.pipeline().addLast(Cluster.DECODER, new ServerChannelToNodeDecoder("spam"));
+                ch.pipeline().addLast(Cluster.HEART_BEAT, new HeartBeatHandler(ch));
+                ch.pipeline().addFirst("whatever", new ChannelMonitor());
             }
         });
     }

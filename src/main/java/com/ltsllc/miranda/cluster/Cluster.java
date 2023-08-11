@@ -10,6 +10,7 @@ import com.ltsllc.miranda.alarm.Alarmable;
 import com.ltsllc.miranda.alarm.Alarms;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.message.MessageLog;
+import com.ltsllc.miranda.netty.ChannelMonitor;
 import com.ltsllc.miranda.netty.ClientChannelToNodeDecoder;
 import com.ltsllc.miranda.netty.HeartBeatHandler;
 import com.ltsllc.miranda.netty.ServerChannelToNodeDecoder;
@@ -269,6 +270,7 @@ public class Cluster implements Alarmable, PropertyListener {
                 //cp.addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0,4,0,4));
                 cp.addLast(DECODER, new ClientChannelToNodeDecoder());
                 cp.addLast(HEART_BEAT, new HeartBeatHandler(c));
+                cp.addFirst("whatever", new ChannelMonitor());
             }
         });
         EventLoopGroup bossGroup = new NioEventLoopGroup();
@@ -285,6 +287,7 @@ public class Cluster implements Alarmable, PropertyListener {
                         //cp.addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
                         cp.addLast(DECODER, new ServerChannelToNodeDecoder("#" + nodeCount++));
                         cp.addLast(HEART_BEAT, new HeartBeatHandler(c));
+                        cp.addFirst("whatever", new ChannelMonitor());
                     }
                 })
                 .childOption(ChannelOption.SO_REUSEADDR, true);
@@ -510,6 +513,7 @@ public class Cluster implements Alarmable, PropertyListener {
                 //ch.pipeline().addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
                 ch.pipeline().addLast(DECODER, new ServerChannelToNodeDecoder("#" + nodeCount++));
                 ch.pipeline().addLast(HEART_BEAT, new HeartBeatHandler(ch));
+                ch.pipeline().addFirst("whatever", new ChannelMonitor());
             }
         });
 
@@ -1106,6 +1110,7 @@ public class Cluster implements Alarmable, PropertyListener {
                 //ch.pipeline().addLast(LENGTH,new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE,0,4,0,4));
                 ch.pipeline().addLast(DECODER,new ServerChannelToNodeDecoder("#" + nodeCount++));
                 ch.pipeline().addLast(HEART_BEAT,new HeartBeatHandler(ch));
+                ch.pipeline().addFirst("whatever",new ChannelMonitor());
             }
         });
         serverBootstrap.validate();
