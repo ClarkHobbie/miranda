@@ -1,0 +1,17 @@
+8/3/2023
+
+Getting a start timeout when I run Miranda and there is another node in the
+cluster that is online.  The start_timeout is set to 1000 milliseconds and
+that seems like that should be ok.
+
+Node.messageReceived is never called when connecting to 0.12.
+
+Heartbeat messages are getting through on 0.12; there is a HeartBeatHandler
+on the channel.  messageReceived is never called on 0.12.
+
+8/4/2023
+
+startTimeout gets called repeatedly because the node tries to connect over and over again.  Next
+step is to be notified whenever a message is received.
+
+Get an ChannelOutputShutdownException when I try to add a ChannelMonitor
