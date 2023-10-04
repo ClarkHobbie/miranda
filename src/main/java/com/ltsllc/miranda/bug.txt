@@ -15,3 +15,7 @@ startTimeout gets called repeatedly because the node tries to connect over and o
 step is to be notified whenever a message is received.
 
 Get an ChannelOutputShutdownException when I try to add a ChannelMonitor
+
+9/23/2023
+
+Tried setting SO_REUSEADDR, await still does not return.

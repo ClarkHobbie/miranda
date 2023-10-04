@@ -678,7 +678,7 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
         Cluster mockCluster = mock(Cluster.class);
         Cluster.setInstance(mockCluster);
 
-        node.sendStart(false);
+        node.sendStart(false,false);
 
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append(Node.START_ACKNOWLEDGED);

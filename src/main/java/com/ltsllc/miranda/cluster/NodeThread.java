@@ -3,11 +3,20 @@ package com.ltsllc.miranda.cluster;
 import com.ltsllc.commons.LtsllcException;
 
 public class NodeThread extends Thread {
-    public NodeThread(Node theNode) {
+    public NodeThread(Node theNode,boolean isLoopback) {
         node = theNode;
     }
 
     protected Node node;
+    protected boolean isLoopback;
+
+    public boolean getIsLoopback() {
+        return isLoopback;
+    }
+
+    public void setIsLoopback(boolean loopback) {
+        isLoopback = loopback;
+    }
 
     public Node getNode () {
         return node;
@@ -30,7 +39,7 @@ public class NodeThread extends Thread {
 
     public void run () {
         try {
-            boolean connected = Cluster.getInstance().connectToNode(node);
+            boolean connected = Cluster.getInstance().connectToNode(node,getIsLoopback());
             keepGoing = true;
             if (connected) {
                 while (getKeepGoing())
@@ -38,9 +47,7 @@ public class NodeThread extends Thread {
             } else {
                 throw new RuntimeException("connect failed");
             }
-        } catch (LtsllcException e) {
-            throw new RuntimeException(e);
-        } catch (CloneNotSupportedException e) {
+        } catch (Throwable e) {
             throw new RuntimeException(e);
         }
     }

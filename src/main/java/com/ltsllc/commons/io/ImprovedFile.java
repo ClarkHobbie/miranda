@@ -48,9 +48,14 @@ public class ImprovedFile extends File {
 
         try {
             fileInputStream = new FileInputStream(this);
+        } catch (FileNotFoundException e) {
+            throw new LtsllcException("error opening input file:" + this);
+        }
+
+        try {
             fileOutputStream = new FileOutputStream(newFile);
         } catch (FileNotFoundException fileNotFoundException) {
-            throw new LtsllcException("error opening file or newFile", fileNotFoundException);
+            throw new LtsllcException("error opening output file:" + newFile);
         }
 
         byte[] buffer = new byte[BUFFER_SIZE];

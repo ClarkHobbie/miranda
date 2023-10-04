@@ -186,8 +186,13 @@ public class MessageLog implements  PropertyListener {
             logger.info("removing backup " + ownersBackup);
         }
 
-        logfile.copyTo(messageBackup);
-        ownersFile.copyTo(ownersBackup);
+        if (logfile.exists()) {
+            logfile.copyTo(messageBackup);
+        }
+
+        if (ownersFile.exists()) {
+            ownersFile.copyTo(ownersBackup);
+        }
         cache = new LoggingCache(logfile, loadLimit);
         uuidToOwner = new LoggingMap(ownersFile);
         setOwnerTo(Miranda.getInstance().getMyUuid());

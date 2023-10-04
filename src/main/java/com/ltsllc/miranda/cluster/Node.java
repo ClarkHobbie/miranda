@@ -17,6 +17,7 @@ import com.ltsllc.miranda.properties.PropertyListener;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
+import io.netty.channel.socket.ChannelOutputShutdownEvent;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
@@ -272,7 +273,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         boolean result = false;
 
         try {
-            result = Cluster.getInstance().connectToNode(this);
+            boolean isLoopback = this.getUuid() == Miranda.getInstance().getMyUuid();
+            result = Cluster.getInstance().connectToNode(this, isLoopback);
         } catch (LtsllcException e) {
             throw new RuntimeException(e);
         } catch (CloneNotSupportedException e) {
@@ -848,7 +850,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         // otherwise just treat it like any other node
         //
         else {
-            sendStart(true);
+            sendStart(true, false);
         }
 
         logger.debug("leaving handleStartStart");
@@ -857,7 +859,13 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     /**
      * Send a start message complete with the uuid, host and port
      */
-    public void sendStart(boolean force) {
+    public void sendStart(boolean force, boolean isLoopback) {
+        logger.debug("entering sendStart with force: " + force + " and isLoopback: " + isLoopback);
+
+        if (isLoopback) {
+            return;
+        }
+
         if (channelToSentStart.get(channel) != null && channelToSentStart.get(channel).booleanValue()
                 && !force) {
             return;
@@ -870,7 +878,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
 
         channelToSentStart.put(channel, true);
-        logger.debug("entering sendStart");
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append(START_START);
         stringBuilder.append(" ");
@@ -882,9 +889,15 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         stringBuilder.append(" ");
         stringBuilder.append(Miranda.getInstance().getMyStart());
 
+
+        // ChannelOutputShutdownEvent
+
         ChannelFuture future = channel.writeAndFlush(stringBuilder.toString());
+
         try {
+            logger.debug("about to call await.  Current thread: " + Thread.currentThread());
             future.await();
+            logger.debug("done with await");
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -958,7 +971,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
         setState(popState());
         if (state == ClusterConnectionStates.START) {
-            sendStart(false);
+            sendStart(false, false);
         }
 
         logger.debug("leaving handleSynchronizeStart");
@@ -973,7 +986,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
         channel.writeAndFlush(ERROR);
 
-        sendStart(true);
+        sendStart(true, false);
 
         logger.debug("leaving handleErrorStart");
     }
@@ -1082,7 +1095,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
         setState(ClusterConnectionStates.START);
 
-        sendStart(true);
+        sendStart(true, false);
 
         logger.debug("leaving handleError");
     }
@@ -1251,7 +1264,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public void exceptionCaught(Throwable throwable) {
         logger.error("caught exception starting over", throwable);
         channel.writeAndFlush(ERROR_START);
-        sendStart(true);
+        sendStart(true, false);
     }
 
     /**
@@ -1417,10 +1430,14 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         stringBuffer.append(Miranda.getInstance().getMyStart());
 
         ImprovedFile logs = new ImprovedFile("messages.log");
-        logs.touch();
+        if (logs.exists()) {
+            logs.touch();
+        }
 
         ImprovedFile owners = new ImprovedFile("owners.log");
-        owners.touch();
+        if (owners.exists()) {
+            owners.touch();
+        }
 
         channel.writeAndFlush(stringBuffer.toString());
         logger.debug("wrote " + stringBuffer);
@@ -1700,7 +1717,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("entering deadNodeTimeout");
 
         setState(ClusterConnectionStates.START);
-        sendStart(true);
+        sendStart(true, false);
 
         logger.debug("leaving deadNodeTimeout");
     }
@@ -1954,7 +1971,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     }
 
     public void handleErrorGeneral() {
-        sendStart(true);
+        sendStart(true, false);
         setState(ClusterConnectionStates.START);
     }
 

@@ -4,10 +4,7 @@ package com.ltsllc.miranda;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.UncheckedLtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
-import com.ltsllc.miranda.cluster.Cluster;
-import com.ltsllc.miranda.cluster.Node;
-import com.ltsllc.miranda.cluster.NodeThread;
-import com.ltsllc.miranda.cluster.SpecNode;
+import com.ltsllc.miranda.cluster.*;
 import com.ltsllc.miranda.logging.LoggingCache;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.message.MessageLog;
@@ -293,7 +290,7 @@ public class Miranda implements PropertyListener {
     /**
      * A list of node specifications that make up the cluster
      */
-    protected List<SpecNode> specNodes = new ArrayList<>();
+    static protected List<SpecNode> specNodes = new ArrayList<>();
 
     /**
      * The set of messages that we have sent out, but haven't heard back from
@@ -403,7 +400,7 @@ public class Miranda implements PropertyListener {
         this.inflight = inflight;
     }
 
-    public List<SpecNode> getSpecNodes() {
+    public static List<SpecNode> getSpecNodes() {
         return specNodes;
     }
 
@@ -585,7 +582,7 @@ public class Miranda implements PropertyListener {
      * @throws IOException If there is a problem copying the messages
      */
     public synchronized void mainLoop() throws IOException, LtsllcException {
-        logger.debug("starting mainLoop, with keepRunning = " + keepRunning);
+        // logger.debug("starting mainLoop, with keepRunning = " + keepRunning);
 
         //
         // run garbage collection to avoid running out of memory
@@ -615,7 +612,7 @@ public class Miranda implements PropertyListener {
             }
             iterations++;
         }
-        logger.debug("leaving mainLoop");
+        // logger.debug("leaving mainLoop");
     }
 
     /**
@@ -670,8 +667,9 @@ public class Miranda implements PropertyListener {
         logger.debug("Miranda starting up");
         loadProperties();
         setupMisc();
+
+        logger.debug("About to start cluster port");
         setupClustering();
-        setupClusterPort();
 
         setupMessageLog();
 
@@ -701,9 +699,8 @@ public class Miranda implements PropertyListener {
 
 
     public void setupClustering() throws LtsllcException, CloneNotSupportedException {
-        Cluster.defineStatics();
-        parseNodes();
-        Cluster.getInstance().start(specNodes);
+        ClusterThread ct = new ClusterThread();
+        ct.start();
     }
 
     /**
@@ -738,6 +735,8 @@ public class Miranda implements PropertyListener {
 
         // Start the Server, so it starts accepting connections from clients.
         server.start();
+        int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_MESSAGE_PORT);
+        logger.debug("started up the port at " + port + " and thread: " + Thread.currentThread());
 
         logger.debug("leaving startMessagePort");
     }
@@ -1029,7 +1028,7 @@ public class Miranda implements PropertyListener {
      *
      * @see SpecNode
      */
-    public void parseNodes() {
+    static public void parseNodes() {
         if (null != properties.getProperty(PROPERTY_CLUSTER_1)) {
             String rootProperty = Miranda.PROPERTY_CLUSTER + ".1";
             SpecNode specNode = new SpecNode();
@@ -1050,7 +1049,7 @@ public class Miranda implements PropertyListener {
                 }
             }
 
-            specNodes = list;
+            Miranda.getInstance().setSpecNodes(list);
         }
     }
 
@@ -1200,7 +1199,7 @@ public class Miranda implements PropertyListener {
      */
     public void startIdentityNode() throws LtsllcException, CloneNotSupportedException {
         Node node = new Node(myUuid, myHost, myPort, null);
-        NodeThread nodeThread = new NodeThread(node);
-        nodeThread.start();
+        Cluster.getInstance().connectToNode(node, true);
+        node.sendStart(true, false);
     }
 }

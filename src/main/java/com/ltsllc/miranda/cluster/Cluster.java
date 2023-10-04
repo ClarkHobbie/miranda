@@ -10,10 +10,7 @@ import com.ltsllc.miranda.alarm.Alarmable;
 import com.ltsllc.miranda.alarm.Alarms;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.message.MessageLog;
-import com.ltsllc.miranda.netty.ChannelMonitor;
-import com.ltsllc.miranda.netty.ClientChannelToNodeDecoder;
-import com.ltsllc.miranda.netty.HeartBeatHandler;
-import com.ltsllc.miranda.netty.ServerChannelToNodeDecoder;
+import com.ltsllc.miranda.netty.*;
 import com.ltsllc.miranda.properties.Properties;
 import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import com.ltsllc.miranda.properties.PropertyListener;
@@ -24,6 +21,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.string.StringEncoder;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -263,6 +261,7 @@ public class Cluster implements Alarmable, PropertyListener {
         bootstrap.group(workerGroup);
         bootstrap.channel(NioSocketChannel.class);
         bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
+        bootstrap.option(ChannelOption.SO_REUSEADDR, true);
         bootstrap.handler(new ChannelInitializer<Channel>() {
             public void initChannel (Channel c) {
                 ChannelPipeline cp = c.pipeline();
@@ -270,7 +269,10 @@ public class Cluster implements Alarmable, PropertyListener {
                 //cp.addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0,4,0,4));
                 cp.addLast(DECODER, new ClientChannelToNodeDecoder());
                 cp.addLast(HEART_BEAT, new HeartBeatHandler(c));
-                cp.addFirst("whatever", new ChannelMonitor());
+                ChannelInboundMonitor in = new ChannelInboundMonitor();
+                cp.addFirst("whateverInbound", in);
+                ChannelOutboundMonitor out = new ChannelOutboundMonitor();
+                cp.addLast("whateverOutbound", out);
             }
         });
         EventLoopGroup bossGroup = new NioEventLoopGroup();
@@ -287,7 +289,10 @@ public class Cluster implements Alarmable, PropertyListener {
                         //cp.addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
                         cp.addLast(DECODER, new ServerChannelToNodeDecoder("#" + nodeCount++));
                         cp.addLast(HEART_BEAT, new HeartBeatHandler(c));
-                        cp.addFirst("whatever", new ChannelMonitor());
+                        ChannelInboundMonitor in = new ChannelInboundMonitor();
+                        cp.addFirst("whateverInbound", in);
+                        ChannelOutboundMonitor out = new ChannelOutboundMonitor();
+                        cp.addLast("whateverOutbound", out);
                     }
                 })
                 .childOption(ChannelOption.SO_REUSEADDR, true);
@@ -440,7 +445,9 @@ public class Cluster implements Alarmable, PropertyListener {
         }
         if (channelFuture.isSuccess()) {
             bound = true;
-            logger.info("listening at port " + Miranda.getProperties().getProperty(Miranda.PROPERTY_PORT));
+            logger.info("listening at port " + Miranda.getProperties().getProperty(Miranda.PROPERTY_PORT)
+                + " and thread: " + Thread.currentThread()
+            );
         } else {
             throw new RuntimeException("bind failed");
         }
@@ -480,7 +487,7 @@ public class Cluster implements Alarmable, PropertyListener {
             if (node.getChannel() != null) {
                 tempAllNodesFailed = false;
             } else {
-                tempAllNodesFailed = !connectToNode(node);
+                tempAllNodesFailed = !connectToNode(node,false);
             }
         }
 
@@ -495,7 +502,7 @@ public class Cluster implements Alarmable, PropertyListener {
      * @param node The node to try and connect to.
      * @return true if we were able to connect to the node, false otherwise.
      */
-    public boolean connectToNode(Node node) throws LtsllcException, CloneNotSupportedException {
+    public boolean connectToNode(Node node, boolean isLoopback) throws LtsllcException, CloneNotSupportedException {
         boolean returnValue = false;
         severMode = false; // we are trying to connect to someone
         logger.debug("entering connectToNode with " + node.getHost() + ":" + node.getPort());
@@ -510,10 +517,13 @@ public class Cluster implements Alarmable, PropertyListener {
         bootstrap.handler(new ChannelInitializer<SocketChannel>() {
             public void initChannel(SocketChannel ch) throws Exception {
                 ch.pipeline().addLast(STRING_ENCODER, new io.netty.handler.codec.string.StringEncoder());
-                //ch.pipeline().addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
+                ch.pipeline().addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
                 ch.pipeline().addLast(DECODER, new ServerChannelToNodeDecoder("#" + nodeCount++));
                 ch.pipeline().addLast(HEART_BEAT, new HeartBeatHandler(ch));
-                ch.pipeline().addFirst("whatever", new ChannelMonitor());
+                ChannelInboundMonitor in = new ChannelInboundMonitor();
+                ch.pipeline().addFirst("whateverInbound", in);
+                ChannelOutboundMonitor out = new ChannelOutboundMonitor();
+                ch.pipeline().addLast("whateverOutbound", out);
             }
         });
 
@@ -560,7 +570,13 @@ public class Cluster implements Alarmable, PropertyListener {
         setServerMode(true);
         if (returnValue) {
             events.info("Connected to " + node.getHost() + ":" + node.getPort());
-            node.sendStart(true);
+            for (Node n: Cluster.getInstance().getNodes()) {
+                if (n.getChannel() != null) {
+                    boolean loopback = n.getHost() == Miranda.getInstance().getMyHost() &&
+                            n.getPort() == Miranda.getInstance().getMyPort();
+                    n.sendStart(true, loopback);
+                }
+            }
             coalesce();
         } else {
             logger.error("Could not connect to " + node.getHost() + ":" + node.getPort());
@@ -597,7 +613,7 @@ public class Cluster implements Alarmable, PropertyListener {
         //
         for (Node node : nodes) {
             if (node.getChannel() == null) {
-                if (!connectToNode(node)) {
+                if (!connectToNode(node,false)) {
                     returnValue = false;
                 }
             }
@@ -1027,7 +1043,7 @@ public class Cluster implements Alarmable, PropertyListener {
         setupScan();
         for (Node node : nodes) {
             if ((node.getChannel() != null) && (node.getState() == ClusterConnectionStates.START)) {
-                node.sendStart(true);
+                node.sendStart(true, false);
             }
         }
     }
@@ -1110,7 +1126,8 @@ public class Cluster implements Alarmable, PropertyListener {
                 //ch.pipeline().addLast(LENGTH,new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE,0,4,0,4));
                 ch.pipeline().addLast(DECODER,new ServerChannelToNodeDecoder("#" + nodeCount++));
                 ch.pipeline().addLast(HEART_BEAT,new HeartBeatHandler(ch));
-                ch.pipeline().addFirst("whatever",new ChannelMonitor());
+                ch.pipeline().addFirst("whateverInbound",new ChannelInboundMonitor());
+                ch.pipeline().addLast("whateverOutbound", new ChannelOutboundMonitor());
             }
         });
         serverBootstrap.validate();
