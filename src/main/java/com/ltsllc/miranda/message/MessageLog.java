@@ -494,7 +494,7 @@ public class MessageLog implements  PropertyListener {
         Reader reader = null;
         try {
             TextFile tf = new TextFile(logfile);
-            tf.readFile();
+            tf.load();
             reader = tf.getReader();
             BufferedReader br = new BufferedReader(reader);
             Message m = readMessage(br);

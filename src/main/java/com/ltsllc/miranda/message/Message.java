@@ -1,6 +1,6 @@
 package com.ltsllc.miranda.message;
 
-import com.ltsllc.commons.util.Utils;
+import com.ltsllc.commons.HexConverter;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.asynchttpclient.AsyncCompletionHandler;
@@ -159,7 +159,7 @@ public class Message implements Comparable<Message> {
         stringBuffer.append(" DELIVERY: ");
         stringBuffer.append(deliveryURL);
         stringBuffer.append(" CONTENTS: ");
-        stringBuffer.append(Utils.hexEncode(contents));
+        stringBuffer.append(HexConverter.toHexString(contents));
 
         returnValue = stringBuffer.toString();
 
@@ -201,7 +201,7 @@ public class Message implements Comparable<Message> {
         scanner.next(); // weird bug
         newMessage.deliveryURL = scanner.next();
         scanner.next(); // weird bug
-        newMessage.contents = Utils.hexDecode(scanner.next());
+        newMessage.contents = HexConverter.toByteArray(scanner.next());
 
         logger.debug("leaving readLongFormat with newMessage = " + newMessage);
 
@@ -226,7 +226,7 @@ public class Message implements Comparable<Message> {
         scanner.next(); // weird bug DELIVERY:
         message.setDeliveryURL(scanner.next());
         scanner.next(); // weird bug CONTENTS
-        message.contents = Utils.hexDecode(scanner.next());
+        message.contents = HexConverter.toByteArray(scanner.next());
 
         return message;
     }
@@ -253,7 +253,7 @@ public class Message implements Comparable<Message> {
         stringBuffer.append(" LAST STATUS: ");
         stringBuffer.append(status);
         stringBuffer.append(" CONTENTS: ");
-        stringBuffer.append(Utils.hexEncode(contents));
+        stringBuffer.append(HexConverter.toHexString(contents));
 
         return stringBuffer.toString();
     }
@@ -281,7 +281,7 @@ public class Message implements Comparable<Message> {
         newMessage.deliveryURL = scanner.next();
         scanner.next(); // CONTENTS
         String raw = scanner.next();
-        newMessage.contents = Utils.hexDecode(raw);
+        newMessage.contents = HexConverter.toByteArray(raw);
 
         return newMessage;
     }
@@ -302,8 +302,8 @@ public class Message implements Comparable<Message> {
         //
         // TODO: find a replacement for Long
         //
-        Long l1 = new Long(this.messageID.getMostSignificantBits());
-        Long l2 = new Long(this.messageID.getLeastSignificantBits());
+        Long l1 = Long.valueOf(this.messageID.getMostSignificantBits());
+        Long l2 = Long.valueOf(this.messageID.getLeastSignificantBits());
 
         int result = l1.compareTo(message.messageID.getMostSignificantBits());
 

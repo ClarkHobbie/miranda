@@ -61,7 +61,7 @@ public class PropertiesHolder extends Properties  {
     }
 
     public String getStringProperty (String propertyName) {
-        return properties.getStringProperty(propertyName);
+        return properties.getProperty(propertyName);
     }
 
     public void setIfNull (String propertyName, String propertyValue) {

@@ -831,7 +831,8 @@ public class Cluster implements Alarmable, PropertyListener {
                 survivingNodes.add(node);
             }
         }
-        Bag<Node> tempSurvivors = new Bag<Node>(survivingNodes);
+        Bag<Node> tempSurvivors = new Bag<Node>();
+        tempSurvivors.addAll(survivingNodes);
 
         for (UUID messageUuid: MessageLog.getInstance().getAllMessagesOwnedBy(deadNode)) {
             UUID newOwner = tempSurvivors.get().getUuid();

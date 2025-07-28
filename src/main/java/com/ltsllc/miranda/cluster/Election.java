@@ -111,10 +111,10 @@ public class Election {
 
         UUID uuid = deadNode;
 
-        ImprovedRandom random = new ImprovedRandom(new SecureRandom());
+        ImprovedRandom random = new ImprovedRandom();
         List<UUID> messages = MessageLog.getInstance().getAllMessagesOwnedBy(uuid);
         for (UUID message : messages) {
-            Voter voter = random.choose(Voter.class, voters);
+            Voter voter = random.choose(voters);
             voter.node.assignMessage(message);
         }
     }

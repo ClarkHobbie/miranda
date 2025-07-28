@@ -1,9 +1,9 @@
 package com.ltsllc.miranda.cluster;
 
+import com.ltsllc.commons.HexConverter;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedRandom;
-import com.ltsllc.commons.util.Utils;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.alarm.AlarmClock;
 import com.ltsllc.miranda.alarm.Alarmable;
@@ -1040,7 +1040,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         String strMessage = "got message with message ID: " + message.getMessageID();
         strMessage += ", and status URL: " + message.getStatusURL();
         strMessage += ", and delivery URL: " + message.getDeliveryURL();
-        strMessage += ", and content: " + Utils.hexEncode(message.getContents());
+        strMessage += ", and content: " + HexConverter.toHexString(message.getContents());
         strMessage += ", and pushed state: " + state;
         logger.debug(strMessage);
 

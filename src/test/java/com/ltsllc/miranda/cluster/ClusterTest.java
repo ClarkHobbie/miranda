@@ -168,7 +168,7 @@ class ClusterTest extends TestSuperclass {
         EmbeddedChannel channel = new EmbeddedChannel();
         Node node = new Node(null,"192.168.0.12", port, channel);
 
-        Cluster.getInstance().connectToNode(node);
+        Cluster.getInstance().connectToNode(node, false);
     }
 
     @Test

@@ -1,20 +1,16 @@
 package com.ltsllc.miranda.logging;
 
+import com.ltsllc.commons.HexConverter;
 import com.ltsllc.commons.io.ImprovedFile;
-import com.ltsllc.commons.util.Utils;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.message.MessageLog;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.List;
 import java.util.UUID;
 
 import static com.ltsllc.miranda.message.MessageLog.getInstance;
-import static org.junit.jupiter.api.Assertions.*;
 
 class LoggingCacheTest {
 
@@ -24,7 +20,7 @@ class LoggingCacheTest {
         m.setStatus(0);
 
         String contents = "hi there";
-        String contentsHex = Utils.hexEncode(contents.getBytes());
+        String contentsHex = HexConverter.toHexString(contents.getBytes());
         m.setContents(contents.getBytes());
 
         m.setStatusURL("google.com");
