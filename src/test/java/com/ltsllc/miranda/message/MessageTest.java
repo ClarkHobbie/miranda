@@ -1,7 +1,7 @@
-package com.ltsllc.miranda;
+package com.ltsllc.miranda.message;
 
 
-import com.ltsllc.miranda.message.Message;
+import com.ltsllc.miranda.TestSuperclass;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

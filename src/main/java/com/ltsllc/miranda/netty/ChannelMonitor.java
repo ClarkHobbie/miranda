@@ -2,15 +2,13 @@ package com.ltsllc.miranda.netty;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.MessageToMessageCodec;
 import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
 import java.nio.charset.Charset;
 import java.util.List;
-
-import org.apache.log4j.Logger;
 
 public class ChannelMonitor extends MessageToMessageCodec<ByteBuf,ByteBuf> {
     protected Logger logger = LogManager.getLogger(ChannelMonitor.class);

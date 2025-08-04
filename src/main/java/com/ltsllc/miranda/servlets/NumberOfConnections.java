@@ -3,7 +3,6 @@ package com.ltsllc.miranda.servlets;
 import com.ltsllc.miranda.cluster.Cluster;
 import jakarta.servlet.*;
 
-
 import java.io.IOException;
 import java.io.Writer;
 

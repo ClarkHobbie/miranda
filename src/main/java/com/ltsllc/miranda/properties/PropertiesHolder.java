@@ -2,7 +2,10 @@ package com.ltsllc.miranda.properties;
 
 import com.ltsllc.commons.UncheckedLtsllcException;
 import com.ltsllc.commons.util.ImprovedProperties;
-import com.ltsllc.commons.util.Property;
+import com.ltsllc.miranda.Miranda;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.eclipse.jetty.util.log.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,6 +19,7 @@ import java.util.Properties;
 public class PropertiesHolder extends Properties  {
     protected ImprovedProperties properties = new ImprovedProperties();
     protected Map<com.ltsllc.miranda.properties.Properties, List<PropertyListener>> listeners = new HashMap<>();
+    public static Logger logger = LogManager.getLogger();
 
     /**
      * Set a property to a value
@@ -302,6 +306,10 @@ public class PropertiesHolder extends Properties  {
     public boolean isDifferentFrom (String[][] table) {
         for (int i = 0; i < table.length; i++) {
             if (propertyIsDifferent(table[i])) {
+                String name = table[i][0];
+                String tableValue = table[i][1];
+                String propertyValue = Miranda.getProperties().getProperty(name);
+                logger.debug(name + " is different in the table, " + tableValue + ", then in miranda, " + propertyValue);
                 return true;
             }
         }

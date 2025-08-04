@@ -4,7 +4,10 @@ import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.message.Message;
 
 import java.io.*;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 
 /**
  * A set that logs its members

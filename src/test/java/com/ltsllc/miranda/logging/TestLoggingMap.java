@@ -2,9 +2,9 @@ package com.ltsllc.miranda.logging;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
-import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.TestSuperclass;
+import com.ltsllc.miranda.message.Message;
 import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;

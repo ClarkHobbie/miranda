@@ -6,8 +6,6 @@ import org.apache.logging.log4j.core.config.Configurator;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.util.Set;
-
 public class PropertiesHolderTest {
     public class PropertyChangeListener implements PropertyListener {
         public boolean wasRun = false;

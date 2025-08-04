@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
 
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
 
 /**
  * Test the main functions of Miranda

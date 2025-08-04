@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 
-
 import static org.mockito.Mockito.mock;
 
 public class MessageCodecTest extends TestSuperclass {

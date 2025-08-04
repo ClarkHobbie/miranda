@@ -1,7 +1,5 @@
 package com.ltsllc.miranda.cluster;
 
-import com.ltsllc.commons.LtsllcException;
-
 public class NodeThread extends Thread {
     public NodeThread(Node theNode,boolean isLoopback) {
         node = theNode;

@@ -9,8 +9,8 @@ import com.ltsllc.miranda.TestSuperclass;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.message.MessageLog;
 import io.netty.channel.embedded.EmbeddedChannel;
-import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.config.Configurator;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 

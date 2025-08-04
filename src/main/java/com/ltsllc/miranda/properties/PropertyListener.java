@@ -1,7 +1,5 @@
 package com.ltsllc.miranda.properties;
 
-import java.util.Set;
-
 /**
  * A listener for property changes.
  */

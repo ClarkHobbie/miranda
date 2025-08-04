@@ -4,7 +4,10 @@ package com.ltsllc.miranda;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.UncheckedLtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
-import com.ltsllc.miranda.cluster.*;
+import com.ltsllc.miranda.cluster.Cluster;
+import com.ltsllc.miranda.cluster.ClusterThread;
+import com.ltsllc.miranda.cluster.Node;
+import com.ltsllc.miranda.cluster.SpecNode;
 import com.ltsllc.miranda.logging.LoggingCache;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.message.MessageLog;
@@ -15,8 +18,8 @@ import com.ltsllc.miranda.netty.StringEncoder;
 import com.ltsllc.miranda.properties.PropertiesHolder;
 import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import com.ltsllc.miranda.properties.PropertyListener;
-import com.ltsllc.miranda.servlets.Properties;
 import com.ltsllc.miranda.servlets.*;
+import com.ltsllc.miranda.servlets.Properties;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelInitializer;
@@ -52,7 +55,7 @@ public class Miranda implements PropertyListener {
     /**
      * The port number to use if it's not set.  The default is 2020
      */
-    public static final String PROPERTY_DEFAULT_CLUSTER_PORT = "2020";
+    public static final String PROPERTY_DEFAULT_CLUSTER_PORT = "2021";
     public static final String PROPERTY_PROPERTIES_FILE = "properties";
 
     /**
@@ -254,7 +257,7 @@ public class Miranda implements PropertyListener {
     /**
      * default is to send heartbeat messages
      */
-    public static final String PROPERTY_DEFAULT_USE_HEART_BEATS = "on";
+    public static final String PROPERTY_DEFAULT_USE_HEART_BEATS = "true";
 
 
     /**

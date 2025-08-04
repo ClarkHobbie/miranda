@@ -17,7 +17,6 @@ import com.ltsllc.miranda.properties.PropertyListener;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
-import io.netty.channel.socket.ChannelOutputShutdownEvent;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
