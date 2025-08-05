@@ -8,6 +8,7 @@ import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.TestSuperclass;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.message.MessageLog;
+import com.ltsllc.miranda.netty.HeartBeatHandler;
 import io.netty.channel.embedded.EmbeddedChannel;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
@@ -16,9 +17,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 class ClusterTest extends TestSuperclass {
 
@@ -287,6 +286,74 @@ class ClusterTest extends TestSuperclass {
 
         // Cluster.getInstance().divideUpMessages(voterList, list);
 
+    }
+
+    public Cluster buildCluster () {
+        Cluster cluster = new Cluster();
+
+        EmbeddedChannel embeddedChannel = new EmbeddedChannel();
+        Node node = new Node(UUID.randomUUID(), "71.237.68.250", 2021, embeddedChannel);
+        cluster.addNode(node);
+
+        embeddedChannel = new EmbeddedChannel();
+        node = new Node(UUID.randomUUID(), "71.237.68.250", 2021, embeddedChannel);
+        cluster.addNode(node);
+
+        embeddedChannel = new EmbeddedChannel();
+        node = new Node(UUID.randomUUID(), "71.237.68.250", 2021, embeddedChannel);
+        cluster.addNode(node);
+
+        return cluster;
+    }
+
+    @Test
+    public void addNodeAlreadyPresent () {
+        Cluster cluster = buildCluster();
+
+        EmbeddedChannel embeddedChannel = new EmbeddedChannel();
+        Node node = new Node(UUID.randomUUID(), "71.237.68.250", 2021, embeddedChannel);
+        cluster.addNode(node);
+        cluster.addNode(node);
+
+        Map<UUID, Boolean> map = new HashMap<>();
+        for (Node node2 : cluster.getNodes())
+        {
+            if (map.containsKey(node2.getUuid())) {
+                throw new RuntimeException("duplicate");
+            }
+
+            map.put(node2.getUuid(), true);
+        }
+
+        assert (true);
+    }
+
+    @Test
+    public void addNodeLoopback () {
+        Miranda.setInstance(new Miranda());
+        Miranda.getInstance().setMyUuid(UUID.randomUUID());
+
+        Cluster cluster = buildCluster();
+        EmbeddedChannel embeddedChannel = new EmbeddedChannel();
+
+        HeartBeatHandler heartBeatHandler = new HeartBeatHandler(embeddedChannel);
+        embeddedChannel.pipeline().addLast(Cluster.HEART_BEAT, heartBeatHandler);
+
+        Node node = new Node(Miranda.getInstance().getMyUuid(), "71.237.68.250", 2020, embeddedChannel);
+        cluster.addNode(node);
+
+        assert (node.getIsLoopback());
+    }
+
+    @Test
+    public void addNode () {
+        Cluster cluster = buildCluster();
+        EmbeddedChannel embeddedChannel = new EmbeddedChannel();
+        Node node = new Node(UUID.randomUUID(), "71.237.68.250", 2021, embeddedChannel);
+
+        cluster.addNode(node);
+
+        assert (cluster.containsNode(node));
     }
 
 }
