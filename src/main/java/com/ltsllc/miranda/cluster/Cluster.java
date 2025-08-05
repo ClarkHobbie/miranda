@@ -482,7 +482,6 @@ public class Cluster implements Alarmable, PropertyListener {
 
         boolean tempAllNodesFailed = true;
 
-
         for (Node node : nodes) {
             if (node.getChannel() != null) {
                 tempAllNodesFailed = false;

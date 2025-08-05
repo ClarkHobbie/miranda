@@ -356,4 +356,21 @@ class ClusterTest extends TestSuperclass {
         assert (cluster.containsNode(node));
     }
 
+    @Test
+    public void coalesce () throws LtsllcException, CloneNotSupportedException {
+        Cluster cluster = buildCluster();
+
+        EmbeddedChannel embeddedChannel = new EmbeddedChannel();
+
+        Node node = new Node(UUID.randomUUID(), "71.237.68.250", 2021, embeddedChannel);
+        cluster.addNode(node);
+
+        Node node2 = new Node(UUID.randomUUID(), "71.237.68.250", 2021, embeddedChannel);
+        cluster.addNode(node2);
+        node2.setUuid(node.getUuid());
+
+        cluster.coalesce();
+
+        assert (cluster.getNodes().size() == 2);
+    }
 }
