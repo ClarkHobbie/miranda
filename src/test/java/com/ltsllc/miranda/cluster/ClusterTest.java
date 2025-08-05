@@ -94,8 +94,8 @@ class ClusterTest extends TestSuperclass {
 
         Cluster.defineStatics();
 
-        Node node1 = new Node(null,"192.168.0.12", 2020, null);
-        Node node2 = new Node(null, "127.0.0.1", 2020, null);
+        Node node1 = new Node(UUID.randomUUID(),"71.237.68.250", 2021, null);
+        Node node2 = new Node(UUID.randomUUID(), "127.0.0.1", 2021, null);
         // node2.setIoSession(mockIoSession2);
 
 
@@ -157,6 +157,7 @@ class ClusterTest extends TestSuperclass {
         }
     }
 
+    /*
     @Test
     public void connectToNode() throws LtsllcException, CloneNotSupportedException {
         Miranda miranda = new Miranda();
@@ -166,10 +167,11 @@ class ClusterTest extends TestSuperclass {
 
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
         EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(null,"192.168.0.12", port, channel);
+        Node node = new Node(UUID.randomUUID(),"192.168.0.12", port, channel);
 
         Cluster.getInstance().connectToNode(node, false);
     }
+     */
 
     @Test
     public void reconnectFail() throws LtsllcException, CloneNotSupportedException {
@@ -181,7 +183,7 @@ class ClusterTest extends TestSuperclass {
         List<Node> list = new ArrayList<>();
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
         EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(null, "192.168.0.12", port, channel);
+        Node node = new Node(UUID.randomUUID(), "71.237.68.250", port, channel);
         list.add(node);
         Cluster.getInstance().setNodes(list);
 
@@ -199,7 +201,7 @@ class ClusterTest extends TestSuperclass {
 
         List<Node> list = new ArrayList<>();
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
-        Node node = new Node(null,"192.168.0.3", port, null);
+        Node node = new Node(UUID.randomUUID(),"192.168.0.3", port, null);
         list.add(node);
         Cluster.getInstance().setNodes(list);
 

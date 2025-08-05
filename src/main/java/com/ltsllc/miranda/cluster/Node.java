@@ -74,13 +74,13 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
     protected boolean online;
 
-    public Node(UUID myUUID, String host, int port, Channel channel) {
+    public Node(UUID uuid, String host, int port, Channel channel) {
         this.channel = channel;
-        this.uuid = myUUID;
+        this.uuid = uuid;
         this.host = host;
         this.port = port;
 
-        if (channel != null && uuid.equals(Miranda.getInstance().getMyUuid())) {
+        if (channel != null && this.uuid.equals(Miranda.getInstance().getMyUuid())) {
             ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
             if (channelHandler == null || !(channelHandler instanceof HeartBeatHandler)) {
                 throw new RuntimeException("couldn't find HeartBeatHandler");
@@ -791,7 +791,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     protected synchronized void handleStartStart(String input) throws IOException {
         logger.debug("entering handleStartStart");
         Scanner scanner = new Scanner(input);
-        scanner.next(); // START
         scanner.next(); // START
 
         uuid = UUID.fromString(scanner.next());

@@ -112,7 +112,7 @@ public class NodeTest {
             MessageLog.defineStatics();
 
             EmbeddedChannel channel = new EmbeddedChannel();
-            Node node = new Node(null, "localhost", 2020, channel);
+            Node node = new Node(UUID.randomUUID(), "localhost", 2020, channel);
 
 
             assert (node.getState() == ClusterConnectionStates.START);
@@ -131,7 +131,7 @@ public class NodeTest {
     public void testStartStart () throws LtsllcException, IOException, CloneNotSupportedException {
         Miranda miranda = new Miranda();
         EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(null, "localhost", 2020, channel);
+        Node node = new Node(UUID.randomUUID(), "localhost", 2020, channel);
         node.setUuid(UUID.randomUUID());
 
         StringBuffer strMessage = new StringBuffer();
@@ -156,7 +156,7 @@ public class NodeTest {
         SecureRandom random = new SecureRandom();
         Cluster.defineStatics();
         EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(null,"192.168.0.12",2020, channel);
+        Node node = new Node(UUID.randomUUID(),"71.237.68.250",2020, channel);
 
         node.setState(ClusterConnectionStates.GENERAL);
 
@@ -168,7 +168,7 @@ public class NodeTest {
         strMessage += " ";
         strMessage += uuid;
         strMessage += " ";
-        strMessage += random.nextInt();
+        strMessage += UUID.randomUUID();
 
         List<Node> list = new ArrayList<>();
         list.add(node);
@@ -194,7 +194,7 @@ public class NodeTest {
         EmbeddedChannel channel = new EmbeddedChannel();
         HeartBeatHandler heartBeatHandler = new HeartBeatHandler(channel);
         channel.pipeline().addLast("HEARTBEAT",heartBeatHandler);
-        Node node = new Node(null,"192.168.0.12",2020, channel);
+        Node node = new Node(UUID.randomUUID(),"71.237.68.250",2020, channel);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         node.setState(ClusterConnectionStates.GENERAL);
@@ -230,7 +230,7 @@ public class NodeTest {
         strMessage.append(message.longToString());
 
         EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(null,"192.168.0.12",2020, channel);
+        Node node = new Node(UUID.randomUUID(),"71.237.68.250",2020, channel);
 
         node.setState(ClusterConnectionStates.GENERAL);
 
@@ -263,7 +263,7 @@ public class NodeTest {
 
         EmbeddedChannel channel = new EmbeddedChannel();
 
-        Node node = new Node(null,"192.168.0.12",2020, channel);
+        Node node = new Node(UUID.randomUUID(),"71.237.68.250",2021, channel);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         node.sessionCreated();
@@ -298,7 +298,7 @@ public class NodeTest {
     @Test
     public void exceptionCaught () throws LtsllcException {
         EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(null, "192.168.0.12",2020, channel);
+        Node node = new Node(UUID.randomUUID(), "71.237.68.250",2020, channel);
 
         ImprovedFile messagesLog = new ImprovedFile("messages.log");
         LoggingCache cache = new LoggingCache(messagesLog,104857600);
@@ -323,7 +323,7 @@ public class NodeTest {
         when(mockMessageCache.get(messageUuid)).thenReturn(testMessage);
 
         EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(null,"192.168.0.12",2020, channel);
+        Node node = new Node(UUID.randomUUID(),"71.237.68.250",2020, channel);
         channel.pipeline().addLast("HEARTBEAT", new HeartBeatHandler(channel));
 
         ImprovedFile messages = new ImprovedFile("messages.log");
@@ -348,7 +348,7 @@ public class NodeTest {
     public void handleMessage () throws LtsllcException, IOException {
         MessageLog.defineStatics();
         EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(null,"192.168.0.12",2020, channel);
+        Node node = new Node(UUID.randomUUID(),"71.237.68.250",2020, channel);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         node.pushState(ClusterConnectionStates.GENERAL);
@@ -368,7 +368,7 @@ public class NodeTest {
 
         EmbeddedChannel channel = new EmbeddedChannel();
         channel.pipeline().addLast("HEARTBEAT", new HeartBeatHandler(channel));
-        Node node = new Node(null,"192.168.0.12",2020, channel);
+        Node node = new Node(UUID.randomUUID(),"71.237.68.250",2021, channel);
         node.setUuid(UUID.randomUUID());
 
         MessageLog.defineStatics();
@@ -393,7 +393,7 @@ public class NodeTest {
         miranda.loadProperties();
 
         EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(null,"localhost", 2020, channel);
+        Node node = new Node(UUID.randomUUID(),"localhost", 2021, channel);
         node.setUuid(UUID.randomUUID());
         StringBuffer stringBuffer = new StringBuffer();
 
@@ -421,7 +421,7 @@ public class NodeTest {
         EmbeddedChannel channel = new EmbeddedChannel();
         HeartBeatHandler heartBeatHandler = new HeartBeatHandler(channel);
         channel.pipeline().addLast("HEARTBEAT", heartBeatHandler);
-        Node node = new Node(null,"192.168.0.12",2020, channel);
+        Node node = new Node(UUID.randomUUID(),"71.237.68.250",2021, channel);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         node.setUuid(UUID.randomUUID());
@@ -457,7 +457,7 @@ public class NodeTest {
     @Test
     public void popState () throws LtsllcException {
         Cluster.defineStatics();
-        Node node = new Node(null,"192.168.0.12",2020, null);
+        Node node = new Node(UUID.randomUUID(),"71.237.68.250",2020, null);
 
         LtsllcException ltsllcException = null;
 
@@ -473,7 +473,7 @@ public class NodeTest {
     @Test
     public void sendMessage () throws LtsllcException {
         EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(null,"192.168.0.12",2020, channel);
+        Node node = new Node(UUID.randomUUID(),"71.237.68.250",2020, channel);
 
         Message message = createTestMessage(UUID.randomUUID());
 
@@ -486,15 +486,15 @@ public class NodeTest {
         miranda.loadProperties();
         MessageLog.defineStatics();
 
-        Node node = new Node(null, "192.168.0.12", 2020, null);
+        Node node = new Node(UUID.randomUUID(), "71.237.68.250", 2021, null);
         node.setUuid(UUID.randomUUID());
 
         PropertiesHolder p = Miranda.getProperties();
         ImprovedFile messages = new ImprovedFile(p.getProperty(Miranda.PROPERTY_MESSAGE_LOG));
         int loadLimit = p.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
 
-        assert (node.getHost().equals("192.168.0.12"));
-        assert (node.getPort() == 2020);
+        assert (node.getHost().equals("71.237.68.250"));
+        assert (node.getPort() == 2021);
         assert (MessageLog.getInstance().getCache().getFile().equals(messages));
         assert (MessageLog.getInstance().getCache().getLoadLimit() == loadLimit);
     }
@@ -504,13 +504,13 @@ public class NodeTest {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
         miranda.setMyHost("192.168.0.18");
-        miranda.setMyPort(2020);
+        miranda.setMyPort(2021);
 
         StringBuffer message = new StringBuffer();
         message.append(Node.ERROR);
 
         EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(null, "192.168.0.12", 2020, channel);
+        Node node = new Node(UUID.randomUUID(), "71.237.68.250", 2020, channel);
         UUID partnerID = UUID.randomUUID();
         node.setUuid(partnerID);
 
@@ -529,14 +529,14 @@ public class NodeTest {
         try {
             Miranda miranda = new Miranda();
             miranda.loadProperties();
-            miranda.setMyHost("198.162.0.18");
-            miranda.setMyPort(2020);
+            miranda.setMyHost("71.237.68.250");
+            miranda.setMyPort(2021);
 
             MessageLog.defineStatics();
 
             String strUuid1 = "00000000-0000-0000-0000-000000000001";
             String strUuid2 = "00000000-0000-0000-0000-000000000002";
-            String strUuid3 = "00000000-0000-0000-0000-000000000001";
+            String strUuid3 = "00000000-0000-0000-0000-000000000003";
             UUID message1 = UUID.fromString(strUuid1);
             UUID message2 = UUID.fromString(strUuid2);
             UUID owner1 = UUID.fromString(strUuid3);
@@ -544,7 +544,7 @@ public class NodeTest {
             MessageLog.getInstance().setOwner(message2, owner1);
 
             EmbeddedChannel channel = new EmbeddedChannel();
-            Node node = new Node(null,"localhost", 2020, channel);
+            Node node = new Node(UUID.randomUUID(),"localhost", 2020, channel);
 
             node.handleSendOwners();
             String s = channel.readOutbound();
@@ -598,7 +598,7 @@ public class NodeTest {
             MessageLog.getInstance().add(message2, null);
 
             EmbeddedChannel channel = new EmbeddedChannel();
-            Node node = new Node(null,"localhost", 2020, channel);
+            Node node = new Node(UUID.randomUUID(),"localhost", 2020, channel);
 
             node.sendAllMessages();
 
@@ -627,7 +627,7 @@ public class NodeTest {
 
             MessageLog.defineStatics();
 
-            Node node = new Node(null, "localhost", 2020, null);
+            Node node = new Node(UUID.randomUUID(), "localhost", 2020, null);
 
             node.handleReceiveMessage(string1);
 
@@ -652,7 +652,7 @@ public class NodeTest {
         miranda.setMyPort(2020);
         Miranda.getProperties().setProperty(Miranda.PROPERTY_START_TIMEOUT, Miranda.PROPERTY_DEFAULT_START_TIMEOUT);
 
-          Node node = new Node(null,"192.168.0.12", 2020, null);
+          Node node = new Node(UUID.randomUUID(),"71.237.68.250", 2020, null);
 
         synchronized (this) {
 System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_START_TIMEOUT));
@@ -673,7 +673,7 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
         miranda.setMyHost("192.168.0.20");
         miranda.setMyPort(2020);
 
-        Node node = new Node(null,"192.168.0.12", 2020, null);
+        Node node = new Node(UUID.randomUUID(),"71.237.68.250", 2020, null);
 
         Cluster mockCluster = mock(Cluster.class);
         Cluster.setInstance(mockCluster);
@@ -714,7 +714,7 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
         UUID nodeUuid = UUID.randomUUID();
 
         EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(nodeUuid, "192.168.0.20", 2020, channel);
+        Node node = new Node(nodeUuid, "71.237.68.250", 2020, channel);
         node.sendDeadNode (UUID.randomUUID());
 
         channel = channel;

@@ -304,6 +304,9 @@ public class PropertiesHolder extends Properties  {
      * @return true if the table contains values that are different from their associated property, false otherwise.
      */
     public boolean isDifferentFrom (String[][] table) {
+        if (table.length > Miranda.getProperties().size())
+            return true;
+
         for (int i = 0; i < table.length; i++) {
             if (propertyIsDifferent(table[i])) {
                 String name = table[i][0];
@@ -328,6 +331,13 @@ public class PropertiesHolder extends Properties  {
         String name = row[0];
         String value = getProperty(row[0]);
         String newValue = row[1];
+        if (value != null && newValue == null) {
+            return true;
+        } else if (value == null) {
+            logger.error ("property " + name + " is null", new Exception());
+            return true;
+        }
+
         return !value.equals(newValue);
     }
 
