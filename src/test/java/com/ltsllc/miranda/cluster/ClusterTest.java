@@ -157,21 +157,6 @@ class ClusterTest extends TestSuperclass {
         }
     }
 
-    /*
-    @Test
-    public void connectToNode() throws LtsllcException, CloneNotSupportedException {
-        Miranda miranda = new Miranda();
-        miranda.loadProperties();
-
-        Cluster.defineStatics();
-
-        int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
-        EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(UUID.randomUUID(),"192.168.0.12", port, channel);
-
-        Cluster.getInstance().connectToNode(node, false);
-    }
-     */
 
     @Test
     public void reconnectFail() throws LtsllcException, CloneNotSupportedException {
@@ -255,30 +240,6 @@ class ClusterTest extends TestSuperclass {
         assert (!MessageLog.getInstance().getOwnerOf(message3Uuid).equals(node2Uuid));
     }
 
-    /*
-    @Test
-    public void divideUpMessages () throws LtsllcException {
-        Miranda miranda = new Miranda();
-        miranda.loadProperties();
-
-        Cluster.defineStatics();
-
-        List<UUID> list = new ArrayList<>();
-        for (int i = 0; i < 12; i++) {
-            UUID uuid = UUID.randomUUID();
-            list.add(uuid);
-        }
-
-        for (int i = 0; i < 3; i++) {
-            List<UUID> portion = Cluster.getInstance().divideUpMessages(4, i, list);
-            if (i != 3) {
-                assert (portion.size() == 13 / 4);
-            } else {
-                assert (portion.size() == 4);
-            }
-        }
-    }
-*/
 
     @Test
     public void takeOwnershipOf () throws LtsllcException {
