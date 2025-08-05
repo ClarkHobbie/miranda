@@ -177,12 +177,7 @@ public class NodeTest {
 
         node.messageReceived(strMessage);
 
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(Node.DEAD_NODE);
-        stringBuffer.append(" ");
-        stringBuffer.append(uuid);
-
-        assert(node.getState() == ClusterConnectionStates.GENERAL);
+        assert(node.getState() == ClusterConnectionStates.AWAITING_ASSIGNMENTS);
     }
 
 

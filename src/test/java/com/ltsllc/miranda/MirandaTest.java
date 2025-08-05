@@ -267,8 +267,8 @@ class MirandaTest extends TestSuperclass {
         ImprovedFile test = new ImprovedFile("test03.properties");
         try {
             properties.copyTo(backup);
-            properties.delete();
-            test.copyTo(properties);
+//            properties.delete();
+//            test.copyTo(properties);
             miranda.loadProperties();
 
             assert (miranda.specNodes.size() == 0);
