@@ -112,7 +112,7 @@ class MessageTest extends TestSuperclass {
 
     @Test
     public void readEverything () {
-        String s = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 STATUS: HTTP://localhost:8080 DELIVERY: HTTP://localhost:8080 LAST STATUS: 401 CONTENTS: 010203";
+        String s = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 STATUS: HTTP://localhost:8080 DELIVERY: HTTP://localhost:8080 CONTENTS: 010203";
         String  strUuid = "12345678-9abc-def1-2345-6789abcdef12";
         Message message = createTestMessage(UUID.fromString(strUuid));
         message.setStatus(401);
