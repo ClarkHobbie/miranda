@@ -1,8 +1,6 @@
-package com.ltsllc.miranda;
+package com.ltsllc.miranda.alarm;
 
-import com.ltsllc.miranda.alarm.AlarmClock;
-import com.ltsllc.miranda.alarm.Alarmable;
-import com.ltsllc.miranda.alarm.Alarms;
+import com.ltsllc.miranda.TestSuperclass;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.junit.jupiter.api.BeforeAll;
