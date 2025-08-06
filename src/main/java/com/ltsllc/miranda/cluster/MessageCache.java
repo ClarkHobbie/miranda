@@ -143,8 +143,8 @@ public class MessageCache {
      * @return Whether the message is online, or false if we don't know
      */
     public boolean isOnline(UUID uuid) {
-        if (uuidToOnline.containsKey(uuid)) {
-            return uuidToOnline.get(uuid);
+        if (uuidToOnline.containsKey(uuid) == true) {
+            return true;
         }
 
         return false;
@@ -160,10 +160,11 @@ public class MessageCache {
      * @return The message
      * @throws IOException If the temp file is not found or if skip throws an Exception
      */
-    public Message get(UUID uuid) throws IOException {
+    public Message get(UUID uuid) throws IOException, LtsllcException {
         Message returnValue = null;
 
-        if (null == uuidToOnline.get(uuid)) {
+        if (null == uuid) {
+            logger.warn("null UUID in get");
             return null;
         }
 
@@ -185,6 +186,10 @@ public class MessageCache {
                 bufferedReader.skip(location);
                 String line = bufferedReader.readLine();
                 returnValue = Message.readLongFormat(line);
+
+                if (!returnValue.getMessageID().equals(uuid)) {
+                    throw new LtsllcException("UUID of the returned message doesn't match");
+                }
             } finally {
                 if (bufferedReader != null) {
                     bufferedReader.close();
@@ -212,6 +217,7 @@ public class MessageCache {
             logger.error("null message in add");
             return;
         }
+
         while (currentLoad + newMessage.getContents().length > loadLimit && currentLoad != 0) {
             migrateLeastReferencedMessage();
         }
@@ -223,12 +229,12 @@ public class MessageCache {
 
         uuidToMessage.put(newMessage.getMessageID(), newMessage);
         uuidToOnline.put(newMessage.getMessageID(), true);
-        Integer numberOfTimesReferened = uuidToNumberOfTimesReferenced.get(newMessage.getMessageID());
-        if (null == numberOfTimesReferened) {
+        Integer numberOfTimesReferenced = uuidToNumberOfTimesReferenced.get(newMessage.getMessageID());
+        if (null == numberOfTimesReferenced) {
             uuidToNumberOfTimesReferenced.put(newMessage.getMessageID(), 1);
         } else {
-            int newNumberOfTimesReferrenced = numberOfTimesReferened + 1;
-            uuidToNumberOfTimesReferenced.put(newMessage.getMessageID(), newNumberOfTimesReferrenced);
+            int newNumberOfTimesReferenced = numberOfTimesReferenced + 1;
+            uuidToNumberOfTimesReferenced.put(newMessage.getMessageID(), newNumberOfTimesReferenced);
         }
 
         currentLoad += newMessage.getContents().length;
@@ -244,10 +250,18 @@ public class MessageCache {
      * @throws LtsllcException If there is a problem removing the message.
      */
     public synchronized void remove(UUID uuid) throws LtsllcException, IOException {
+        if (uuid == null) {
+            logger.warn("null UUID in remove", new Throwable());
+            return;
+        }
+
+        if (uuidToMessage.containsKey(uuid)) {
+            return;
+        }
+
         uuidToMessage.remove(uuid);
         uuidToOnline.remove(uuid);
         uuidToLocation.remove(uuid);
-
         uuidToNumberOfTimesReferenced.remove(uuid);
 
         if (logfile.exists()) {
@@ -340,14 +354,14 @@ public class MessageCache {
      * Migrate the least referenced Message to the offline temp file
      */
     public synchronized void migrateLeastReferencedMessage() throws LtsllcException {
-        Set<UUID> set = uuidToNumberOfTimesReferenced.keySet();
-        Iterator<UUID> iterator = set.iterator();
-        UUID uuid = null;
         int smallest = Integer.MAX_VALUE;
         Message smallestMessage = null;
 
-        while (iterator.hasNext()) {
-            uuid = iterator.next();
+        for (UUID uuid : uuidToMessage.keySet()) {
+            if (uuidToOnline.get(uuid) == false) {
+                continue;
+            }
+
             if ((smallestMessage == null) || (uuidToNumberOfTimesReferenced.get(uuid) < smallest)) {
                 smallest = uuidToNumberOfTimesReferenced.get(uuid);
                 smallestMessage = uuidToMessage.get(uuid);
@@ -370,6 +384,7 @@ public class MessageCache {
         if (uuidToMessage.get(message.getMessageID()) == null) {
             throw new LtsllcException("uuid does not exist in uuidToMessage");
         }
+
         FileWriter fileWriter = null;
         BufferedWriter bufferedWriter = null;
         try {
@@ -379,7 +394,7 @@ public class MessageCache {
             bufferedWriter.write(message.longToString());
             bufferedWriter.newLine();
             currentLoad = currentLoad - message.getContents().length;
-            uuidToMessage.put(message.getMessageID(), null);
+            uuidToMessage.remove (message.getMessageID());
             uuidToOnline.put(message.getMessageID(), false);
             uuidToLocation.put(message.getMessageID(), location);
         } catch (IOException e) {
@@ -397,6 +412,18 @@ public class MessageCache {
                 throw new LtsllcException("Exception trying to close offLineMessages", e);
             }
         }
+
+        recalculateCurrentLoad();
+    }
+
+    public synchronized void recalculateCurrentLoad() {
+        int newLoad = 0;
+        for (UUID uuid : uuidToOnline.keySet()) {
+            if (uuidToOnline.get(uuid)) {
+                newLoad += uuidToMessage.get(uuid).getContents().length;
+            }
+        }
+        currentLoad = newLoad;
     }
 
     /**
@@ -456,7 +483,7 @@ public class MessageCache {
         }
 
         uuidToMessage.put(uuid, message);
-        uuidToLocation.put(uuid, null);
+        uuidToLocation.remove(uuid);
         uuidToOnline.put(uuid, true);
     }
 
@@ -545,19 +572,10 @@ public class MessageCache {
     }
 
     public synchronized void removeNulls() {
-        clearMapping(uuidToMessage);
-        clearMapping(uuidToLocation);
-        clearMapping(uuidToOnline);
-        clearMapping(uuidToNumberOfTimesReferenced);
+        uuidToMessage.clear();
+        uuidToLocation.clear();
+        uuidToOnline.clear();
+        uuidToNumberOfTimesReferenced.clear();
     }
 
-    public static void clearMapping(Map map) {
-        Set set = map.keySet();
-        for (
-                Object key : set) {
-            if (map.get(key) == null) {
-                map.put(key, null);
-            }
-        }
-    }
 }

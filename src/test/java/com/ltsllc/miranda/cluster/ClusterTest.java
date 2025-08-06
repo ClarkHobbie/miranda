@@ -373,4 +373,10 @@ class ClusterTest extends TestSuperclass {
 
         assert (cluster.getNodes().size() == 2);
     }
+
+    @Test
+    public void alarm () {
+        Cluster cluster = buildCluster();
+
+    }
 }
