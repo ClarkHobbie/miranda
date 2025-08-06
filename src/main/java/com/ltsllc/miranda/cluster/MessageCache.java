@@ -143,7 +143,7 @@ public class MessageCache {
      * @return Whether the message is online, or false if we don't know
      */
     public boolean isOnline(UUID uuid) {
-        if (uuidToOnline.containsKey(uuid) == true) {
+        if (uuidToOnline.get(uuid) == true) {
             return true;
         }
 
