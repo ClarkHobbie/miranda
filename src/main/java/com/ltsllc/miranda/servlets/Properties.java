@@ -34,11 +34,9 @@ public class Properties implements Servlet {
         String[] names = new String[p.keySet().size()];
         p.keySet().toArray(names);
 
-
         for (int i = 0; i < names.length; i++) {
-            table[i][0] =  names[i];
+            table[i][0] = names[i];
             table[i][1] = p.getProperty(names[i]);
-
         }
 
         GsonBuilder gsonBuilder = new GsonBuilder();

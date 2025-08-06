@@ -50,7 +50,7 @@ public class Miranda implements PropertyListener {
     /**
      * The property for specifying what port number to use for cluster connections
      */
-    public static final String PROPERTY_CLUSTER_PORT = "ports.cluster";
+    public static final String PROPERTY_CLUSTER_PORT = com.ltsllc.miranda.properties.Properties.clusterPort.toString();
 
     /**
      * The port number to use if it's not set.  The default is 2020
@@ -63,7 +63,7 @@ public class Miranda implements PropertyListener {
      */
     public static final String PROPERTY_DEFAULT_PROPERTIES_FILE = "miranda.properties";
 
-    public static final String PROPERTY_LONG_LOGGING_LEVEL = "loggingLevel";
+    public static final String PROPERTY_LONG_LOGGING_LEVEL = com.ltsllc.miranda.properties.Properties.loggingLevel.toString();
     public static final String PROPERTY_SHORT_LOGGING_LEVEL = "l";
 
     public static final String PROPERTY_LOGGING_LEVEL_DEBUG = "debug";
@@ -76,7 +76,7 @@ public class Miranda implements PropertyListener {
     /**
      * How long the system, in milliseconds, will wait for another node to make a bid
      */
-    public static final String PROPERTY_BID_TIMEOUT = "timeouts.bid";
+    public static final String PROPERTY_BID_TIMEOUT = com.ltsllc.miranda.properties.Properties.bidTimeout.toString();
 
     /**
      * The default bid timeout to use if the user doesn't specify one.  The default is 500msecs.
@@ -86,7 +86,7 @@ public class Miranda implements PropertyListener {
     /**
      * The TCP port at which the system will listen for messages from a client
      */
-    public static final String PROPERTY_MESSAGE_PORT = "messagePort";
+    public static final String PROPERTY_MESSAGE_PORT = com.ltsllc.miranda.properties.Properties.messagePort.toString();
 
     /**
      * The default TCP port to listen to if the user doesn't specify one.  The default is 3030
@@ -100,7 +100,7 @@ public class Miranda implements PropertyListener {
      * This is the size, in two character bytes, for the message cache.
      * </P>
      */
-    public static final String PROPERTY_CACHE_LOAD_LIMIT = "cache.loadLimit";
+    public static final String PROPERTY_CACHE_LOAD_LIMIT = com.ltsllc.miranda.properties.Properties.cacheLoadLimit.toString();
 
     /**
      * The default size of the message cache.   The default is 100Megabytes.
@@ -141,12 +141,12 @@ public class Miranda implements PropertyListener {
      * The name of the property to look at to decide if clustering is on or off.  If the user doesn't supply an
      * alternative value then the system assumes that clustering is off.
      */
-    public static final String PROPERTY_CLUSTER_1 = "cluster.1.host";
+    public static final String PROPERTY_CLUSTER_1 = com.ltsllc.miranda.properties.Properties.cluster1.toString();
 
     /**
      * The amount of time, in milliseconds that the system waits after an attempt to contact another node
      */
-    public static final String PROPERTY_CLUSTER_RETRY = "cluster.retry";
+    public static final String PROPERTY_CLUSTER_RETRY = com.ltsllc.miranda.properties.Properties.clusterRetry.toString();
 
     /**
      * The default time to wait between calls to another node to see if it's up.  The default is 10,000 milliseconds (10
@@ -157,7 +157,7 @@ public class Miranda implements PropertyListener {
     /**
      * The name of the file that the node will log new messages to.
      */
-    public static final String PROPERTY_MESSAGE_LOG = "messageLog";
+    public static final String PROPERTY_MESSAGE_LOG = com.ltsllc.miranda.properties.Properties.messageLogfile.toString();
 
     /**
      * The default logfile name to use.  The default is "messages.log."
@@ -168,7 +168,7 @@ public class Miranda implements PropertyListener {
      * The timeout (in milliseconds) that miranda will wait for a START_ACKNOWLEDGED message after issuing a START
      * message.
      */
-    public static final String PROPERTY_START_TIMEOUT = "timeouts.start";
+    public static final String PROPERTY_START_TIMEOUT = com.ltsllc.miranda.properties.Properties.startTimeout.toString();
 
     /**
      * The default timeout for a start message (1000 milliseconds).
@@ -187,7 +187,7 @@ public class Miranda implements PropertyListener {
     /**
      * When to do the next compaction; using milliseconds
      */
-    public static final String PROPERTY_COMPACTION_TIME = "compaction.time";
+    public static final String PROPERTY_COMPACTION_TIME = com.ltsllc.miranda.properties.Properties.compaction.toString();
 
     /**
      * The default value for PROPERTY_COMPACTION_TIME is 10 seconds
@@ -197,7 +197,7 @@ public class Miranda implements PropertyListener {
     /**
      * The amount of time to wait in between heart beat start messages
      */
-    public static final String PROPERTY_HEART_BEAT_INTERVAL = "periods.heartBeat";
+    public static final String PROPERTY_HEART_BEAT_INTERVAL = com.ltsllc.miranda.properties.Properties.heartBeatTimeout.toString();
 
     /**
      * The default period to wait between heart beat start messages is 5 sec
@@ -207,12 +207,12 @@ public class Miranda implements PropertyListener {
     /**
      * The timeout (in milliseconds) for another node to respond to an auction message
      */
-    public static final String PROPERTY_AUCTION_TIMEOUT = "timeouts.auction";
+    public static final String PROPERTY_AUCTION_TIMEOUT = com.ltsllc.miranda.properties.Properties.auctionTimeout.toString();
 
     /**
      * The period for a heart beat to timeout (in milliseconds)
      */
-    public static final String PROPERTY_HEART_BEAT_TIMEOUT = "timeouts.heart_beat";
+    public static final String PROPERTY_HEART_BEAT_TIMEOUT = com.ltsllc.miranda.properties.Properties.heartBeatTimeout.toString();
 
     /**
      * The default timeout for a heart beat (1/2 a second)
@@ -222,7 +222,7 @@ public class Miranda implements PropertyListener {
     /**
      * The timeout for responding to a DEAD NODE START message.
      */
-    public static final String PROPERTY_DEAD_NODE_TIMEOUT = "timeouts.deadNode";
+    public static final String PROPERTY_DEAD_NODE_TIMEOUT = com.ltsllc.miranda.properties.Properties.deadNodeTimeout.toString();
 
     /**
      * The default timeout for a DEAD NODE START message is 1/2 a second
@@ -232,7 +232,7 @@ public class Miranda implements PropertyListener {
     /**
      * The period to wait to coalesce the cluster
      */
-    public static final String PROPERTY_COALESCE_PERIOD = "periods.coalesce";
+    public static final String PROPERTY_COALESCE_PERIOD = com.ltsllc.miranda.properties.Properties.coalescePeriod.toString();
 
     /**
      * Defaults to 10 minuets
@@ -242,7 +242,7 @@ public class Miranda implements PropertyListener {
     /**
      * The period of time between scans
      */
-    public static final String PROPERTY_SCAN_PERIOD = "intervals.scan";
+    public static final String PROPERTY_SCAN_PERIOD = com.ltsllc.miranda.properties.Properties.scanPeriod.toString();
 
     /**
      * The default period for scans
@@ -252,7 +252,7 @@ public class Miranda implements PropertyListener {
     /**
      * whether the system should send heartbeats
      */
-    public static final String PROPERTY_USE_HEARTBEATS = "heartbeats";
+    public static final String PROPERTY_USE_HEARTBEATS = com.ltsllc.miranda.properties.Properties.useHeartbeats.toString();
 
     /**
      * default is to send heartbeat messages

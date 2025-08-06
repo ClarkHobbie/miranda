@@ -15,6 +15,7 @@ public enum Properties {
     cluster5,
     clusterRetry,
     compaction,
+    coalescePeriod,
     heartBeat,
     hostName,
     loggingLevel,
@@ -26,5 +27,8 @@ public enum Properties {
     deadNodeTimeout,
     heartBeatTimeout,
     startTimeout,
-    useHeartbeats
+    useHeartbeats,
+    bidTimeout,
+    auctionTimeout,
+    scanPeriod
 }

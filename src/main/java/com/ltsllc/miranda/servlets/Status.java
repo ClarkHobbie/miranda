@@ -65,7 +65,6 @@ public class Status implements Servlet {
         String html = gson.toJson(table);
         res.setContentType("application/json");
         res.getWriter().write(html);
-
     }
 
     @Override

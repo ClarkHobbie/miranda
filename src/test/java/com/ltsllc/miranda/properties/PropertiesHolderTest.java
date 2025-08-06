@@ -12,7 +12,7 @@ public class PropertiesHolderTest {
 
         @Override
         public void propertyChanged(PropertyChangedEvent propertyChangedEvent) throws Throwable {
-                wasRun = true;
+            wasRun = true;
         }
 
     }
@@ -20,6 +20,48 @@ public class PropertiesHolderTest {
     @BeforeAll
     public static void globalSetup () {
         Configurator.setRootLevel(Level.DEBUG);
+    }
+
+    @Test
+    public void stringToProperty () {
+        PropertiesHolder propertiesHolder = new PropertiesHolder();
+
+        Properties[] properties = {
+                Properties.uuid,
+                Properties.cacheLoadLimit,
+                Properties.cluster,
+                Properties.cluster1,
+                Properties.cluster2,
+                Properties.cluster3,
+                Properties.cluster4,
+                Properties.cluster5,
+                Properties.clusterRetry,
+                Properties.compaction,
+                Properties.heartBeat,
+                Properties.hostName,
+                Properties.loggingLevel,
+                Properties.messageLogfile,
+                Properties.messagePort,
+                Properties.ownerFile,
+                Properties.clusterPort,
+                Properties.propertiesFile,
+                Properties.deadNodeTimeout,
+                Properties.heartBeatTimeout,
+                Properties.startTimeout,
+                Properties.useHeartbeats
+        };
+
+        boolean mismatch = false;
+        for (Properties property : properties) {
+            String propertyName = property.toString();
+            Properties property2 = propertiesHolder.stringToProperty(propertyName);
+            if (property2 != property) {
+                mismatch = true;
+                break;
+            }
+        }
+
+        assert (!mismatch);
     }
 
     @Test
@@ -104,180 +146,6 @@ public class PropertiesHolderTest {
     }
 
     @Test
-    public void stringToPropertyUuid () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("UUID");
-        assert (p == Properties.uuid);
-    }
-
-    @Test
-    public void stringToPropertyCacheLoadLimit () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("cache.loadLimit");
-        assert (p == Properties.cacheLoadLimit);
-    }
-
-    @Test
-    public void stringToPropertyCluster () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("cluster");
-        assert (p == Properties.cluster);
-    }
-
-    @Test
-    public void stringToPropertyCluster1 () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("cluster.1.spoof");
-        assert (p == Properties.cluster1);
-    }
-
-    @Test
-    public void stringToPropertyCluster2 () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("cluster.2.spoof");
-        assert (p == Properties.cluster2);
-    }
-
-    @Test
-    public void stringToPropertyCluster3 () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("cluster.3.spoof");
-        assert (p == Properties.cluster3);
-    }
-
-    @Test
-    public void stringToPropertyCluster4 () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("cluster.4.spoof");
-        assert (p == Properties.cluster4);
-    }
-
-    @Test
-    public void stringToPropertyCluster5 () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("cluster.5.spoof");
-        assert (p == Properties.cluster5);
-    }
-    @Test
-    public void stringToPropertyClusterRetry () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("cluster.retry");
-        assert (p == Properties.clusterRetry);
-    }
-
-    @Test
-    public void stringToPropertyCompaction () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("compaction.time");
-        assert (p == Properties.compaction);
-    }
-
-    @Test
-    public void stringToPropertyHeartBeatInterval () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("heartBeatInterval");
-        assert (p == Properties.heartBeat);
-    }
-    @Test
-    public void stringToPropertyHost () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("host");
-        assert (p == Properties.hostName);
-    }
-
-    @Test
-    public void stringToPropertyLoggingLevel () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("loggingLevel");
-        assert (p == Properties.loggingLevel);
-    }
-
-    @Test
-    public void stringToPropertyMessageLog () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("messageLog");
-        assert (p == Properties.messageLogfile);
-    }
-
-    @Test
-    public void stringToPropertyMessagePort () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("messagePort");
-        assert (p == Properties.messagePort);
-    }
-
-    @Test
-    public void stringToPropertyOwnerFile () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("ownerFile");
-        assert (p == Properties.ownerFile);
-    }
-
-    @Test
-    public void stringToPropertyPort () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("port");
-        assert (p == Properties.clusterPort);
-    }
-
-    @Test
-    public void stringToPropertyClusterPort () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("ports.cluster");
-        assert (p == Properties.clusterPort);
-    }
-
-    @Test
-    public void stringToPropertyProperties () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("properties");
-        assert (p == Properties.propertiesFile);
-    }
-
-    @Test
-    public void stringToPropertyTimeoutsDeadNode () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("timeouts.deadNode");
-        assert (p == Properties.deadNodeTimeout);
-    }
-
-    @Test
-    public void stringToPropertyTimeoutsHeart_Beat () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("timeouts.heart_beat");
-        assert (p == Properties.heartBeatTimeout);
-    }
-
-    @Test
-    public void stringToPropertyTimeoutsStart () {
-        Miranda miranda = new Miranda();
-        PropertiesHolder propertiesHolder = new PropertiesHolder();
-        Properties p = propertiesHolder.stringToProperty("timeouts.start");
-        assert (p == Properties.startTimeout);
-    }
-
-    @Test
     public void unlisten () {
         Miranda miranda = new Miranda();
         PropertiesHolder propertiesHolder = new PropertiesHolder();
@@ -290,9 +158,5 @@ public class PropertiesHolderTest {
         Miranda.getProperties().setProperty("timeouts.start", "500");
         assert(!propertyChangeListener.wasRun);
     }
-
-
-
-
 }
 

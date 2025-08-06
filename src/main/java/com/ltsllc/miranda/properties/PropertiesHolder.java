@@ -191,48 +191,52 @@ public class PropertiesHolder extends Properties  {
 
         if (propertyName.equalsIgnoreCase("uuid")) {
             property = com.ltsllc.miranda.properties.Properties.uuid;
-        } else if (propertyName.equalsIgnoreCase("cache.loadLimit")) {
+        } else if (propertyName.equalsIgnoreCase("cacheLoadLimit")) {
             property = com.ltsllc.miranda.properties.Properties.cacheLoadLimit;
         } else if (propertyName.equalsIgnoreCase("cluster")) {
             property = com.ltsllc.miranda.properties.Properties.cluster;
-        } else if (propertyName.equalsIgnoreCase("ports.cluster")) {
+        } else if (propertyName.equalsIgnoreCase("clusterPort")) {
             property = com.ltsllc.miranda.properties.Properties.clusterPort;
-        } else if (propertyName.equalsIgnoreCase("cluster.retry")) {
+        } else if (propertyName.equalsIgnoreCase("clusterRetry")) {
             property = com.ltsllc.miranda.properties.Properties.clusterRetry;
-        } else if (propertyName.startsWith("cluster.1")) {
+        } else if (propertyName.startsWith("cluster1")) {
             property = com.ltsllc.miranda.properties.Properties.cluster1;
-        } else if (propertyName.startsWith("cluster.2")) {
+        } else if (propertyName.startsWith("cluster2")) {
             property = com.ltsllc.miranda.properties.Properties.cluster2;
-        } else if (propertyName.startsWith("cluster.3")) {
+        } else if (propertyName.startsWith("cluster3")) {
             property = com.ltsllc.miranda.properties.Properties.cluster3;
-        } else if (propertyName.startsWith("cluster.4")) {
+        } else if (propertyName.startsWith("cluster4")) {
             property = com.ltsllc.miranda.properties.Properties.cluster4;
-        } else if (propertyName.startsWith("cluster.5")) {
+        } else if (propertyName.startsWith("cluster5")) {
             property = com.ltsllc.miranda.properties.Properties.cluster5;
-        } else if (propertyName.equalsIgnoreCase("compaction.time")) {
+        } else if (propertyName.equalsIgnoreCase("compaction")) {
             property = com.ltsllc.miranda.properties.Properties.compaction;
-        } else if (propertyName.equalsIgnoreCase("timeouts.deadNode")) {
+        } else if (propertyName.equalsIgnoreCase("timeoutsDeadNode")) {
             property = com.ltsllc.miranda.properties.Properties.deadNodeTimeout;
         } else if (propertyName.equalsIgnoreCase("port")) {
             property = com.ltsllc.miranda.properties.Properties.clusterPort;
-        } else if (propertyName.equalsIgnoreCase("heartBeatInterval")) {
+        } else if (propertyName.equalsIgnoreCase("heartBeat")) {
             property = com.ltsllc.miranda.properties.Properties.heartBeat;
-        } else if (propertyName.equalsIgnoreCase("timeouts.heart_beat")) {
+        } else if (propertyName.equalsIgnoreCase("heartBeatTimeout")) {
             property = com.ltsllc.miranda.properties.Properties.heartBeatTimeout;
-        } else if (propertyName.equalsIgnoreCase("host")) {
+        } else if (propertyName.equalsIgnoreCase("hostName")) {
             property = com.ltsllc.miranda.properties.Properties.hostName;
         } else if (propertyName.equalsIgnoreCase("loggingLevel")) {
             property = com.ltsllc.miranda.properties.Properties.loggingLevel;
-        } else if (propertyName.equalsIgnoreCase("messageLog")) {
+        } else if (propertyName.equalsIgnoreCase("messageLogFile")) {
             property = com.ltsllc.miranda.properties.Properties.messageLogfile;
         } else if (propertyName.equalsIgnoreCase("messagePort")) {
             property = com.ltsllc.miranda.properties.Properties.messagePort;
         } else if (propertyName.equalsIgnoreCase("ownerFile")) {
             property = com.ltsllc.miranda.properties.Properties.ownerFile;
-        } else if (propertyName.equalsIgnoreCase("properties")) {
+        } else if (propertyName.equalsIgnoreCase("deadNodeTimeout")) {
+            property = com.ltsllc.miranda.properties.Properties.deadNodeTimeout;
+        } else if (propertyName.equalsIgnoreCase("propertiesFile")) {
             property = com.ltsllc.miranda.properties.Properties.propertiesFile;
-        } else if (propertyName.equalsIgnoreCase("timeouts.start")) {
+        } else if (propertyName.equalsIgnoreCase("startTimeout")) {
             property = com.ltsllc.miranda.properties.Properties.startTimeout;
+        } else if (propertyName.equalsIgnoreCase("useHeartbeats")) {
+            property = com.ltsllc.miranda.properties.Properties.useHeartbeats;
         }
         return property;
     }
