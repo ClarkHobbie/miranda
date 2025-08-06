@@ -160,7 +160,31 @@ class MessageCacheTest {
     }
 
     @Test
-    void migrateMessageToOnline() {
+    void migrateMessageToOnline() throws LtsllcException {
+        ImprovedFile improvedFile = new ImprovedFile("messages.log");
+        MessageCache messageCache = new MessageCache(improvedFile, 1024);
+
+        Message message1 = new Message();
+        message1.setContents(new byte[512]);
+        message1.setMessageID(UUID.randomUUID());
+        message1.setDeliveryURL("http://localhost");
+        message1.setStatusURL("http://localhost");
+        message1.setStatusURL("http://localhost");
+
+        messageCache.add(message1);
+
+        Message message = new Message();
+        message.setContents(new byte[548]);
+        message.setMessageID(UUID.randomUUID());
+        message.setDeliveryURL("http://localhost");
+        message.setStatusURL("http://localhost");
+        message.setStatusURL("http://localhost");
+
+        messageCache.add(message);
+
+        messageCache.migrateMessageToOnline(message1.getMessageID());
+
+        assert (messageCache.isOnline(message1.getMessageID()));
     }
 
     @Test
