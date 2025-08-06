@@ -28,7 +28,7 @@ import java.util.*;
  * referenced message is "forgotten" until enough space is freed up to store the new message.
  * </P>
  */
-public class MessageLog implements  PropertyListener {
+public class MessageLog implements PropertyListener {
     public static final Logger logger = LogManager.getLogger(MessageLog.class);
     public static final Logger events = LogManager.getLogger("events");
 

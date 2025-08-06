@@ -38,7 +38,7 @@ public class ClientChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
             String s = null;
             if (message instanceof ByteBuf) {
                 ByteBuf byteBuf = (ByteBuf) message;
-                s = byteBuf.toString(Charset.defaultCharset());
+                s = byteBuf.toString();
             } else {
                 s = (String) message;
             }

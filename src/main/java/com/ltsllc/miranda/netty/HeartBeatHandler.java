@@ -92,7 +92,7 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
     protected void decode(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf, List<Object> list) {
         try {
             if (!isLoopback) {
-                String s = byteBuf.toString(Charset.defaultCharset());
+                String s = byteBuf.toString();
                 timeOfLastActivity = System.currentTimeMillis();
                 if (s.equals(Node.HEART_BEAT)) {
                     metTimeout = true;
@@ -120,10 +120,8 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
             case HEART_BEAT ->
                 sendHeartBeat();
 
-
             case HEART_BEAT_TIMEOUT ->
                 heartBeatTimeout();
-
         }
 
     }
