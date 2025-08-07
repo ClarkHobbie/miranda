@@ -1,6 +1,7 @@
 package com.ltsllc.miranda.properties;
 
 import com.ltsllc.commons.UncheckedLtsllcException;
+import com.ltsllc.commons.util.ImprovedLists;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.Miranda;
 import org.apache.logging.log4j.LogManager;
@@ -187,57 +188,7 @@ public class PropertiesHolder extends Properties  {
      */
     public com.ltsllc.miranda.properties.Properties stringToProperty(String propertyName) {
         com.ltsllc.miranda.properties.Properties property = com.ltsllc.miranda.properties.Properties.unknown;
-        propertyName = propertyName.toLowerCase();
-
-        if (propertyName.equalsIgnoreCase("uuid")) {
-            property = com.ltsllc.miranda.properties.Properties.uuid;
-        } else if (propertyName.equalsIgnoreCase("cacheLoadLimit")) {
-            property = com.ltsllc.miranda.properties.Properties.cacheLoadLimit;
-        } else if (propertyName.equalsIgnoreCase("cluster")) {
-            property = com.ltsllc.miranda.properties.Properties.cluster;
-        } else if (propertyName.equalsIgnoreCase("clusterPort")) {
-            property = com.ltsllc.miranda.properties.Properties.clusterPort;
-        } else if (propertyName.equalsIgnoreCase("clusterRetry")) {
-            property = com.ltsllc.miranda.properties.Properties.clusterRetry;
-        } else if (propertyName.startsWith("cluster1")) {
-            property = com.ltsllc.miranda.properties.Properties.cluster1;
-        } else if (propertyName.startsWith("cluster2")) {
-            property = com.ltsllc.miranda.properties.Properties.cluster2;
-        } else if (propertyName.startsWith("cluster3")) {
-            property = com.ltsllc.miranda.properties.Properties.cluster3;
-        } else if (propertyName.startsWith("cluster4")) {
-            property = com.ltsllc.miranda.properties.Properties.cluster4;
-        } else if (propertyName.startsWith("cluster5")) {
-            property = com.ltsllc.miranda.properties.Properties.cluster5;
-        } else if (propertyName.equalsIgnoreCase("compaction")) {
-            property = com.ltsllc.miranda.properties.Properties.compaction;
-        } else if (propertyName.equalsIgnoreCase("timeoutsDeadNode")) {
-            property = com.ltsllc.miranda.properties.Properties.deadNodeTimeout;
-        } else if (propertyName.equalsIgnoreCase("port")) {
-            property = com.ltsllc.miranda.properties.Properties.clusterPort;
-        } else if (propertyName.equalsIgnoreCase("heartBeat")) {
-            property = com.ltsllc.miranda.properties.Properties.heartBeat;
-        } else if (propertyName.equalsIgnoreCase("heartBeatTimeout")) {
-            property = com.ltsllc.miranda.properties.Properties.heartBeatTimeout;
-        } else if (propertyName.equalsIgnoreCase("hostName")) {
-            property = com.ltsllc.miranda.properties.Properties.hostName;
-        } else if (propertyName.equalsIgnoreCase("loggingLevel")) {
-            property = com.ltsllc.miranda.properties.Properties.loggingLevel;
-        } else if (propertyName.equalsIgnoreCase("messageLogFile")) {
-            property = com.ltsllc.miranda.properties.Properties.messageLogfile;
-        } else if (propertyName.equalsIgnoreCase("messagePort")) {
-            property = com.ltsllc.miranda.properties.Properties.messagePort;
-        } else if (propertyName.equalsIgnoreCase("ownerFile")) {
-            property = com.ltsllc.miranda.properties.Properties.ownerFile;
-        } else if (propertyName.equalsIgnoreCase("deadNodeTimeout")) {
-            property = com.ltsllc.miranda.properties.Properties.deadNodeTimeout;
-        } else if (propertyName.equalsIgnoreCase("propertiesFile")) {
-            property = com.ltsllc.miranda.properties.Properties.propertiesFile;
-        } else if (propertyName.equalsIgnoreCase("startTimeout")) {
-            property = com.ltsllc.miranda.properties.Properties.startTimeout;
-        } else if (propertyName.equalsIgnoreCase("useHeartbeats")) {
-            property = com.ltsllc.miranda.properties.Properties.useHeartbeats;
-        }
+        property = com.ltsllc.miranda.properties.Properties.valueOf(propertyName);
         return property;
     }
 
@@ -360,7 +311,6 @@ public class PropertiesHolder extends Properties  {
 
 
     public synchronized String[][] getTable () {
-
         String[][] table = new String[properties.size()][2];
         Enumeration enumeration = properties.keys();
         int i = 0;
@@ -371,6 +321,7 @@ public class PropertiesHolder extends Properties  {
             table[i][1] = value;
             i++;
         }
+
         return table;
     }
 

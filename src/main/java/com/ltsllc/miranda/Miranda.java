@@ -217,7 +217,7 @@ public class Miranda implements PropertyListener {
     /**
      * The default timeout for a heart beat (1/2 a second)
      */
-    public static final String PROPERTY_DEFAULT_HEART_BEAT_TIMEOUT = "1000";
+    public static final String PROPERTY_DEFAULT_HEART_BEAT_TIMEOUT = "5000";
 
     /**
      * The timeout for responding to a DEAD NODE START message.
@@ -1033,20 +1033,20 @@ public class Miranda implements PropertyListener {
      */
     static public void parseNodes() {
         if (null != properties.getProperty(PROPERTY_CLUSTER_1)) {
-            String rootProperty = Miranda.PROPERTY_CLUSTER + ".1";
+            String rootProperty = Miranda.PROPERTY_CLUSTER + "1";
             SpecNode specNode = new SpecNode();
-            specNode.setHost(properties.getProperty(rootProperty + ".host"));
-            specNode.setPort(properties.getIntProperty(rootProperty + ".port"));
+            specNode.setHost(properties.getProperty(rootProperty));
+            specNode.setPort(properties.getIntProperty(rootProperty + "Port"));
             List<SpecNode> list = new ArrayList<>();
             int count = 2;
             list.add(specNode);
             while (specNode != null) {
                 specNode = null;
-                rootProperty = Miranda.PROPERTY_CLUSTER + "." + count;
-                if (null != properties.getProperty(rootProperty + ".host")) {
+                rootProperty = Miranda.PROPERTY_CLUSTER  + count;
+                if (null != properties.getProperty(rootProperty)) {
                     specNode = new SpecNode();
-                    specNode.setHost(properties.getProperty(rootProperty + ".host"));
-                    specNode.setPort(properties.getIntProperty(rootProperty + ".port"));
+                    specNode.setHost(properties.getProperty(rootProperty));
+                    specNode.setPort(properties.getIntProperty(rootProperty + "Port"));
                     list.add(specNode);
                     count++;
                 }

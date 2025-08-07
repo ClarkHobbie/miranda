@@ -76,7 +76,7 @@ public class PropertiesHolderTest {
                 {Miranda.PROPERTY_MESSAGE_LOG, Miranda.PROPERTY_DEFAULT_MESSAGE_LOG},
                 {Miranda.PROPERTY_BID_TIMEOUT, Miranda.PROPERTY_DEFAULT_BID_TIMEOUT},
                 {Miranda.PROPERTY_OWNER_FILE, Miranda.PROPERTY_DEFAULT_OWNER_FILE},
-                {"cluster.1.port", "2021"},
+                {Properties.cluster1.toString() + "Port", "2021"},
                 {Miranda.PROPERTY_COMPACTION_TIME, Miranda.PROPERTY_DEFAULT_COMPACTION_TIME},
                 {Miranda.PROPERTY_PORT, Miranda.PROPERTY_DEFAULT_CLUSTER_PORT},
                 {Miranda.PROPERTY_SCAN_PERIOD, Miranda.PROPERTY_DEFAULT_SCAN_PERIOD},
@@ -123,6 +123,19 @@ public class PropertiesHolderTest {
     }
 
     @Test
+    public void toTable () {
+        Miranda miranda = new Miranda();
+        PropertiesHolder properties = Miranda.getProperties();
+        properties.setProperty(Properties.hostName.toString(), "whateverHost");
+        properties.setProperty(Properties.cluster.toString(), "whateverCluster");
+        properties.setProperty(Properties.uuid.toString(), "whateverUUID");
+
+        String[][] table = properties.getTable();
+
+        assert (table.length > 0);
+    }
+
+    @Test
     public void propertyIsDifferentNoDifferences () {
         Miranda miranda = new Miranda();
         String row[] = {Miranda.PROPERTY_DEAD_NODE_TIMEOUT, Miranda.PROPERTY_DEFAULT_DEAD_NODE_TIMEOUT};
@@ -151,11 +164,11 @@ public class PropertiesHolderTest {
         PropertiesHolder propertiesHolder = new PropertiesHolder();
         PropertyChangeListener propertyChangeListener = new PropertyChangeListener();
         Miranda.getProperties().listen(propertyChangeListener, Properties.startTimeout);
-        Miranda.getProperties().setProperty("timeouts.start", "750");
+        Miranda.getProperties().setProperty(Properties.startTimeout.toString(), "750");
         assert(propertyChangeListener.wasRun);
         Miranda.getProperties().unlisten(propertyChangeListener, Properties.startTimeout);
         propertyChangeListener.wasRun = false;
-        Miranda.getProperties().setProperty("timeouts.start", "500");
+        Miranda.getProperties().setProperty(Properties.startTimeout.toString(), "500");
         assert(!propertyChangeListener.wasRun);
     }
 }
