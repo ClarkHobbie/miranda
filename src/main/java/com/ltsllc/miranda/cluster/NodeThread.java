@@ -1,5 +1,9 @@
 package com.ltsllc.miranda.cluster;
 
+/**
+ * A {@link Thread} that keeps executing until {@link #keepGoing} is set to false or the class cannot connect to the
+ * specified node.
+ */
 public class NodeThread extends Thread {
     public NodeThread(Node theNode,boolean isLoopback) {
         node = theNode;

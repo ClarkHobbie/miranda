@@ -2,6 +2,9 @@ package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.miranda.Miranda;
 
+/**
+ * A class that runs the cluster.
+ */
 public class ClusterThread extends Thread {
 
     public void run () {
