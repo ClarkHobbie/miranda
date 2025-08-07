@@ -2,7 +2,7 @@ package com.ltsllc.miranda.message;
 
 /**
  * The type of message
- *
+ * <p>
  * This class represents the type of message we are dealing with.
  */
 public enum MessageType {
