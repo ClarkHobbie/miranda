@@ -10,6 +10,9 @@ import org.apache.log4j.Logger;
 import java.nio.charset.Charset;
 import java.util.List;
 
+/**
+ * A {@link MessageToMessageCodec} that logs its messages.
+ */
 public class ChannelMonitor extends MessageToMessageCodec<ByteBuf,ByteBuf> {
     protected Logger logger = LogManager.getLogger(ChannelMonitor.class);
     @Override

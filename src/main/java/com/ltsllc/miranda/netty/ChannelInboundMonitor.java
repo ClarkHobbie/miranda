@@ -8,6 +8,9 @@ import org.apache.log4j.Logger;
 
 import java.nio.charset.Charset;
 
+/**
+ * A {@link ChannelInboundHandlerAdapter} that logs its messages and converts them to strings.
+ */
 public class ChannelInboundMonitor extends ChannelInboundHandlerAdapter {
 
     private static Logger logger = Logger.getLogger(ChannelInboundMonitor.class);

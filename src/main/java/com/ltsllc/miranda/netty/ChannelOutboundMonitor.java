@@ -10,6 +10,9 @@ import org.apache.log4j.Logger;
 
 import java.nio.charset.Charset;
 
+/**
+ * A {@link ChannelOutboundHandlerAdapter} that logs its messages.
+ */
 public class ChannelOutboundMonitor extends ChannelOutboundHandlerAdapter {
     private Logger logger = LogManager.getLogger(ChannelOutboundMonitor.class);
 
