@@ -8,6 +8,9 @@ import jakarta.servlet.*;
 import java.io.IOException;
 import java.util.UUID;
 
+/**
+ * A {@link Servlet} that allows the creation of new messages.
+ */
 public class Message implements Servlet {
     public static final String PARAM_DESTINATION_URL = "DELIVER_URL";
     public static final String PARAM_STATUS_URL = "STATUS_URL";
