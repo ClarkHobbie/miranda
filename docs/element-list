@@ -1,5 +1,11 @@
 unnamed package
 com.ltsllc.miranda
+com.ltsllc.miranda.alarm
 com.ltsllc.miranda.cluster
 com.ltsllc.miranda.logging
+com.ltsllc.miranda.logging.netty
+com.ltsllc.miranda.message
+com.ltsllc.miranda.netty
+com.ltsllc.miranda.properties
+com.ltsllc.miranda.servlets
 com.ltsllc.util
