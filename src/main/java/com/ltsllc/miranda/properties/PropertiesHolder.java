@@ -283,6 +283,10 @@ public class PropertiesHolder extends Properties  {
      * @return True if the row has a different value from the row; false otherwise.
      */
     public boolean propertyIsDifferent (String[] row) {
+        if (row == null) {
+            logger.debug("null row");
+            return true;
+        }
         String name = row[0];
         String value = getProperty(row[0]);
         String newValue = row[1];

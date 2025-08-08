@@ -7,6 +7,8 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import io.netty.util.ReferenceCountUtil;
+import org.eclipse.jetty.util.BufferUtil;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.Charset;
@@ -111,20 +113,30 @@ public class MessageCodecTest extends TestSuperclass {
 
     @Test
     public void decode06 () {
-        String s1 = "liwipi";
-        byte[] buff = shortToBytes((short) s1.length());
-        ByteBuf byteBuf = Unpooled.wrappedBuffer(buff,"liw".getBytes());
-        EmbeddedChannel channel = new EmbeddedChannel(new LengthFieldBasedFrameDecoder(1024,0,2,0,2));
+        ByteBuf message = null;
+        ByteBuf byteBuf = null;
 
-        channel.writeInbound(byteBuf);
-        ByteBuf message = channel.readInbound();
-        assert(message == null);
+        try {
+            String s1 = "liwipi";
+            byte[] buff = shortToBytes((short) s1.length());
+            byteBuf = Unpooled.wrappedBuffer(buff, "liw".getBytes());
+            EmbeddedChannel channel = new EmbeddedChannel(new LengthFieldBasedFrameDecoder(1024, 0, 2, 0, 2));
 
-        byteBuf = Unpooled.wrappedBuffer("ipi".getBytes());
-        channel.writeInbound(byteBuf);
-        message = channel.readInbound();
-        String s = message.toString(Charset.defaultCharset());
-        assert (s.equals("liwipi"));
+            channel.writeInbound(byteBuf);
+            message = channel.readInbound();
+            assert (message == null);
+
+            byteBuf = Unpooled.wrappedBuffer("ipi".getBytes());
+            channel.writeInbound(byteBuf);
+            message = channel.readInbound();
+            String s = message.toString(Charset.defaultCharset());
+
+            assert (s.equals("liwipi"));
+        } finally {
+            if (message != null) {
+                ReferenceCountUtil.release(message);
+            }
+        }
     }
 
     @Test

@@ -18,14 +18,17 @@
 
 
     <properties>
-        <maven.compiler.source>23</maven.compiler.source>
-        <maven.compiler.target>23</maven.compiler.target>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
     </properties>
     <build>
         <plugins>
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <configuration>
+                    <descriptors>
+                        <descriptor>src/main/assembly/jar-with-dependencies.xml</descriptor>
+                    </descriptors>
                     <archive>
                         <manifest>
                             <mainClass>Main</mainClass>
@@ -47,6 +50,7 @@
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.3.2</version>
             </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
@@ -66,7 +70,6 @@
                         </configuration>
                     </execution>
                 </executions>
-
             </plugin>
         </plugins>
     </build>
