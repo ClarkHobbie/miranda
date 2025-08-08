@@ -1,8 +1,8 @@
 package com.ltsllc.miranda.message;
 
 import com.ltsllc.commons.HexConverter;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.asynchttpclient.AsyncCompletionHandler;
 import org.asynchttpclient.Response;
 

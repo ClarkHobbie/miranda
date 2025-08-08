@@ -1,12 +1,10 @@
 package com.ltsllc.miranda.properties;
 
 import com.ltsllc.commons.UncheckedLtsllcException;
-import com.ltsllc.commons.util.ImprovedLists;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.Miranda;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.eclipse.jetty.util.log.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,7 +18,7 @@ import java.util.Properties;
 public class PropertiesHolder extends Properties  {
     protected ImprovedProperties properties = new ImprovedProperties();
     protected Map<com.ltsllc.miranda.properties.Properties, List<PropertyListener>> listeners = new HashMap<>();
-    public static Logger logger = LogManager.getLogger();
+    public static Logger logger = LogManager.getLogger(PropertiesHolder.class);
 
     /**
      * Set a property to a value

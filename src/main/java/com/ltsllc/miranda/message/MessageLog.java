@@ -8,8 +8,8 @@ import com.ltsllc.miranda.logging.LoggingCache;
 import com.ltsllc.miranda.logging.LoggingMap;
 import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import com.ltsllc.miranda.properties.PropertyListener;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.util.*;
