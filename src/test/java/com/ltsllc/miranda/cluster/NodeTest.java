@@ -16,9 +16,14 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mockito;
+import org.mockito.junit.MockitoRule;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.io.IOException;
 import java.security.SecureRandom;
@@ -28,6 +33,7 @@ import java.util.UUID;
 
 import static org.mockito.Mockito.*;
 
+@MockitoSettings(strictness = Strictness.LENIENT)
 public class NodeTest {
 
 
@@ -128,6 +134,7 @@ public class NodeTest {
     }
 
     @Test
+    @ExtendWith(MockitoExtension.class)
     public void testStartStart () throws LtsllcException, IOException, CloneNotSupportedException {
         Miranda miranda = new Miranda();
         EmbeddedChannel channel = new EmbeddedChannel();
@@ -140,7 +147,6 @@ public class NodeTest {
         strMessage.append(UUID.randomUUID());
         strMessage.append(" 192.168.0.12 2020 ");
         strMessage.append(Miranda.getInstance().getMyStart());
-
 
         Cluster mockCluster = mock(Cluster.class);
         Cluster.setInstance(mockCluster);
