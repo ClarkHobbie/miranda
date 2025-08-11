@@ -432,7 +432,7 @@ public class Cluster implements Alarmable, PropertyListener {
             nodes = new ArrayList<>();
         }
 
-        int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_PORT);
+        int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_THIS_PORT);
         Miranda.getProperties().listen(this, Properties.cluster);
 
         SocketAddress socketAddress = new InetSocketAddress(port);
@@ -445,7 +445,7 @@ public class Cluster implements Alarmable, PropertyListener {
         }
         if (channelFuture.isSuccess()) {
             bound = true;
-            logger.info("listening at port " + Miranda.getProperties().getProperty(Miranda.PROPERTY_PORT)
+            logger.info("listening at port " + Miranda.getProperties().getProperty(Miranda.PROPERTY_THIS_PORT)
                 + " and thread: " + Thread.currentThread()
             );
         } else {

@@ -40,13 +40,16 @@ import org.eclipse.jetty.server.handler.ResourceHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
-import java.io.FileInputStream;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 
 
 public class Miranda implements PropertyListener {
+    public static InputStream in = System.in;
+    public static PrintStream out = System.out;
+    public static PrintStream err = System.err;
+    public static int exitCode = 0;
+
     /**
      * The property for specifying what port number to use for cluster connections
      */
@@ -130,12 +133,12 @@ public class Miranda implements PropertyListener {
     /**
      * The host we are on
      */
-    public static final String PROPERTY_HOST = "host";
+    public static final String PROPERTY_THIS_HOST = com.ltsllc.miranda.properties.Properties.thisHost.toString();
 
     /**
      * The port we are listening to for the cluster
      */
-    public static final String PROPERTY_PORT = "port";
+    public static final String PROPERTY_THIS_PORT = com.ltsllc.miranda.properties.Properties.thisPort.toString();
 
     /**
      * The name of the property to look at to decide if clustering is on or off.  If the user doesn't supply an
@@ -465,25 +468,25 @@ public class Miranda implements PropertyListener {
             myUuid = UUID.fromString(properties.getProperty(PROPERTY_UUID));
         }
 
-        properties.listen(this, com.ltsllc.miranda.properties.Properties.hostName);
-        if (null == properties.getProperty(PROPERTY_HOST)) {
-            String msg = "Please specify a host for this node by setting the " + PROPERTY_HOST + " property";
+        properties.listen(this, com.ltsllc.miranda.properties.Properties.thisHost);
+        if (null == properties.getProperty(PROPERTY_THIS_HOST)) {
+            String msg = "Please specify a host for this node by setting the " + PROPERTY_THIS_HOST + " property";
             logger.error(msg);
             event.error(msg);
             throw new UncheckedLtsllcException(msg);
         } else {
-            myHost = properties.getProperty(PROPERTY_HOST);
+            myHost = properties.getProperty(PROPERTY_THIS_HOST);
         }
 
         setupClusterPort(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
 
-        if (null == properties.getProperty(PROPERTY_PORT)) {
-            String msg = "Please specify a port for this node by setting the " + PROPERTY_PORT + " property";
+        if (null == properties.getProperty(PROPERTY_THIS_PORT)) {
+            String msg = "Please specify a port for this node by setting the " + PROPERTY_THIS_PORT + " property";
             logger.error(msg);
             event.error(msg);
             throw new UncheckedLtsllcException(msg);
         } else {
-            myPort = properties.getIntProperty(PROPERTY_PORT);
+            myPort = properties.getIntProperty(PROPERTY_THIS_PORT);
         }
         rld = ResourceLeakDetectorFactory.instance().newResourceLeakDetector(ByteBuf.class);
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID);
@@ -622,8 +625,8 @@ public class Miranda implements PropertyListener {
      * setup miscellaneous properties
      */
     public void setupMisc() {
-        myHost = properties.getProperty(PROPERTY_HOST);
-        myPort = properties.getIntProperty(PROPERTY_PORT);
+        myHost = properties.getProperty(PROPERTY_THIS_HOST);
+        myPort = properties.getIntProperty(PROPERTY_THIS_PORT);
         myUuid = UUID.fromString(properties.getProperty(PROPERTY_UUID));
         properties.listen(this, com.ltsllc.miranda.properties.Properties.uuid);
         properties.listen(this, com.ltsllc.miranda.properties.Properties.hostName);
@@ -697,7 +700,7 @@ public class Miranda implements PropertyListener {
      * the cluster use to communicate.
      */
     public void setupClusterPort() {
-        Cluster.getInstance().startServerOn(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_PORT));
+        Cluster.getInstance().startServerOn(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_THIS_PORT));
     }
 
 
@@ -1145,11 +1148,11 @@ public class Miranda implements PropertyListener {
     }
 
     public void setHost() {
-        myHost = properties.getProperty(PROPERTY_HOST);
+        myHost = properties.getProperty(PROPERTY_THIS_HOST);
     }
 
     public void setClusterPort() {
-        myPort = properties.getIntProperty(PROPERTY_PORT);
+        myPort = properties.getIntProperty(PROPERTY_THIS_PORT);
     }
 
     /**

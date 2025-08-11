@@ -21,8 +21,8 @@ public class HostPort implements Servlet {
 
     @Override
     public void service(ServletRequest req, ServletResponse res) throws ServletException, IOException {
-        String host = Miranda.getProperties().getProperty(Miranda.PROPERTY_HOST);
-        String port = Miranda.getProperties().getProperty(Miranda.PROPERTY_PORT);
+        String host = Miranda.getProperties().getProperty(Miranda.PROPERTY_THIS_HOST);
+        String port = Miranda.getProperties().getProperty(Miranda.PROPERTY_THIS_PORT);
         res.setContentType("HTML");
         res.getWriter().write("" + host + ":" + port);
     }

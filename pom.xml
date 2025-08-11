@@ -22,7 +22,22 @@
         <maven.compiler.target>24</maven.compiler.target>
     </properties>
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+        </resources>
         <plugins>
+            <plugin>
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>3.2.0</version> <!-- Use the latest stable version -->
+                <configuration>
+                    <excludeDefaultDirectories>false</excludeDefaultDirectories> <!-- Set to true to only delete filesets -->
+                    <failOnError>true</failOnError>
+                    <retryOnError>true</retryOnError>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <configuration>
@@ -75,12 +90,38 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.4.1</version> <!-- Use a recent version -->
+                <version>3.4.1</version>
                 <configuration>
                     <archive>
-                        <manifestFile>META-INF/MANIFEST.MF</manifestFile>
+                        <manifestEntries>
+                            <detectMultiReleaseJar>true</detectMultiReleaseJar>
+                        </manifestEntries>
                     </archive>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version> <!-- Use a recent version -->
+                <configuration>
+                    <release>24</release> <!-- Base release -->
+                    <multiReleaseOutput>true</multiReleaseOutput>
+                    <compileSourceRoots>
+                        <compileSourceRoot>src/main/java</compileSourceRoot>
+                    </compileSourceRoots>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>default-compile</id>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <release>24</release> <!-- Compile base classes for Java 8 -->
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

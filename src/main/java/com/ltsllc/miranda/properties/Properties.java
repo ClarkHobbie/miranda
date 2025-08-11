@@ -5,7 +5,9 @@ package com.ltsllc.miranda.properties;
  */
 public enum Properties {
     unknown,
-    uuid,
+
+    auctionTimeout,
+    bidTimeout,
     cacheLoadLimit,
     cluster,
     cluster1,
@@ -13,22 +15,23 @@ public enum Properties {
     cluster3,
     cluster4,
     cluster5,
+    clusterPort,
     clusterRetry,
     compaction,
     coalescePeriod,
+    deadNodeTimeout,
     heartBeat,
+    heartBeatTimeout,
     hostName,
     loggingLevel,
     messageLogfile,
     messagePort,
     ownerFile,
-    clusterPort,
     propertiesFile,
-    deadNodeTimeout,
-    heartBeatTimeout,
+    scanPeriod,
     startTimeout,
+    thisHost,
+    thisPort,
     useHeartbeats,
-    bidTimeout,
-    auctionTimeout,
-    scanPeriod
+    uuid
 }

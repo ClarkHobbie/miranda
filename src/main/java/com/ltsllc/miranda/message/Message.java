@@ -191,7 +191,6 @@ public class Message implements Comparable<Message> {
      * @return The encoded message.
      */
     public static Message readLongFormat (String s) {
-        logger.debug("entering readLongFormat with s = " + s);
         Message newMessage = new Message();
         Scanner scanner = new Scanner(s);
         scanner.next();scanner.next(); // MESSAGE ID:
@@ -202,8 +201,6 @@ public class Message implements Comparable<Message> {
         newMessage.deliveryURL = scanner.next();
         scanner.next(); // weird bug
         newMessage.contents = HexConverter.toByteArray(scanner.next());
-
-        logger.debug("leaving readLongFormat with newMessage = " + newMessage);
 
         return newMessage;
     }
