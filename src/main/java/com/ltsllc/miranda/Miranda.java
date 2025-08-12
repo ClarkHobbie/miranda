@@ -30,8 +30,12 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.ResourceLeakDetector;
 import io.netty.util.ResourceLeakDetectorFactory;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.asynchttpclient.*;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
@@ -42,6 +46,7 @@ import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
 import java.io.*;
 import java.util.*;
+
 
 
 public class Miranda implements PropertyListener {
@@ -492,13 +497,13 @@ public class Miranda implements PropertyListener {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID);
 
 
-        //LoggerContext ctx = (LoggerContext) LogManager.
-        //                .getContext(false);
-        //Configuration config = ctx.getConfiguration();
-        //LoggerConfig loggerConfig = config.getLoggerConfig("STDOUT");
+        LoggerContext ctx = (LoggerContext) LogManager
+                        .getContext(false);
+        Configuration config = ctx.getConfiguration();
+        LoggerConfig loggerConfig = config.getLoggerConfig("STDOUT");
 
-        //loggerConfig.setLevel(DEBUG);
-        //ctx.updateLoggers();
+        loggerConfig.setLevel(Level.DEBUG);
+        ctx.updateLoggers();
     }
 
     /**
