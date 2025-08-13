@@ -497,13 +497,6 @@ public class Miranda implements PropertyListener {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID);
 
 
-        LoggerContext ctx = (LoggerContext) LogManager
-                        .getContext(false);
-        Configuration config = ctx.getConfiguration();
-        LoggerConfig loggerConfig = config.getLoggerConfig("STDOUT");
-
-        loggerConfig.setLevel(Level.DEBUG);
-        ctx.updateLoggers();
     }
 
     /**

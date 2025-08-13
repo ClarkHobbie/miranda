@@ -903,6 +903,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         if (!future.isSuccess()) {
             throw new RuntimeException(future.exceptionNow());
         }
+
         logger.debug("wrote " + stringBuilder);
 
         if (uuid != null && uuid.equals(Miranda.getInstance().getMyUuid())) {

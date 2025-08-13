@@ -1,11 +1,14 @@
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.miranda.Miranda;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.logging.log4j.core.config.DefaultConfiguration;
+import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.config.xml.XmlConfiguration;
-import org.apache.logging.log4j.spi.LoggerContext;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -14,10 +17,18 @@ public class Main {
     protected static final Logger logger = LogManager.getLogger(Main.class);
 
     public static void main(String[] args)   {
-        //Configurator.initialize(
-        //                "CONFIG",
-        //        null,
-        //        ".");
+        Configurator.initialize(
+                "CONFIG",
+                null,
+                ".");
+        LoggerContext ctx = (LoggerContext) LogManager
+                .getContext(false);
+        Configuration config = ctx.getConfiguration();
+        LoggerConfig loggerConfig = config.getLoggerConfig("STDOUT");
+
+        loggerConfig.setLevel(Level.WARN);
+        ctx.updateLoggers();
+
         logger.info("starting miranda");
         Miranda miranda = new Miranda();
         miranda = Miranda.getInstance();
