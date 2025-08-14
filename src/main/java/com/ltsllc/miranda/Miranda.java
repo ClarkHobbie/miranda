@@ -30,23 +30,17 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.ResourceLeakDetector;
 import io.netty.util.ResourceLeakDetectorFactory;
-import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.config.Configuration;
-import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.asynchttpclient.*;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
 import java.io.*;
-import java.net.http.HttpClient;
 import java.util.*;
 
 
@@ -733,7 +727,8 @@ public class Miranda implements PropertyListener {
         servletContextHandler.addServlet(Status.class, "/api/status");
         servletContextHandler.addServlet(Coalesce.class, "/api/coalesce");
         servletContextHandler.addServlet(ConnectionDetails.class, "/api/connections/details");
-        servletContextHandler.addServlet(com.ltsllc.miranda.servlets.Message.class, "/api/newMessage");
+        servletContextHandler.addServlet(NewMessage.class, "/api/newMessage");
+        servletContextHandler.addServlet(TrackMessage.class, "/api/trackMessage");
 
         HandlerList handlers = new HandlerList();
         handlers.setHandlers(new Handler[]{rh0, servletContextHandler});

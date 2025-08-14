@@ -26,6 +26,7 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
     protected static final Logger logger = LogManager.getLogger(HeartBeatHandler.class);
 
     protected Channel channel;
+    protected long iterations = 0;;
     protected boolean metTimeout = false;
 
     protected boolean isLoopback = false;
@@ -149,6 +150,11 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
      * </P>
      */
     public void sendHeartBeat() {
+        iterations++;
+        if (iterations % 100 == 0) {
+            System.gc();
+        }
+
         if (!isLoopback) {
             AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT,
                     Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL));

@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.util.Scanner;
 import java.util.UUID;
 
-class MessageTest extends TestSuperclass {
+class NewMessageTest extends TestSuperclass {
     public static Logger logger = LogManager.getLogger();
 
     @BeforeAll

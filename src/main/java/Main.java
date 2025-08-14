@@ -55,7 +55,6 @@ public class Main {
          */
         try {
             miranda.startUp(args);
-
         } catch (Exception e) {
             logger.error("Exception during startup", e);
             System.exit(1);
@@ -63,6 +62,7 @@ public class Main {
         try {
             for (;;) {
                 miranda.mainLoop();
+                iterations++;
                 if (iterations % 1000 == 0) {
                     System.gc();
                 }

@@ -10,8 +10,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.Servlet;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -21,30 +19,15 @@ import java.util.UUID;
 /**
  * A {@link Servlet} that allows the creation of new messages.
  */
-public class Message extends HttpServlet {
-    public static Logger logger = LogManager.getLogger(Message.class);
+public class NewMessage extends HttpServlet {
+    public static Logger logger = LogManager.getLogger(NewMessage.class);
     public static final String PARAM_DESTINATION_URL = "DELIVERY_URL";
     public static final String PARAM_STATUS_URL = "STATUS_URL";
 
 
-    public Message() {
-
-    }
-
-    @Override
-    public void init(ServletConfig config) throws ServletException {
-    }
-/*
-    @Override
-    public void service(ServletRequest req, ServletResponse res) throws ServletException, IOException {
-        logger.debug("in service");
-    }
-*/
-
     @Override
     public void doPost(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
-        logger.info("entering doPost");
         String statusURL = request.getParameter(PARAM_STATUS_URL);
         String deliveryURL = request.getParameter(PARAM_DESTINATION_URL);
         byte[] contents = request.getInputStream().readAllBytes();
@@ -62,13 +45,4 @@ public class Message extends HttpServlet {
         response.getWriter().write(message.getMessageID().toString());
     }
 
-    @Override
-    public String getServletInfo() {
-        return null;
-    }
-
-    @Override
-    public void destroy() {
-
-    }
 }

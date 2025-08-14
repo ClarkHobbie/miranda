@@ -312,6 +312,8 @@ public class MessageLog implements PropertyListener {
             uuidToOwner.add(message.getMessageID(), owner);
         }
 
+        MessageEventLogger.added(message);
+
         logger.debug("leaving add");
     }
 
