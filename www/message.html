@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>New Message</title>
+</head>
+<body>
+<H1>New Message</H1>
+<FORM METHOD="POST" ACTION="/api/newMessage">
+<TABLE border=1 id="table">
+    <TR>
+        <TH>Name</TH><TH>Value</TH>
+    </TR>
+    <TR>
+        <TH>To (Delivery URL)</TH>
+        <TH><INPUT NAME="DELIVERY_URL" TYPE="TEXT" SIZE="100"></TH>
+    </TR>
+    <TR>
+        <TH>Status (Status URL)</TH>
+        <TH><INPUT NAME="STATUS_URL" TYPE="TEXT" SIZE="100"> </TH>
+    </TR>
+    <TR>
+        <TH>Contents</TH>
+        <TH><TEXTAREA NAME="CONTENTS" ROWS="20" COLS="100"></TEXTAREA></TH>
+    </TR>
+</TABLE>
+<BUTTON TYPE="SUBMIT">Send</BUTTON>
+</FORM>
+</body>
+</html>

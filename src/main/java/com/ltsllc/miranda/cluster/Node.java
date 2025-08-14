@@ -892,6 +892,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
         ChannelFuture future = channel.writeAndFlush(stringBuilder.toString());
 
+
         try {
             logger.debug("about to call await.  Current thread: " + Thread.currentThread());
             future.await();
@@ -900,11 +901,15 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             throw new RuntimeException(e);
         }
 
+
+
         if (!future.isSuccess()) {
             throw new RuntimeException(future.exceptionNow());
         }
 
         logger.debug("wrote " + stringBuilder);
+
+
 
         if (uuid != null && uuid.equals(Miranda.getInstance().getMyUuid())) {
             isLoopback = true;

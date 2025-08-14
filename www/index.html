@@ -4,6 +4,7 @@
 
 
 <SCRIPT>
+
 function refresh() {
     getStatus();
     refreshNumberOfNodes();
@@ -65,8 +66,20 @@ function coalesce() {
     xhttp.open("GET", "/api/coalesce", false);
     xhttp.send();
 }
-
+function sendMessage () {
+    var xhttp = new XMLHttpRequest();
+    var sendMessage=document.getElementById("sendMessage");
+    sendMessage.innerHTML="Waiting";
+    xhttp.onReadyStateChanged = function () {
+        if (this.readyState==4 && this.status==200) {
+            sendMessage.innerHTML="<BUTTON onClick='sendMessage'></BUTTON>";
+        }
+    }
+    xhttp.open("GET", "/message.html", false);
+    xhttp.send();
+}
 </SCRIPT>
+
 <H1>System Status</H1>
 
 <TABLE>
@@ -102,6 +115,11 @@ function coalesce() {
 <TR>
     <TD>uuid</TD>
     <TD><DIV id="uuid"></DIV></TD>
+</TR>
+<TR>
+    <TD>send message
+    <TD></TD>
+    <TD><DIV id="sendMessage"></DIV><A HREF="/message.html">Send A New Message</A></TD>
 </TR>
 </TABLE>
 <BUTTON onClick="refresh()">Refresh</BUTTON>

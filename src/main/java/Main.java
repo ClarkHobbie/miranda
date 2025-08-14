@@ -26,7 +26,7 @@ public class Main {
         Configuration config = ctx.getConfiguration();
         LoggerConfig loggerConfig = config.getLoggerConfig("STDOUT");
 
-        loggerConfig.setLevel(Level.WARN);
+        loggerConfig.setLevel(Level.DEBUG);
         ctx.updateLoggers();
 
         logger.info("starting miranda");

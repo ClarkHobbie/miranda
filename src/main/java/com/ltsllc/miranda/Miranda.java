@@ -42,9 +42,11 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
 import java.io.*;
+import java.net.http.HttpClient;
 import java.util.*;
 
 
@@ -736,6 +738,7 @@ public class Miranda implements PropertyListener {
         HandlerList handlers = new HandlerList();
         handlers.setHandlers(new Handler[]{rh0, servletContextHandler});
         server.setHandler(handlers);
+
 
         // Start the Server, so it starts accepting connections from clients.
         server.start();
