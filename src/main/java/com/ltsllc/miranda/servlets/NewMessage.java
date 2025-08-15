@@ -14,6 +14,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.UUID;
 
 /**
@@ -42,7 +43,16 @@ public class NewMessage extends HttpServlet {
         MessageLog.getInstance().add(message, Miranda.getInstance().getMyUuid());
         Cluster.getInstance().informOfNewMessage(message);
 
-        response.getWriter().write(message.getMessageID().toString());
+        PrintWriter out = response.getWriter();
+        response.setContentType("HTML");
+        out.println("<H1>Message ID</H1>");
+        out.println("Message ID: ");
+        out.println(message.getMessageID().toString());
+        out.println("<FORM METHOD='POST' ACTION='/api/trackMessage'>");
+        out.print("<INPUT TYPE='HIDDEN' NAME='messageId' VALUE='");
+        out.print(message.getMessageID().toString());
+        out.println("'>");
+        out.println("<BUTTON TYPE='SUBMIT'>Track</BUTTON>");
     }
 
 }

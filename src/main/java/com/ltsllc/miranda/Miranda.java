@@ -10,6 +10,7 @@ import com.ltsllc.miranda.cluster.Node;
 import com.ltsllc.miranda.cluster.SpecNode;
 import com.ltsllc.miranda.logging.LoggingCache;
 import com.ltsllc.miranda.message.Message;
+import com.ltsllc.miranda.message.MessageEventLogger;
 import com.ltsllc.miranda.message.MessageLog;
 import com.ltsllc.miranda.netty.ChannelMonitor;
 import com.ltsllc.miranda.netty.HeartBeatHandler;
@@ -582,8 +583,6 @@ public class Miranda implements PropertyListener {
      * @throws IOException If there is a problem copying the messages
      */
     public synchronized void mainLoop() throws IOException, LtsllcException {
-        // logger.debug("starting mainLoop, with keepRunning = " + keepRunning);
-
         //
         // run garbage collection to avoid running out of memory
         //
@@ -612,7 +611,6 @@ public class Miranda implements PropertyListener {
             }
             iterations++;
         }
-        // logger.debug("leaving mainLoop");
     }
 
     /**
@@ -929,6 +927,8 @@ public class Miranda implements PropertyListener {
         }
         inflight.add(message);
 
+        MessageEventLogger.deliveryAttempted(message);
+
         AsyncHttpClient httpClient = Dsl.asyncHttpClient();
         BoundRequestBuilder boundRequestBuilder = httpClient.preparePost(message.getDeliveryURL());
 
@@ -953,11 +953,13 @@ public class Miranda implements PropertyListener {
                                 //
                                 successfulMessage(message);
                                 event.info("Delivered message (" + message.getMessageID() + ")");
+                                MessageEventLogger.delivered(message);
                             } else {
                                 //
                                 // otherwise note the status and try again
                                 //
                                 message.setStatus(response.getStatusCode());
+                                MessageEventLogger.attemptFailed(message);
                             }
 
                             httpClient.close();

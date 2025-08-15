@@ -48,7 +48,7 @@ public class TrackMessage extends HttpServlet {
 
         List<MessageEvent> messageEventList = MessageEventLogger.getEventsFor(messageID);
         out.println("<H1>Events</H1>");
-        out.println("<TABLE>");
+        out.println("<TABLE border=\"1\">");
         out.println("<TR>");
         out.println("<TH>Type</TH>");
         out.println("<TH>When</TH>");
@@ -79,10 +79,13 @@ public class TrackMessage extends HttpServlet {
         StackTraceElement[] stackTrace = e.getStackTrace();
 
         for (StackTraceElement element : stackTrace) {
+            // out.println("<P>");
             out.print(element.getClassName());
             out.print(element.getMethodName());
             out.print(" ");
             out.println(element.getLineNumber());
+            out.println("<BR>");
+            // out.println("</P>");
         }
     }
 

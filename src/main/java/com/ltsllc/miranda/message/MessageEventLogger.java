@@ -10,11 +10,7 @@ public class MessageEventLogger {
 
         log.add(messageEvent);
 
-        List<MessageEvent> messageEventList = map.get(message.getMessageID());
-        if (messageEventList == null) {
-            messageEventList = new ArrayList<>();
-        }
-
+        List<MessageEvent> messageEventList = getEventsFor(message.getMessageID());
         messageEventList.add(messageEvent);
 
         map.put(message.getMessageID(), messageEventList);
@@ -23,6 +19,53 @@ public class MessageEventLogger {
     public static List<MessageEvent> getEventsFor (UUID uuid) {
         List<MessageEvent> messageEventList = null;
         messageEventList = map.get(uuid);
+        if (null == messageEventList) {
+            messageEventList = new ArrayList<>();
+            map.put(uuid, messageEventList);
+        }
+
         return messageEventList;
+    }
+
+    public static void deliveryAttempted(Message message) {
+        MessageEvent messageEvent = new MessageEvent(MessageEventType.attempted);
+
+        log.add(messageEvent);
+
+        List<MessageEvent> messageEventList = getListFor(message.getMessageID());
+        messageEventList.add(messageEvent);
+
+        map.put(message.getMessageID(), messageEventList);
+    }
+
+    public static List<MessageEvent> getListFor (UUID uuid) {
+        List<MessageEvent> messageEventList = map.get(uuid);
+        if (messageEventList == null) {
+            messageEventList = new ArrayList<>();
+        }
+
+        return messageEventList;
+    }
+
+    public static void delivered(Message message) {
+        MessageEvent messageEvent = new MessageEvent(MessageEventType.delivered);
+
+        log.add(messageEvent);
+
+        List<MessageEvent> messageEventList = getListFor(message.getMessageID());
+        messageEventList.add(messageEvent);
+
+        map.put(message.getMessageID(), messageEventList);
+    }
+
+    public static void attemptFailed(Message message) {
+        MessageEvent messageEvent = new MessageEvent(MessageEventType.attemptFailed);
+
+        log.add(messageEvent);
+
+        List<MessageEvent> messageEventList = getListFor(message.getMessageID());
+        messageEventList.add(messageEvent);
+
+        map.put(message.getMessageID(), messageEventList);
     }
 }

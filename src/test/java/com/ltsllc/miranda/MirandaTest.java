@@ -70,6 +70,8 @@ class MirandaTest extends TestSuperclass {
         try {
             miranda.loadProperties();
             miranda.startMessagePort();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         } finally {
             miranda.getServer().stop();
         }
