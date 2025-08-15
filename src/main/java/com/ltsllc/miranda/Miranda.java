@@ -730,6 +730,8 @@ public class Miranda implements PropertyListener {
         servletContextHandler.addServlet(TrackMessage.class, "/api/trackMessage");
         servletContextHandler.addServlet(Queue.class, "/api/queue");
         servletContextHandler.addServlet(DeleteMessage.class, "/api/deleteMessage");
+        servletContextHandler.addServlet(PostReceiver.class, "/api/deliver");
+        servletContextHandler.addServlet(PostReceiver.class, "/api/receiveStatus");
 
         HandlerList handlers = new HandlerList();
         handlers.setHandlers(new Handler[]{rh0, servletContextHandler});
