@@ -24,12 +24,24 @@ public class Queue extends HttpServlet {
         out.println("  <TR>");
         out.println("    <TH>Queue Position</TH>");
         out.println("    <TH>Message ID</TH>");
+        out.println("    <TH>Contents</TH>");
+        out.println("    <TH>Actions</TH>");
         out.println("  </TR>");
         for (int i = 0; i < messageList.size(); i++) {
             out.print("<TD>");
-            out.println(i + "</TD>");
+            out.print(i);
+            out.println("</TD>");
 
+            out.println("<TD>");
             Message message = messageList.get(i);
+            out.println(message.getMessageID().toString());
+            out.println("</TD>");
+
+            out.println("<TD>");
+            String stringContents = new String(message.getContents());
+            out.println(stringContents);
+            out.println("</TD>");
+
             out.println("<TD>");
             out.println("<FORM METHOD='POST' ACTION='/api/trackMessage'>");
 
@@ -37,9 +49,20 @@ public class Queue extends HttpServlet {
             out.print(message.getMessageID().toString());
             out.println("'>");
 
-            out.print(message.getMessageID());
-
             out.println("<BUTTON TYPE='SUBMIT'>Track</BUTTON>");
+            out.println("</FORM>");
+
+            out.println("<FORM METHOD='POST' ACTION='/api/deleteMessage'>");
+
+            out.print("<INPUT TYPE='HIDDEN' NAME='messageId' VALUE='");
+            out.print(message.getMessageID().toString());
+            out.println("'>");
+
+            out.println("<BUTTON TYPE='SUBMIT'>Delete</BUTTON>");
+            out.println("</FORM>");
+
+            out.println("</TD>");
+
         }
     }
 }

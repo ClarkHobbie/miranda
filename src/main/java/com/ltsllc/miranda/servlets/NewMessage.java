@@ -24,6 +24,7 @@ public class NewMessage extends HttpServlet {
     public static Logger logger = LogManager.getLogger(NewMessage.class);
     public static final String PARAM_DESTINATION_URL = "DELIVERY_URL";
     public static final String PARAM_STATUS_URL = "STATUS_URL";
+    public static final String PARAM_CONTENTS = "CONTENTS";
 
 
     @Override
@@ -31,13 +32,13 @@ public class NewMessage extends HttpServlet {
             throws IOException {
         String statusURL = request.getParameter(PARAM_STATUS_URL);
         String deliveryURL = request.getParameter(PARAM_DESTINATION_URL);
-        byte[] contents = request.getInputStream().readAllBytes();
+        String contents = request.getParameter(PARAM_CONTENTS);
 
         com.ltsllc.miranda.message.Message message = new com.ltsllc.miranda.message.Message();
 
         message.setStatusURL(statusURL);
         message.setDeliveryURL(deliveryURL);
-        message.setContents(contents);
+        message.setContents(contents.getBytes());
         message.setMessageID(UUID.randomUUID());
 
         MessageLog.getInstance().add(message, Miranda.getInstance().getMyUuid());
