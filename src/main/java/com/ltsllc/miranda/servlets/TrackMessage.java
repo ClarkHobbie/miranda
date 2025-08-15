@@ -67,6 +67,8 @@ public class TrackMessage extends HttpServlet {
             out.print("<TD>");
             printStackTrace(out, event.getWhere());
             out.println("</TD>");
+
+            out.println("</TR>");
         }
 
         out.println("</TABLE>");

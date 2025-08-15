@@ -1,5 +1,8 @@
 package com.ltsllc.miranda.servlets;
 
+import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.miranda.message.Message;
+import com.ltsllc.miranda.message.MessageEventLogger;
 import com.ltsllc.miranda.message.MessageLog;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -24,11 +27,19 @@ public class DeleteMessage extends HttpServlet {
             throw new ServletException(e);
         }
         UUID messageID = UUID.fromString(request.getParameter(PARAM_MESSAGE_ID));
+        Message message = null;
+        try {
+            message = MessageLog.getInstance().get(messageID);
+        } catch (LtsllcException|IOException e) {
+            throw new RuntimeException(e);
+        }
         try {
             MessageLog.getInstance().remove(messageID);
         } catch (IOException e) {
             throw new ServletException(e);
         }
+
+        MessageEventLogger.deleted(message);
 
         out.println("<H1>Success</H1>");
 

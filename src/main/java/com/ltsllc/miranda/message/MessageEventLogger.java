@@ -68,4 +68,15 @@ public class MessageEventLogger {
 
         map.put(message.getMessageID(), messageEventList);
     }
+
+    public static void deleted (Message message) {
+        MessageEvent messageEvent = new MessageEvent(MessageEventType.deleted);
+
+        log.add(messageEvent);
+
+        List<MessageEvent> messageEventList = getListFor(message.getMessageID());
+        messageEventList.add(messageEvent);
+
+        map.put(message.getMessageID(), messageEventList);
+    }
 }
