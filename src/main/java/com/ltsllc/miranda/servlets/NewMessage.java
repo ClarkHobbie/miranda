@@ -53,6 +53,7 @@ public class NewMessage extends HttpServlet {
         out.print(message.getMessageID().toString());
         out.println("'>");
         out.println("<BUTTON TYPE='SUBMIT'>Track</BUTTON>");
+        out.println("</FORM>");
     }
 
 }

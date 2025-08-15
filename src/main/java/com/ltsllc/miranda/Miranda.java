@@ -21,6 +21,7 @@ import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import com.ltsllc.miranda.properties.PropertyListener;
 import com.ltsllc.miranda.servlets.*;
 import com.ltsllc.miranda.servlets.Properties;
+import com.ltsllc.miranda.servlets.Queue;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelInitializer;
@@ -727,6 +728,7 @@ public class Miranda implements PropertyListener {
         servletContextHandler.addServlet(ConnectionDetails.class, "/api/connections/details");
         servletContextHandler.addServlet(NewMessage.class, "/api/newMessage");
         servletContextHandler.addServlet(TrackMessage.class, "/api/trackMessage");
+        servletContextHandler.addServlet(Queue.class, "/api/queue");
 
         HandlerList handlers = new HandlerList();
         handlers.setHandlers(new Handler[]{rh0, servletContextHandler});

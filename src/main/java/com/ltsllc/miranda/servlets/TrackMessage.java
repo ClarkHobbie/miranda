@@ -81,7 +81,12 @@ public class TrackMessage extends HttpServlet {
         for (StackTraceElement element : stackTrace) {
             // out.println("<P>");
             out.print(element.getClassName());
-            out.print(element.getMethodName());
+            out.print(".");
+            if ('<' != element.getMethodName().charAt(0)) {
+                out.print(element.getMethodName());
+            } else {
+                out.print("<I>init</I>");
+            }
             out.print(" ");
             out.println(element.getLineNumber());
             out.println("<BR>");

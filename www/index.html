@@ -103,6 +103,11 @@ function sendMessage () {
 <TR>
     <TD>Number of messages in queue:</TD>
     <TD><DIV id="numberOfMessages" ></DIV></TD>
+    <TD>
+        <FORM METHOD="POST" ACTION="/api/queue">
+            <BUTTON TYPE="SUBMIT">Look</BUTTON>
+        </FORM>
+    </TD>
 </TR>
 
 <TR>
@@ -117,7 +122,7 @@ function sendMessage () {
     <TD><DIV id="uuid"></DIV></TD>
 </TR>
 <TR>
-    <TD>send message
+    <TD>send message</TD>
     <TD><DIV id="sendMessage"></DIV><A HREF="/message.html">Send A New Message</A></TD>
 </TR>
 <TR>
