@@ -5,6 +5,23 @@ import java.util.*;
 public class MessageEventLogger {
     protected static List<MessageEvent> log = new ArrayList<>();
     protected static Map<UUID, List<MessageEvent>> map = new HashMap<>();
+
+    public static List<MessageEvent> getLog() {
+        return log;
+    }
+
+    public static void setLog(List<MessageEvent> log) {
+        MessageEventLogger.log = log;
+    }
+
+    public static Map<UUID, List<MessageEvent>> getMap() {
+        return map;
+    }
+
+    public static void setMap(Map<UUID, List<MessageEvent>> map) {
+        MessageEventLogger.map = map;
+    }
+
     public static void added(Message message) {
         MessageEvent messageEvent = new MessageEvent(MessageEventType.added);
 
