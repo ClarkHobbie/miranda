@@ -908,6 +908,18 @@ public class Miranda implements PropertyListener {
 
     }
 
+    public synchronized Message removeFromInflight (Message message) {
+        Message returnValue = message;
+
+        if (!inflight.contains(message)) {
+            returnValue = null;
+        }
+
+        inflight.remove(message);
+
+        return returnValue;
+    }
+
     /**
      * Try to deliver a message
      * <p>

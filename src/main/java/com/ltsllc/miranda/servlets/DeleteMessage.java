@@ -32,6 +32,6 @@ public class DeleteMessage extends HttpServlet {
 
         out.println("<H1>Success</H1>");
 
-        out.println("");
+        out.println("<A HREF='/'>Back</A>");
     }
 }

@@ -328,8 +328,16 @@ public class MessageLog implements PropertyListener {
      * @throws IOException If there are problem reading from, or writing to the logfiles.
      */
     public void remove(UUID uuid) throws IOException {
+        Message message = null;
+        try {
+            message = cache.get(uuid);
+        } catch (LtsllcException e) {
+            throw new RuntimeException(e);
+        }
+
         cache.remove(uuid);
         uuidToOwner.remove(uuid);
+        Miranda.getInstance().removeFromInflight(message);
     }
 
     public Message get(UUID uuid) throws LtsllcException, IOException {

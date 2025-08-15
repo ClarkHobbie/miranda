@@ -71,8 +71,7 @@ public class TrackMessage extends HttpServlet {
 
         out.println("</TABLE>");
 
-        out.print("<P><BUTTON ONCLICK=\"window.location.href=");
-        out.println("'/'\">Back</BUTTON></P>");
+        out.println("<P><A HREF='/'>Back</A></P>");
     }
 
     public void printStackTrace(PrintWriter out, Exception e) {
