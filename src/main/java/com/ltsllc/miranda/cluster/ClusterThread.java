@@ -10,12 +10,11 @@ public class ClusterThread extends Thread {
     public void run () {
         Cluster.defineStatics();
         Miranda.parseNodes();
+        Cluster cluster = Cluster.getInstance();
         try {
-            Cluster.getInstance().start(Miranda.getSpecNodes());
+            cluster.start(Miranda.getSpecNodes());
         } catch (Throwable t) {
             throw new RuntimeException(t);
-        }
-        while (true) {
         }
     }
 }

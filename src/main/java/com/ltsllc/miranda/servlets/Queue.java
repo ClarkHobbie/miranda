@@ -25,6 +25,7 @@ public class Queue extends HttpServlet {
         out.println("    <TH>Queue Position</TH>");
         out.println("    <TH>Message ID</TH>");
         out.println("    <TH>Contents</TH>");
+        out.println("    <TH>Status</TH>");
         out.println("    <TH>Actions</TH>");
         out.println("  </TR>");
         for (int i = 0; i < messageList.size(); i++) {
@@ -40,6 +41,10 @@ public class Queue extends HttpServlet {
             out.println("<TD>");
             String stringContents = new String(message.getContents());
             out.println(stringContents);
+            out.println("</TD>");
+
+            out.println("<TD>");
+            out.println(message.getStatus());
             out.println("</TD>");
 
             out.println("<TD>");

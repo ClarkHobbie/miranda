@@ -6,12 +6,10 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.logging.log4j.core.config.DefaultConfiguration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
-import org.apache.logging.log4j.core.config.xml.XmlConfiguration;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
+import java.io.PrintStream;
 
 public class Main {
     protected static final Logger logger = LogManager.getLogger(Main.class);

@@ -1,6 +1,7 @@
 package com.ltsllc.miranda;
 
 
+import com.ltsllc.commons.HexConverter;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.UncheckedLtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
@@ -41,10 +42,13 @@ import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
+import java.net.InetAddress;
 import java.util.*;
-
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 
 
 public class Miranda implements PropertyListener {
@@ -52,6 +56,14 @@ public class Miranda implements PropertyListener {
     public static PrintStream out = System.out;
     public static PrintStream err = System.err;
     public static int exitCode = 0;
+
+    public class CallbackRunable implements Runnable {
+
+        @Override
+        public void run() {
+
+        }
+    }
 
     /**
      * The property for specifying what port number to use for cluster connections
@@ -587,8 +599,17 @@ public class Miranda implements PropertyListener {
         //
         // run garbage collection to avoid running out of memory
         //
-        if (iterations % 1000 == 0)
+        if (iterations % 1000 == 0) {
             Runtime.getRuntime().gc();
+        }
+
+        if (iterations % 500 == 0) {
+            try {
+                wait(500);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
 
         if (keepRunning) {
             /*
@@ -714,9 +735,9 @@ public class Miranda implements PropertyListener {
 
         server = new Server(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_MESSAGE_PORT));
 
-        ResourceHandler rh0 = new ResourceHandler();
-        rh0.setWelcomeFiles(new String[]{"index.html"});
-        rh0.setResourceBase("www");
+        ResourceHandler resourceHandler = new ResourceHandler();
+        resourceHandler.setWelcomeFiles(new String[]{"index.html"});
+        resourceHandler.setResourceBase("www");
 
         ServletContextHandler servletContextHandler = new ServletContextHandler();
         servletContextHandler.addServlet(NumberOfConnections.class, "/api/numberOfConnections");
@@ -734,7 +755,7 @@ public class Miranda implements PropertyListener {
         servletContextHandler.addServlet(PostReceiver.class, "/api/receiveStatus");
 
         HandlerList handlers = new HandlerList();
-        handlers.setHandlers(new Handler[]{rh0, servletContextHandler});
+        handlers.setHandlers(new Handler[]{resourceHandler, servletContextHandler});
         server.setHandler(handlers);
 
 
@@ -947,47 +968,64 @@ public class Miranda implements PropertyListener {
         MessageEventLogger.deliveryAttempted(message);
 
         AsyncHttpClient httpClient = Dsl.asyncHttpClient();
-        BoundRequestBuilder boundRequestBuilder = httpClient.preparePost(message.getDeliveryURL());
 
-        Request request = httpClient.preparePost(message.getDeliveryURL())
-                .setBody(message.getContents())
-                .build();
+        List<Param> paramList = new ArrayList<>();
 
-
-        if (null == message.getCompletionHandler()) {
-            boundRequestBuilder
-                    .execute(new AsyncCompletionHandler<Response>() {
-                        @Override
-                        public Response onCompleted(Response response) throws IOException {
-                            //
-                            // we should check for an exception, for example when the destination is not listening, but
-                            // response doesn't offer one
-                            //
-                            if ((response.getStatusCode() > 199) && (response.getStatusCode() < 300)) {
-                                //
-                                // if we successfully delivered the message then tell everyone and remove the
-                                // message from the set of messages we are trying to deliver
-                                //
-                                successfulMessage(message);
-                                event.info("Delivered message (" + message.getMessageID() + ")");
-                                MessageEventLogger.delivered(message);
-                            } else {
-                                //
-                                // otherwise note the status and try again
-                                //
-                                message.setStatus(response.getStatusCode());
-                                MessageEventLogger.attemptFailed(message);
-                            }
-
-                            httpClient.close();
-                            // otherwise, keep trying
-                            return response;
-                        }
-                    });
+        if (null != message.getDeliveryURL()) {
+            Param param = new Param("DELIVERY_URL", message.getDeliveryURL());
+            paramList.add(param);
         }
 
+        if (null != message.getStatusURL()) {
+            Param param = new Param("STATUS_URL", message.getStatusURL());
+            paramList.add(param);
+        }
 
-    }
+        if (null != message.getContents()) {
+            Param param = new Param("CONTENT", HexConverter.toHexString(message.getContents()));
+            paramList.add(param);
+        }
+
+        String body = new String(message.getContents());
+        BoundRequestBuilder builder = httpClient.preparePost(message.getDeliveryURL());
+
+        Request request = builder
+                .setFormParams(paramList)
+                .setBody(body)
+                .build();
+        ListenableFuture<Response> listenableFuture = httpClient.executeRequest(request);
+
+        Runnable callback = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Response response = listenableFuture.get();
+                    inflight.remove(message);
+                    message.setStatus(response.getStatusCode());
+
+                    if (response.getStatusCode() > 199 && response.getStatusCode() < 300) {
+                        MessageLog.getInstance().remove(message.getMessageID());
+                        MessageEventLogger.delivered(message);
+                    } else {
+                        MessageEventLogger.attemptFailed(message);
+                    }
+
+                } catch (InterruptedException | ExecutionException | IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+
+        Executor executor = new Executor() {
+            @Override
+            public void execute(@NotNull Runnable command) {
+                Thread thread = new Thread(command);
+                thread.start();
+            }
+        };
+
+        listenableFuture.addListener(callback, executor);
+     }
 
     /**
      * Called when a message has been successfully delivered

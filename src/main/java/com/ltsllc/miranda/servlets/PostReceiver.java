@@ -20,7 +20,11 @@ public class PostReceiver extends HttpServlet {
     {
         String deliveryURL = request.getParameter(PARAM_DELIVERY_URL);
         String statusURL = request.getParameter(PARAM_STATUS_URL);
-        String content = new String(request.getParameter(PARAM_CONTENT));
+        String content =request.getParameter(PARAM_CONTENT);
+
+        if (content == null) {
+            content = "null";
+        }
 
         logger.debug("Received POST with deliver URL: " + deliveryURL +
                 " and status URL: " + statusURL +

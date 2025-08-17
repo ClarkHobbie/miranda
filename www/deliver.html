@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Deliver</title>
+</head>
+<body>
+<TABLE BORDER="1">
+<FORM METHOD="POST" ACTION="/api/deliver">
+    <TR>
+        <TH>Name</TH>
+        <TH>Value</TH>
+    </TR>
+
+    <TR>
+        <TD>Delivery URL</TD>
+        <TD>
+    <INPUT TYPE="TEXT" SIZE="100" NAME="DELIVERY_URL">
+        </TD>
+    </TR>
+
+
+    <TR>
+        <TD>Status URL</TD>
+        <TD>
+    <INPUT TYPE="TEXT" SIZE="100" NAME="STATUS_URL">
+        </TD>
+    </TR>
+
+    <TR>
+        <TD>Contents</TD>
+        <TD>
+    <TEXTAREA ROWS="20" COLS="80" NAME="CONTENT">
+    </TEXTAREA>
+        </TD>
+    </TR>
+</TABLE>
+    <INPUT TYPE="SUBMIT">
+</FORM>
+
+</body>
+</html>

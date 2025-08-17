@@ -899,7 +899,6 @@ public class Cluster implements Alarmable, PropertyListener {
         return true;
     }
 
-
     /**
      * Send a dead node message to everyone in the cluster aside from the dead node.
      *
@@ -917,6 +916,7 @@ public class Cluster implements Alarmable, PropertyListener {
             }
         }
     }
+
     /**
      * Notify the cluster of a message delivery
      * <p>
@@ -1055,6 +1055,7 @@ public class Cluster implements Alarmable, PropertyListener {
 
     public void vote (UUID voter, int vote) throws LtsllcException {
         if (null == election) {
+            logger.error("null election in vote");
             throw new LtsllcException("null election in vote");
         }
 
@@ -1137,6 +1138,5 @@ public class Cluster implements Alarmable, PropertyListener {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-
     }
 }

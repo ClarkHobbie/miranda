@@ -47,7 +47,7 @@ public class TrackMessage extends HttpServlet {
         }
 
         List<MessageEvent> messageEventList = MessageEventLogger.getEventsFor(messageID);
-        out.println("<H1>Events</H1>");
+        out.println("<H1>Events for " + messageID.toString() + "</H1>");
         out.println("<TABLE border=\"1\">");
         out.println("<TR>");
         out.println("<TH>Type</TH>");

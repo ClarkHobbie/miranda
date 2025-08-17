@@ -22,7 +22,7 @@ public class MessageEventLogger {
         MessageEventLogger.map = map;
     }
 
-    public static void added(Message message) {
+    public static synchronized void added(Message message) {
         MessageEvent messageEvent = new MessageEvent(MessageEventType.added);
 
         log.add(messageEvent);
@@ -33,7 +33,7 @@ public class MessageEventLogger {
         map.put(message.getMessageID(), messageEventList);
     }
 
-    public static List<MessageEvent> getEventsFor (UUID uuid) {
+    public static synchronized List<MessageEvent> getEventsFor (UUID uuid) {
         List<MessageEvent> messageEventList = null;
         messageEventList = map.get(uuid);
         if (null == messageEventList) {
@@ -44,7 +44,7 @@ public class MessageEventLogger {
         return messageEventList;
     }
 
-    public static void deliveryAttempted(Message message) {
+    public static synchronized void deliveryAttempted(Message message) {
         MessageEvent messageEvent = new MessageEvent(MessageEventType.attempted);
 
         log.add(messageEvent);
@@ -64,7 +64,7 @@ public class MessageEventLogger {
         return messageEventList;
     }
 
-    public static void delivered(Message message) {
+    public static synchronized void delivered(Message message) {
         MessageEvent messageEvent = new MessageEvent(MessageEventType.delivered);
 
         log.add(messageEvent);
@@ -75,7 +75,7 @@ public class MessageEventLogger {
         map.put(message.getMessageID(), messageEventList);
     }
 
-    public static void attemptFailed(Message message) {
+    public static synchronized void attemptFailed(Message message) {
         MessageEvent messageEvent = new MessageEvent(MessageEventType.attemptFailed);
 
         log.add(messageEvent);
@@ -86,7 +86,7 @@ public class MessageEventLogger {
         map.put(message.getMessageID(), messageEventList);
     }
 
-    public static void deleted (Message message) {
+    public static synchronized void deleted (Message message) {
         MessageEvent messageEvent = new MessageEvent(MessageEventType.deleted);
 
         log.add(messageEvent);

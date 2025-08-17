@@ -165,8 +165,7 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
                     channel.writeAndFlush(Node.HEART_BEAT_START);
                     AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT,
                             Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_TIMEOUT));
-
-                }
+               }
             }
         }
     }
