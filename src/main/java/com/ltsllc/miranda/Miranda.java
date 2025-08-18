@@ -45,7 +45,6 @@ import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
-import java.net.InetAddress;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
@@ -986,13 +985,12 @@ public class Miranda implements PropertyListener {
             paramList.add(param);
         }
 
-        String body = new String(message.getContents());
-        BoundRequestBuilder builder = httpClient.preparePost(message.getDeliveryURL());
-
-        Request request = builder
-                .setFormParams(paramList)
-                .setBody(body)
+        Request request = httpClient.preparePost(message.getDeliveryURL())
+                .setFormParams(message.getParamList())
+                //.setBody(message.getContents())
                 .build();
+
+
         ListenableFuture<Response> listenableFuture = httpClient.executeRequest(request);
 
         Runnable callback = new Runnable() {
@@ -1006,8 +1004,12 @@ public class Miranda implements PropertyListener {
                     if (response.getStatusCode() > 199 && response.getStatusCode() < 300) {
                         MessageLog.getInstance().remove(message.getMessageID());
                         MessageEventLogger.delivered(message);
+
+                        sendDelivered(message, response, httpClient);
                     } else {
                         MessageEventLogger.attemptFailed(message);
+
+                        sendFailed(message, response, httpClient);
                     }
 
                 } catch (InterruptedException | ExecutionException | IOException e) {
@@ -1026,6 +1028,51 @@ public class Miranda implements PropertyListener {
 
         listenableFuture.addListener(callback, executor);
      }
+
+    public void sendFailed(Message message, Response response, AsyncHttpClient client) {
+        Param param = new Param("ID", message.getMessageID().toString());
+        List<Param> list = new ArrayList<>();
+        list.add(param);
+
+        param = new Param("SUBJECT", "MESSAGE_DELIVERY_FAILED");
+        list.add(param);
+
+        Integer integer = new Integer(response.getStatusCode());
+        param = new Param("STATUS", integer.toString());
+        list.add(param);
+
+        Request request = client.preparePost(message.getStatusURL())
+                .setFormParams(list)
+                .build();
+
+        client.executeRequest(request);
+    }
+
+    public void sendDelivered(Message message, Response response, AsyncHttpClient client) {
+        Param param = new Param("MESSAGE_ID", message.getMessageID().toString());
+        List<Param> list = new ArrayList<>();
+        list.add(param);
+
+        param = new Param("SUBJECT", "MESSAGE_DELIVERED");
+        list.add(param);
+
+        Integer integer = new Integer(response.getStatusCode());
+        param = new Param("STATUS", integer.toString());
+        list.add(param);
+
+        Request request = client.preparePost(message.getStatusURL())
+                .setFormParams(list)
+                .build();
+
+        ListenableFuture<Response> future = client.executeRequest(request);
+        Response rsp = null;
+        try {
+            rsp = future.get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+        rsp.getStatusCode();
+    }
 
     /**
      * Called when a message has been successfully delivered

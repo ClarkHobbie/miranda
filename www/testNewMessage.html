@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test New Message</title>
+<script>
+function submitPressed () {
+    let element = document.getElementById("PARAM_NAME");
+    let form = document.getElementById("whatever");
+    if (form == null) {
+        alert ("null form");
+    }
+
+    element = document.getElementById("PARAM_NAME");
+    element.remove();
+    element = document.getElementById("PARAM_VALUE");
+    element.remove();
+
+    document.body.appendChild(form);
+    form.submit();
+}
+</script>
+</head>
+<body>
+<H1>New Message</H1>
+<FORM METHOD="POST" ID="whatever" ACTION="/api/newMessage">
+    <TABLE border=1 id="table">
+        <TR>
+            <TH>Name</TH><TH>Value</TH>
+        </TR>
+        <TR>
+            <TH>To (Delivery URL)</TH>
+            <TH><INPUT ID="DELIVERY_URL" NAME="DELIVERY_URL" TYPE="TEXT" SIZE="100"></TH>
+        </TR>
+        <TR>
+            <TD>Status (Status URL)</TD>
+            <TD>
+                <INPUT NAME="STATUS_URL" TYPE="TEXT" SIZE="100">
+                <INPUT TYPE="HIDDEN" NAME="liwpi" VALUE="fnord">
+            </TD>
+        </TR>
+        <TR>
+            <TD>Param name</TD>
+            <TD><INPUT ID="PARAM_NAME" NAME="PARAM_NAME"  TYPE="TEXT"></TD>
+        </TR>
+        <TR>
+            <TD>Param value</TD>
+            <TD><INPUT ID="PARAM_VALUE" NAME="PARAM_VALUE" TYPE="TEXT"></TD>
+        </TR>
+        <TR>
+            <TH>Contents</TH>
+            <TH><TEXTAREA NAME="CONTENTS" ROWS="20" COLS="100"></TEXTAREA></TH>
+        </TR>
+    </TABLE>
+
+</FORM>
+<BUTTON ONCLICK="submitPressed()">Send</BUTTON>
+</body>
+</html>

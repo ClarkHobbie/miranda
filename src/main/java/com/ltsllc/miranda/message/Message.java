@@ -4,11 +4,10 @@ import com.ltsllc.commons.HexConverter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.asynchttpclient.AsyncCompletionHandler;
+import org.asynchttpclient.Param;
 import org.asynchttpclient.Response;
 
-import java.util.Arrays;
-import java.util.Scanner;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * A class that represents a POST to the message port.  The caller is expected to supply a status URL and a delivery
@@ -33,6 +32,7 @@ public class Message implements Comparable<Message> {
     protected int status;
     protected String deliveryURL;
     protected String statusURL;
+    protected List<Param> paramList = new ArrayList<>();
     protected byte[] contents;
     protected UUID messageID;
 
@@ -85,6 +85,14 @@ public class Message implements Comparable<Message> {
     }
 
     public void setStatus(int newStatus) { status = newStatus;}
+
+    public List<Param> getParamList() {
+        return paramList;
+    }
+
+    public void setParamList(List<Param> paramList) {
+        this.paramList = paramList;
+    }
 
     public String toString () {
         if (messageID == null) {

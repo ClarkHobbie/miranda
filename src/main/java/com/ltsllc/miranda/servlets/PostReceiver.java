@@ -10,6 +10,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Enumeration;
+import java.util.Iterator;
 
 public class PostReceiver extends HttpServlet {
     public static final String PARAM_DELIVERY_URL = "DELIVERY_URL";
@@ -22,9 +24,7 @@ public class PostReceiver extends HttpServlet {
     public void doPost (HttpServletRequest request, HttpServletResponse response)
         throws ServletException
     {
-        String deliveryURL = request.getParameter(PARAM_DELIVERY_URL);
-        String statusURL = request.getParameter(PARAM_STATUS_URL);
-        String content =request.getParameter(PARAM_CONTENT);
+        String content = request.getParameter(PARAM_CONTENT);
 
         if (content == null) {
             ServletInputStream in = null;
@@ -40,12 +40,23 @@ public class PostReceiver extends HttpServlet {
                 throw new ServletException(e);
             }
 
-            content = new String(buffer);
+            content = (buffer == null) ? "mull" : new String(buffer);
         }
 
-        logger.debug("Received POST with deliver URL: " + deliveryURL +
-                " and status URL: " + statusURL +
-                " and content: " + content
-        );
+        StringBuilder builder = new StringBuilder();
+        Enumeration<String> enumeration = request.getParameterNames();
+        while (enumeration.hasMoreElements()) {
+            String name = enumeration.nextElement();
+            builder.append(name);
+            builder.append(" = ");
+            String value = request.getParameter(name);
+            value = (value == null) ? "null" : value;
+            builder.append(value);
+            if (enumeration.hasMoreElements()) {
+                builder.append(", ");
+            }
+        }
+
+        logger.debug("Received POST with params: " + builder.toString());
     }
 }

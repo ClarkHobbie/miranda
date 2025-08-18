@@ -12,9 +12,14 @@ import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.asynchttpclient.Param;
+import org.asynchttpclient.Request;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -38,6 +43,7 @@ public class NewMessage extends HttpServlet {
 
         message.setStatusURL(statusURL);
         message.setDeliveryURL(deliveryURL);
+        message.setParamList(captureParams(request));
         message.setContents(contents.getBytes());
         message.setMessageID(UUID.randomUUID());
 
@@ -55,6 +61,28 @@ public class NewMessage extends HttpServlet {
         out.println("'>");
         out.println("<BUTTON TYPE='SUBMIT'>Track</BUTTON>");
         out.println("</FORM>");
+    }
+
+    private List<Param> captureParams(HttpServletRequest request) {
+        List<Param> list = new ArrayList<>();
+
+        Enumeration<String> enumeration = request.getParameterNames();
+        while (enumeration.hasMoreElements()) {
+            String name = enumeration.nextElement();
+            if (name.equalsIgnoreCase(PARAM_DESTINATION_URL) || name.equalsIgnoreCase(PARAM_STATUS_URL) ||
+                    name.equalsIgnoreCase(PARAM_CONTENTS)) {
+                continue;
+            }
+
+            String value = request.getParameter(name);
+            Param param = null;
+            if (value != null) {
+                param = new Param(name, value);
+                list.add(param);
+            }
+        }
+
+        return list;
     }
 
 }
