@@ -1,6 +1,7 @@
 package com.ltsllc.miranda.message;
 
 import com.ltsllc.commons.HexConverter;
+import com.ltsllc.miranda.Miranda;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.asynchttpclient.AsyncCompletionHandler;
@@ -201,13 +202,14 @@ public class Message implements Comparable<Message> {
     public static Message readLongFormat (String s) {
         Message newMessage = new Message();
         Scanner scanner = new Scanner(s);
+        String temp;
         scanner.next();scanner.next(); // MESSAGE ID:
         newMessage.messageID = UUID.fromString(scanner.next());
-        scanner.next(); // <UUID>
+        temp = scanner.next(); // STATUS:
         newMessage.statusURL = scanner.next();
-        scanner.next(); // weird bug
+        temp = scanner.next(); // DELIVERY:
         newMessage.deliveryURL = scanner.next();
-        scanner.next(); // weird bug
+        temp = scanner.next(); // CONTENTS:
         newMessage.contents = HexConverter.toByteArray(scanner.next());
 
         return newMessage;
