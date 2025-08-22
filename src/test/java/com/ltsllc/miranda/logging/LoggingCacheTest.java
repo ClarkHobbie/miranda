@@ -1,6 +1,7 @@
 package com.ltsllc.miranda.logging;
 
 import com.ltsllc.commons.HexConverter;
+import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.message.Message;
@@ -30,7 +31,7 @@ class LoggingCacheTest {
 
 
     @Test
-    void copyMessages1() throws IOException {
+    void copyMessages1() throws IOException, LtsllcException {
         Message m1 = createMessage();
         Message m2 = createMessage();
 

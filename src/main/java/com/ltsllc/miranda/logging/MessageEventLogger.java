@@ -1,9 +1,11 @@
 package com.ltsllc.miranda.logging;
 
+import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.message.Message;
 
+import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
@@ -11,7 +13,6 @@ import java.util.*;
 public class MessageEventLogger {
     protected List<MessageEvent> log = new ArrayList<>();
     protected Map<UUID, List<MessageEvent>> map = new HashMap<>();
-    protected static MessageEventLogger instance = null;
     protected ImprovedFile file = null;
 
     public MessageEventLogger() {
@@ -39,21 +40,54 @@ public class MessageEventLogger {
         this.map = map;
     }
 
-    public static MessageEventLogger getInstance() {
-        return instance;
+    public synchronized void store () {
+        try {
+            ImprovedFile backUp = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_EVENTS_FILE)
+                    + ".backup");
+            if (backUp.exists()) {
+                backUp.delete();
+            }
+
+            if (file.exists()) {
+                file.copyTo(backUp);
+            }
+
+            FileWriter fileWriter = null;
+            BufferedWriter bufferedWriter = null;
+            try {
+                fileWriter = new FileWriter(file);
+                bufferedWriter = new BufferedWriter(fileWriter);
+
+                for (MessageEvent messageEvent : log) {
+                    bufferedWriter.write(messageEvent.toStorageString());
+                    bufferedWriter.newLine();
+                }
+            } finally {
+                if (bufferedWriter != null) {
+                    bufferedWriter.close();
+                }
+
+                if (fileWriter != null) {
+                    fileWriter.close();
+                }
+            }
+        } catch (IOException | LtsllcException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public synchronized void added(Message message) throws IOException {
+    public synchronized void added(Message message) {
         MessageEvent messageEvent = new MessageEvent(message.getMessageID(), MessageEventType.added);
+        messageEvent.setId(message.getMessageID());
+
+        log.add(messageEvent);
 
         List<MessageEvent> messageEventList = getEventsFor(message.getMessageID());
         messageEventList.add(messageEvent);
 
         map.put(message.getMessageID(), messageEventList);
-    }
 
-    public static void defineStatics () {
-        instance = new MessageEventLogger();
+        store();
     }
 
     public synchronized List<MessageEvent> getEventsFor (UUID uuid) {
@@ -76,6 +110,8 @@ public class MessageEventLogger {
         messageEventList.add(messageEvent);
 
         map.put(message.getMessageID(), messageEventList);
+
+        store();
     }
 
     public List<MessageEvent> getListFor (UUID uuid) {
@@ -96,10 +132,13 @@ public class MessageEventLogger {
         messageEventList.add(messageEvent);
 
         map.put(message.getMessageID(), messageEventList);
+
+        store();
     }
 
     public synchronized void attemptFailed(Message message) {
         MessageEvent messageEvent = new MessageEvent(message.getMessageID(), MessageEventType.attemptFailed);
+        messageEvent.setId(message.getMessageID());
 
         log.add(messageEvent);
 
@@ -107,6 +146,8 @@ public class MessageEventLogger {
         messageEventList.add(messageEvent);
 
         map.put(message.getMessageID(), messageEventList);
+
+        store();
     }
 
     public synchronized void deleted (Message message) {
@@ -118,5 +159,13 @@ public class MessageEventLogger {
         messageEventList.add(messageEvent);
 
         map.put(message.getMessageID(), messageEventList);
+
+        store();
+    }
+
+    public synchronized void removed (Message message) {
+        MessageEvent messageEvent = new MessageEvent(message.getMessageID(), MessageEventType.removed);
+
+
     }
 }

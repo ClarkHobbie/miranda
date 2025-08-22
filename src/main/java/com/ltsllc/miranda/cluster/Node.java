@@ -1132,7 +1132,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * @param input       A string containing the message.
      * @param partnerUuid The UUID of our partner
      */
-    protected void handleNewMessage(String input, UUID partnerUuid) throws IOException {
+    protected void handleNewMessage(String input, UUID partnerUuid) throws IOException, LtsllcException {
         logger.debug("entering handleNewMessage with " + input);
 
         Scanner scanner = new Scanner(input);
@@ -1229,7 +1229,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      *
      * @throws IOException If there is a problem adding the message to the message log.
      */
-    public void handleReceiveMessage(String input) throws IOException {
+    public void handleReceiveMessage(String input) throws IOException, LtsllcException {
         Message message = Message.readLongFormat(input);
         MessageLog.getInstance().add(message, null);
     }
@@ -2030,7 +2030,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * </PRE>
      * </P>
      */
-    public void handleStateAwaitingAssignmentsNewMessage(MessageType messageType, String s) throws IOException {
+    public void handleStateAwaitingAssignmentsNewMessage(MessageType messageType, String s) throws IOException, LtsllcException {
         logger.debug("Entering handleMessageAwaitingAssignments");
 
         Scanner scanner = new Scanner(s);

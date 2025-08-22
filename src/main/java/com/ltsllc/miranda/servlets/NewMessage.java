@@ -1,5 +1,6 @@
 package com.ltsllc.miranda.servlets;
 
+import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.logging.MessageLog;
@@ -44,7 +45,11 @@ public class NewMessage extends HttpServlet {
         message.setContents(contents.getBytes());
         message.setMessageID(UUID.randomUUID());
 
-        MessageLog.getInstance().add(message, Miranda.getInstance().getMyUuid());
+        try {
+            MessageLog.getInstance().add(message, Miranda.getInstance().getMyUuid());
+        } catch (LtsllcException e) {
+            throw new RuntimeException(e);
+        }
         Cluster.getInstance().informOfNewMessage(message);
 
         PrintWriter out = response.getWriter();

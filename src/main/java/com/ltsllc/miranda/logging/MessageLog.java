@@ -59,6 +59,14 @@ public class MessageLog implements PropertyListener {
         this.uuidToOwner = uuidToOwner;
     }
 
+    public MessageEventLogger getMessageEventLogger() {
+        return messageEventLogger;
+    }
+
+    public void setMessageEventLogger(MessageEventLogger messageEventLogger) {
+        this.messageEventLogger = messageEventLogger;
+    }
+
     /**
      * Create a new instance
      *
@@ -335,7 +343,7 @@ public class MessageLog implements PropertyListener {
      *                ownership information was previously entered, and only the message will be added.
      * @throws IOException If a problem is encountered while reading or writing the logfiles
      */
-    public void add(Message message, UUID owner) throws IOException {
+    public void add(Message message, UUID owner) throws IOException, LtsllcException {
         logger.debug("entering add with message: " + message + " and owner: " + owner);
 
         cache.add(message);
@@ -535,8 +543,7 @@ public class MessageLog implements PropertyListener {
     }
 
     public void loadMessages (ImprovedFile logfile, int loadLimit)
-        throws FileNotFoundException, IOException
-    {
+            throws IOException, LtsllcException {
         Reader reader = null;
         try {
             TextFile tf = new TextFile(logfile);

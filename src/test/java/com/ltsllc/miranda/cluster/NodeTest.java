@@ -190,7 +190,6 @@ public class NodeTest {
 
     @Test
     public void testGeneralMessageDelivered () throws LtsllcException, IOException, CloneNotSupportedException {
-        MessageEventLogger.defineStatics();
         Cluster.defineStatics();
         MessageLog.defineStatics();
         EmbeddedChannel channel = new EmbeddedChannel();

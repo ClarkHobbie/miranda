@@ -1013,11 +1013,11 @@ public class Miranda implements PropertyListener {
 
                     if (response.getStatusCode() > 199 && response.getStatusCode() < 300) {
                         MessageLog.getInstance().remove(message.getMessageID());
-                        MessageEventLogger.getInstance().delivered(message);
+                        MessageLog.getInstance().getMessageEventLogger().delivered(message);
 
                         sendDelivered(message, response, httpClient);
                     } else {
-                        MessageEventLogger.getInstance().attemptFailed(message);
+                        MessageLog.getInstance().getMessageEventLogger().attemptFailed(message);
 
                         sendFailed(message, response, httpClient);
                     }
@@ -1095,6 +1095,8 @@ public class Miranda implements PropertyListener {
      * @param message The message
      */
     public void successfulMessage(Message message) throws IOException {
+        Cluster.defineStatics();
+
         logger.debug("entering successfulMessage with: " + message);
 
         Cluster.getInstance().notifyOfDelivery(message);

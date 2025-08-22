@@ -14,6 +14,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -39,6 +40,12 @@ class MirandaTest extends TestSuperclass {
     public static void setup () {
         Configurator.setRootLevel(Level.DEBUG);
     }
+
+    @BeforeEach
+    void setupEach () {
+        MessageLog.defineStatics();
+    }
+
 
     @Test
     public void connectToOtherNodes () throws Throwable {
@@ -201,7 +208,7 @@ class MirandaTest extends TestSuperclass {
     @Test
     public void mainLoopRunning () throws LtsllcException, IOException, InterruptedException {
         Miranda miranda = new Miranda();
-        MessageEventLogger.defineStatics();
+        MessageLog.defineStatics();
         miranda.loadProperties();
         miranda.setMyUuid(UUID.randomUUID());
 
@@ -333,8 +340,6 @@ class MirandaTest extends TestSuperclass {
     public void successfulMessage () throws LtsllcException, IOException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
-
-        MessageLog.defineStatics();
 
         Message message = createTestMessage(UUID.randomUUID());
         MessageLog.getInstance().add(message, UUID.randomUUID());

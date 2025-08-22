@@ -1,7 +1,9 @@
 package com.ltsllc.miranda.servlets;
 
+import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.logging.MessageEvent;
 import com.ltsllc.miranda.logging.MessageEventLogger;
+import com.ltsllc.miranda.logging.MessageLog;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -43,7 +45,7 @@ public class TrackMessage extends HttpServlet {
             return;
         }
 
-        List<MessageEvent> messageEventList = MessageEventLogger.getInstance().getEventsFor(messageID);
+        List<MessageEvent> messageEventList = MessageLog.getInstance().getMessageEventLogger().getEventsFor(messageID);
         out.println("<H1>Events for " + messageID.toString() + "</H1>");
         out.println("<TABLE border=\"1\">");
         out.println("<TR>");

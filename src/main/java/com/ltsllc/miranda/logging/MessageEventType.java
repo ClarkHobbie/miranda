@@ -6,5 +6,6 @@ public enum MessageEventType {
     attemptFailed,
     deleted,
     delivered,
+    removed,
     unknown
 }

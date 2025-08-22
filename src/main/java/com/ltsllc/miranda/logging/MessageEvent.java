@@ -16,6 +16,7 @@ public class MessageEvent {
     public MessageEvent () {}
 
     public MessageEvent(UUID id, MessageEventType newType) {
+        this.id = id;
         this.type = newType;
     }
 
