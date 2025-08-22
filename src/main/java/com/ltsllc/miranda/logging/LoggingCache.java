@@ -12,6 +12,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.*;
+import java.nio.channels.Channel;
+import java.nio.channels.FileChannel;
 import java.util.*;
 
 /**
@@ -73,6 +75,48 @@ public class LoggingCache implements Alarmable{
     public LoggingCache (ImprovedFile logfile, int loadLimit) {
         file = logfile;
         this.loadLimit = loadLimit;
+
+        try {
+            loadMessages();
+        } catch (IOException e) {
+            logger.error ("error loading logfile",e);
+        }
+    }
+
+    public void loadMessages() throws IOException {
+        FileInputStream fis = null;
+        InputStreamReader inputStreamReader = null;
+        BufferedReader reader = null;
+        FileReader fileReader = null;
+
+        try {
+            fis = new FileInputStream(file);
+            inputStreamReader = new InputStreamReader(fis);
+            reader = new BufferedReader(inputStreamReader);
+            boolean notOverLoadLimit = true;
+            UUID uuid = null;
+
+            long location = 0;
+            for (String line = reader.readLine(); line != null && notOverLoadLimit;line = reader.readLine()) {
+                Message newMessage = Message.readLongFormat(line);
+                currentLoad += newMessage.getContents().length;
+                uuidToMessage.put (newMessage.getMessageID(), newMessage);
+                FileChannel channel = fis.getChannel();
+                long position = channel.position();
+                uuidToLocation.put (newMessage.getMessageID(), position);
+                uuidToInMemory.put (newMessage.getMessageID(), true);
+                uuidToTimesReferenced.put (newMessage.getMessageID(), 0);
+                notOverLoadLimit = (loadLimit >= currentLoad);
+            }
+
+            if (!notOverLoadLimit) {
+                remove(uuid);
+            }
+        } finally {
+            if (reader != null) {
+                reader.close();
+            }
+        }
     }
 
     public int getCurrentLoad() {
@@ -516,6 +560,7 @@ public class LoggingCache implements Alarmable{
                 location = lastLocation;
                 lastLocation = fis.getChannel().position();
 
+                currentLoad += message.getContents().length;
                 uuidToLocation.put (message.getMessageID(), location);
                 uuidToMessage.put (message.getMessageID(), message);
                 uuidToTimesReferenced.put (message.getMessageID(), 0);

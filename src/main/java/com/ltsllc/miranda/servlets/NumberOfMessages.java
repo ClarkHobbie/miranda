@@ -1,6 +1,6 @@
 package com.ltsllc.miranda.servlets;
 
-import com.ltsllc.miranda.message.MessageLog;
+import com.ltsllc.miranda.logging.MessageLog;
 import jakarta.servlet.*;
 
 import java.io.IOException;

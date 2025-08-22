@@ -2,7 +2,7 @@ package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.util.ImprovedRandom;
-import com.ltsllc.miranda.message.MessageLog;
+import com.ltsllc.miranda.logging.MessageLog;
 
 import java.io.IOException;
 import java.util.ArrayList;

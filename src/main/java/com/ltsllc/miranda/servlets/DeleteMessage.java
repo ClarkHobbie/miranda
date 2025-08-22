@@ -2,8 +2,8 @@ package com.ltsllc.miranda.servlets;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.miranda.message.Message;
-import com.ltsllc.miranda.message.MessageEventLogger;
-import com.ltsllc.miranda.message.MessageLog;
+import com.ltsllc.miranda.logging.MessageEventLogger;
+import com.ltsllc.miranda.logging.MessageLog;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;

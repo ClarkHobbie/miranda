@@ -4,7 +4,7 @@ import com.ltsllc.commons.HexConverter;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.message.Message;
-import com.ltsllc.miranda.message.MessageLog;
+import com.ltsllc.miranda.logging.MessageLog;
 import io.netty.channel.embedded.EmbeddedChannel;
 import org.junit.jupiter.api.Test;
 
@@ -12,8 +12,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class ElectionTest {
 

@@ -1,18 +1,15 @@
 package com.ltsllc.miranda.servlets;
 
-import com.ltsllc.miranda.message.MessageEvent;
-import com.ltsllc.miranda.message.MessageEventLogger;
+import com.ltsllc.miranda.logging.MessageEvent;
+import com.ltsllc.miranda.logging.MessageEventLogger;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jdk.jfr.StackTrace;
 
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.time.Clock;
-import java.time.LocalTime;
 import java.util.*;
 
 public class TrackMessage extends HttpServlet {

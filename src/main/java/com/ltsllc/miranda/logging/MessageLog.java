@@ -1,11 +1,10 @@
-package com.ltsllc.miranda.message;
+package com.ltsllc.miranda.logging;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.io.TextFile;
 import com.ltsllc.miranda.Miranda;
-import com.ltsllc.miranda.logging.LoggingCache;
-import com.ltsllc.miranda.logging.LoggingMap;
+import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import com.ltsllc.miranda.properties.PropertyListener;
 import org.apache.logging.log4j.LogManager;
@@ -35,6 +34,8 @@ public class MessageLog implements PropertyListener {
     protected static MessageLog instance;
 
     protected LoggingCache cache;
+
+    protected MessageEventLogger messageEventLogger = new MessageEventLogger();
 
     public void removeMessage(Message message) {
         cache.remove(message.getMessageID());
@@ -73,8 +74,8 @@ public class MessageLog implements PropertyListener {
 
     protected MessageLog() {
         ImprovedFile messageLog = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_MESSAGE_LOG));
-        cache = new LoggingCache(messageLog,
-                Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT));
+        int loadLimit = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
+        cache = new LoggingCache(messageLog, loadLimit);
         cache.setupCompaction();
         ImprovedFile ownerLog = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_OWNER_FILE));
         uuidToOwner = new LoggingMap(ownerLog);
@@ -180,10 +181,12 @@ public class MessageLog implements PropertyListener {
         if (messageBackup.exists())
         {
             logger.info("removing backup " + messageBackup);
+            messageBackup.delete();
         }
 
         if (ownersBackup.exists()) {
             logger.info("removing backup " + ownersBackup);
+            ownersBackup.delete();
         }
 
         if (logfile.exists()) {
@@ -312,7 +315,7 @@ public class MessageLog implements PropertyListener {
             uuidToOwner.add(message.getMessageID(), owner);
         }
 
-        MessageEventLogger.added(message);
+        messageEventLogger.added(message);
 
         logger.debug("leaving add");
     }
@@ -338,6 +341,8 @@ public class MessageLog implements PropertyListener {
         cache.remove(uuid);
         uuidToOwner.remove(uuid);
         Miranda.getInstance().removeFromInflight(message);
+
+        messageEventLogger.deleted(message);
     }
 
     public Message get(UUID uuid) throws LtsllcException, IOException {

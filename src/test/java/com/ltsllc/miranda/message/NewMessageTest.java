@@ -2,6 +2,7 @@ package com.ltsllc.miranda.message;
 
 
 import com.ltsllc.miranda.TestSuperclass;
+import com.ltsllc.miranda.misc.StringComparrison;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -98,16 +99,24 @@ class NewMessageTest extends TestSuperclass {
     public void internalsToString () {
         String  strUuid = "12345678-9abc-def1-2345-6789abcdef12";
         Message message = createTestMessage(UUID.fromString(strUuid));
-        String s2 = "ID: 12345678-9abc-def1-2345-6789abcdef12 STATUS: HTTP://localhost:8080 DELIVERY: HTTP://localhost:8080 CONTENTS: 010203";
+        String s2 = "ID: 12345678-9abc-def1-2345-6789abcdef12 PARAMS: STATUS: HTTP://localhost:8080 DELIVERY: HTTP://localhost:8080 CONTENTS: 010203";
+        String returned = message.internalsToString();;
+        StringComparrison stringComparrison = new StringComparrison();
+        stringComparrison.compare(s2, returned);
+        int temp = stringComparrison.getWhereTheyDiffer();
         assert (s2.equals(message.internalsToString()));
     }
 
     @Test
     public void longToString () {
-        String  strUuid = "12345678-9abc-def1-2345-6789abcdef12";
+        String strUuid = "12345678-9abc-def1-2345-6789abcdef12";
         Message message = createTestMessage(UUID.fromString(strUuid));
-        String s2 = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 STATUS: HTTP://localhost:8080 DELIVERY: HTTP://localhost:8080 CONTENTS: 010203";
-        assert (s2.equals(message.longToString()));
+        String s2 = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 PARAMS: STATUS: HTTP://localhost:8080 DELIVERY: HTTP://localhost:8080 CONTENTS: 010203";
+        String returned = message.longToString();
+        StringComparrison stringComparrison = new StringComparrison();
+        stringComparrison.compare(s2, returned);
+        int temp = stringComparrison.getWhereTheyDiffer();
+        assert (s2.equals(returned));
     }
 
     @Test

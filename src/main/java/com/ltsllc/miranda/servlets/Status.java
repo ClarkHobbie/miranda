@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.cluster.Cluster;
-import com.ltsllc.miranda.message.MessageLog;
+import com.ltsllc.miranda.logging.MessageLog;
 import com.ltsllc.miranda.properties.PropertiesHolder;
 import jakarta.servlet.*;
 

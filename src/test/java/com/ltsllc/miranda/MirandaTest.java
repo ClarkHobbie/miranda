@@ -6,7 +6,7 @@ import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.logging.LoggingCache;
 import com.ltsllc.miranda.message.Message;
-import com.ltsllc.miranda.message.MessageLog;
+import com.ltsllc.miranda.logging.MessageLog;
 import com.ltsllc.miranda.properties.PropertiesHolder;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;

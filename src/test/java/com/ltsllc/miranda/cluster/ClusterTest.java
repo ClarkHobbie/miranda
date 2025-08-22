@@ -7,7 +7,7 @@ import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.TestSuperclass;
 import com.ltsllc.miranda.message.Message;
-import com.ltsllc.miranda.message.MessageLog;
+import com.ltsllc.miranda.logging.MessageLog;
 import com.ltsllc.miranda.netty.HeartBeatHandler;
 import io.netty.channel.embedded.EmbeddedChannel;
 import org.apache.logging.log4j.Level;

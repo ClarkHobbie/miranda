@@ -1,5 +1,8 @@
 package com.ltsllc.miranda.message;
 
+import com.ltsllc.miranda.logging.MessageEvent;
+import com.ltsllc.miranda.logging.MessageEventLogger;
+import com.ltsllc.miranda.logging.MessageEventType;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

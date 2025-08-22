@@ -1,6 +1,7 @@
 package com.ltsllc.miranda.message;
 
 import com.ltsllc.commons.HexConverter;
+import com.ltsllc.commons.io.ScannerWithUnget;
 import com.ltsllc.miranda.Miranda;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -8,6 +9,7 @@ import org.asynchttpclient.AsyncCompletionHandler;
 import org.asynchttpclient.Param;
 import org.asynchttpclient.Response;
 
+import java.io.FileWriter;
 import java.util.*;
 
 /**
@@ -163,7 +165,14 @@ public class Message implements Comparable<Message> {
 
         stringBuffer.append ("ID: ");
         stringBuffer.append(messageID);
-        stringBuffer.append(" STATUS: ");
+        stringBuffer.append(" PARAMS: ");
+        for (Param param : paramList) {
+            stringBuffer.append(param.getName());
+            stringBuffer.append(" = ");
+            stringBuffer.append(param.getValue());
+            stringBuffer.append(' ');
+        }
+        stringBuffer.append("STATUS: ");
         stringBuffer.append(statusURL);
         stringBuffer.append(" DELIVERY: ");
         stringBuffer.append(deliveryURL);
@@ -177,7 +186,7 @@ public class Message implements Comparable<Message> {
 
     /**
      * Return a message in "long" format
-     *
+     * <p>
      * Long format includes all the information we have on the message; and has the format MESSAGE ID: &lt;UUID of
      * message&gt; STATUS: &lt;status URL&gt; DELIVERY: &lt;delivery URL&gt;
      *  CONTENTS: &lt;hex encoded contents&GT;
@@ -202,41 +211,52 @@ public class Message implements Comparable<Message> {
     public static Message readLongFormat (String s) {
         Message newMessage = new Message();
         Scanner scanner = new Scanner(s);
+
+        return readLongFormat(scanner);
+    }
+
+    public static Message readLongFormat (Scanner scanner) {
+        ScannerWithUnget scannerWithUnget = new ScannerWithUnget(scanner);
+        Message newMessage = new Message();
         String temp;
-        scanner.next();scanner.next(); // MESSAGE ID:
-        newMessage.messageID = UUID.fromString(scanner.next());
-        temp = scanner.next(); // STATUS:
-        newMessage.statusURL = scanner.next();
-        temp = scanner.next(); // DELIVERY:
-        newMessage.deliveryURL = scanner.next();
-        temp = scanner.next(); // CONTENTS:
-        newMessage.contents = HexConverter.toByteArray(scanner.next());
+        List<Param> paramList = new ArrayList<>();
+        boolean isFirst = true;
+
+        scannerWithUnget.next();scannerWithUnget.next(); // MESSAGE ID:
+        newMessage.messageID = UUID.fromString(scannerWithUnget.next());
+        temp = scannerWithUnget.next(); // PARAMS:
+        while (!temp.equalsIgnoreCase("STATUS:")) {
+            String name = null;
+            if (isFirst) {
+                name = scannerWithUnget.next();
+
+                if (name.equalsIgnoreCase("STATUS:")) {
+                    break;
+                }
+
+                isFirst = false;
+            } else {
+                name = temp;
+            }
+            temp = scannerWithUnget.next(); // =
+            String value = scannerWithUnget.next();
+            Param param = new Param(name, value);
+            paramList.add(param);
+
+            temp = scannerWithUnget.next();
+        }
+
+        newMessage.paramList = paramList;
+        newMessage.statusURL = scannerWithUnget.next();
+        temp = scannerWithUnget.next(); // DELIVERY:
+        newMessage.deliveryURL = scannerWithUnget.next();
+        temp = scannerWithUnget.next(); // CONTENTS:
+        newMessage.contents = HexConverter.toByteArray(scannerWithUnget.next());
 
         return newMessage;
+
     }
 
-    /**
-     * Read a message from a Scanner
-     *
-     * @param scanner The scanner to read from.
-     * @return The message.
-     * @see Scanner The scanner.
-     */
-    public static Message readLongFormat (Scanner scanner) {
-        logger.debug ("entering readLong with scanner = " + scanner.toString());
-
-        Message message = new Message();
-        scanner.next(); scanner.next(); // weird bug MESSAGE ID
-        message.setMessageID(UUID.fromString(scanner.next()));
-        scanner.next(); // weird bug STATUS:
-        message.setStatusURL(scanner.next());
-        scanner.next(); // weird bug DELIVERY:
-        message.setDeliveryURL(scanner.next());
-        scanner.next(); // weird bug CONTENTS
-        message.contents = HexConverter.toByteArray(scanner.next());
-
-        return message;
-    }
 
     /**
      * Return a string with all the information we have about the message

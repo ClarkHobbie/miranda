@@ -1,7 +1,7 @@
 package com.ltsllc.miranda.servlets;
 
 import com.ltsllc.miranda.message.Message;
-import com.ltsllc.miranda.message.MessageLog;
+import com.ltsllc.miranda.logging.MessageLog;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -29,6 +29,7 @@ public class Queue extends HttpServlet {
         out.println("    <TH>Actions</TH>");
         out.println("  </TR>");
         for (int i = 0; i < messageList.size(); i++) {
+            out.println("<TR>");
             out.print("<TD>");
             out.print(i);
             out.println("</TD>");
@@ -67,7 +68,7 @@ public class Queue extends HttpServlet {
             out.println("</FORM>");
 
             out.println("</TD>");
-
+            out.println("</TR>");
         }
     }
 }

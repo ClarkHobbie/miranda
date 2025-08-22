@@ -1,4 +1,4 @@
-# Things to do in the com.ltsllc.miranda.message package
+# Things to do in the com.ltsllc.miranda.logging package
 * Make MessageEventLogger persistent
 
 ## Make MessageEventLogger persistent

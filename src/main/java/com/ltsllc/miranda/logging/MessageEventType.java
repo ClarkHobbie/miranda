@@ -1,4 +1,4 @@
-package com.ltsllc.miranda.message;
+package com.ltsllc.miranda.logging;
 
 public enum MessageEventType {
     added,

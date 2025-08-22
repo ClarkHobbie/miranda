@@ -4,13 +4,12 @@ import com.ltsllc.commons.HexConverter;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.message.Message;
-import com.ltsllc.miranda.message.MessageLog;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.UUID;
 
-import static com.ltsllc.miranda.message.MessageLog.getInstance;
+import static com.ltsllc.miranda.logging.MessageLog.getInstance;
 
 class LoggingCacheTest {
 
@@ -59,12 +58,14 @@ class LoggingCacheTest {
 
         UUID u = UUID.randomUUID();
 
-        getInstance().add(m1, u);
-        getInstance().add(m2, u);
+        MessageLog.getInstance().add(m1, u);
+        MessageLog.getInstance().add(m2, u);
 
-        LoggingCache.CopyMessagesResult temp = MessageLog.getInstance().copyMessages(m1.getContents().length, 0);
+        LoggingCache.CopyMessagesResult temp = MessageLog.getInstance().copyMessages(m1.getContents().length,
+                0);
 
-        assert (MessageLog.getInstance().getCache().getUuidToMessage().size() == 1);
+        // int temp2 = MessageLog.getInstance().getCache().getU().size();
+        assert (temp.list.size() == 1);
     }
 
     @Test

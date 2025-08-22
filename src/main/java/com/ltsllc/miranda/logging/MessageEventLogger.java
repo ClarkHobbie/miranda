@@ -1,4 +1,6 @@
-package com.ltsllc.miranda.message;
+package com.ltsllc.miranda.logging;
+
+import com.ltsllc.miranda.message.Message;
 
 import java.util.*;
 
@@ -23,7 +25,7 @@ public class MessageEventLogger {
     }
 
     public static synchronized void added(Message message) {
-        MessageEvent messageEvent = new MessageEvent(MessageEventType.added);
+        MessageEvent messageEvent = new MessageEvent(message.getMessageID(), MessageEventType.added);
 
         log.add(messageEvent);
 
@@ -45,7 +47,7 @@ public class MessageEventLogger {
     }
 
     public static synchronized void deliveryAttempted(Message message) {
-        MessageEvent messageEvent = new MessageEvent(MessageEventType.attempted);
+        MessageEvent messageEvent = new MessageEvent(message.getMessageID(), MessageEventType.attempted);
 
         log.add(messageEvent);
 
@@ -65,7 +67,7 @@ public class MessageEventLogger {
     }
 
     public static synchronized void delivered(Message message) {
-        MessageEvent messageEvent = new MessageEvent(MessageEventType.delivered);
+        MessageEvent messageEvent = new MessageEvent(message.getMessageID(), MessageEventType.delivered);
 
         log.add(messageEvent);
 
@@ -76,7 +78,7 @@ public class MessageEventLogger {
     }
 
     public static synchronized void attemptFailed(Message message) {
-        MessageEvent messageEvent = new MessageEvent(MessageEventType.attemptFailed);
+        MessageEvent messageEvent = new MessageEvent(message.getMessageID(), MessageEventType.attemptFailed);
 
         log.add(messageEvent);
 
@@ -87,7 +89,7 @@ public class MessageEventLogger {
     }
 
     public static synchronized void deleted (Message message) {
-        MessageEvent messageEvent = new MessageEvent(MessageEventType.deleted);
+        MessageEvent messageEvent = new MessageEvent(message.getMessageID(), MessageEventType.deleted);
 
         log.add(messageEvent);
 
