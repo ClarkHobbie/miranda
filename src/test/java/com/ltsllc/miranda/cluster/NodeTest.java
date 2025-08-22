@@ -4,6 +4,7 @@ import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.logging.LoggingCache;
+import com.ltsllc.miranda.logging.MessageEventLogger;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.logging.MessageLog;
 import com.ltsllc.miranda.message.MessageType;
@@ -189,6 +190,7 @@ public class NodeTest {
 
     @Test
     public void testGeneralMessageDelivered () throws LtsllcException, IOException, CloneNotSupportedException {
+        MessageEventLogger.defineStatics();
         Cluster.defineStatics();
         MessageLog.defineStatics();
         EmbeddedChannel channel = new EmbeddedChannel();
@@ -199,12 +201,16 @@ public class NodeTest {
         ImprovedFile messages = new ImprovedFile("messages.log");
         node.setState(ClusterConnectionStates.GENERAL);
 
-        MessageCache mockCache = mock(MessageCache.class);
-
         UUID uuid = UUID.fromString("123e4567-e89b-42d3-a456-556642440000");
+        UUID uuid2 = UUID.randomUUID();
 
-        when(mockCache.contains(uuid)).thenReturn(true);
-        when(mockCache.isOnline(uuid)).thenReturn(true);
+        Message newMessage = new Message();
+        newMessage.setMessageID(uuid);
+        newMessage.setContents("hi".getBytes());
+        newMessage.setStatusURL("http://localhost:3030/api/receiveStatus");
+        newMessage.setStatusURL("http://localhost:3039/api/deliver");
+
+        MessageLog.getInstance().add(newMessage, uuid2);
 
         String strMessage = Node.MESSAGE_DELIVERED;
         strMessage += " ";

@@ -3,6 +3,7 @@ package com.ltsllc.miranda.message;
 import com.ltsllc.miranda.logging.MessageEvent;
 import com.ltsllc.miranda.logging.MessageEventLogger;
 import com.ltsllc.miranda.logging.MessageEventType;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -10,17 +11,21 @@ import java.util.Map;
 import java.util.UUID;
 
 class MessageEventLoggerTest {
+    @BeforeEach
+    void setUp () {
+        MessageEventLogger.defineStatics();
+    }
 
     @Test
     void added() {
         Message message = buildMessage();
-        List<MessageEvent> messageEventList = MessageEventLogger.getEventsFor(message.getMessageID());
+        List<MessageEvent> messageEventList = MessageEventLogger.getInstance().getEventsFor(message.getMessageID());
 
         assert (messageEventList.size() <= 0);
 
-        MessageEventLogger.added(message);
+        MessageEventLogger.getInstance().added(message);
 
-        messageEventList = MessageEventLogger.getListFor(message.getMessageID());
+        messageEventList = MessageEventLogger.getInstance().getListFor(message.getMessageID());
 
         assert (messageEventList.size() >= 1);
     }
@@ -38,13 +43,14 @@ class MessageEventLoggerTest {
     @Test
     void deliveryAttempted() {
         Message message = buildMessage();
-        List<MessageEvent> messageEventList = MessageEventLogger.getEventsFor(message.getMessageID());
+        MessageEventLogger.defineStatics();
+        List<MessageEvent> messageEventList = MessageEventLogger.getInstance().getEventsFor(message.getMessageID());
 
         assert (messageEventList.size() <= 0);
 
-        MessageEventLogger.deliveryAttempted(message);
+        MessageEventLogger.getInstance().deliveryAttempted(message);
 
-        messageEventList = MessageEventLogger.getEventsFor(message.getMessageID());
+        messageEventList = MessageEventLogger.getInstance().getEventsFor(message.getMessageID());
 
         assert (messageEventList.get(0).getType() == MessageEventType.attempted);
     }
@@ -58,9 +64,9 @@ class MessageEventLoggerTest {
         assert (!messageEventList.contains(message));
         assert (eventsMap.get(message.getMessageID()) == null);
 
-        MessageEventLogger.added(message);
+        MessageEventLogger.getInstance().added(message);
 
-        messageEventList = MessageEventLogger.getEventsFor(message.getMessageID());
+        messageEventList = MessageEventLogger.getInstance().getEventsFor(message.getMessageID());
 
         assert (messageEventList.getFirst().getType() == MessageEventType.added);
     }
@@ -74,9 +80,9 @@ class MessageEventLoggerTest {
         assert (!messageEventList.contains(message));
         assert (eventsMap.get(message.getMessageID()) == null);
 
-        MessageEventLogger.delivered(message);
+        MessageEventLogger.getInstance().delivered(message);
 
-        messageEventList = MessageEventLogger.getEventsFor(message.getMessageID());
+        messageEventList = MessageEventLogger.getInstance().getEventsFor(message.getMessageID());
 
         assert (messageEventList.getFirst().getType() == MessageEventType.delivered);
     }
@@ -84,15 +90,16 @@ class MessageEventLoggerTest {
     @Test
     void attemptFailed() {
         Message message = buildMessage();
+        MessageEventLogger.defineStatics();
         List<MessageEvent> messageEventList = MessageEventLogger.getLog();
         Map<UUID, List<MessageEvent>> eventsMap = MessageEventLogger.getMap();
 
         assert (!messageEventList.contains(message));
         assert (eventsMap.get(message.getMessageID()) == null);
 
-        MessageEventLogger.attemptFailed(message);
+        MessageEventLogger.getInstance().attemptFailed(message);
 
-        messageEventList = MessageEventLogger.getEventsFor(message.getMessageID());
+        messageEventList = MessageEventLogger.getInstance().getEventsFor(message.getMessageID());
 
         assert (messageEventList.getFirst().getType() == MessageEventType.attemptFailed);
     }
@@ -106,9 +113,9 @@ class MessageEventLoggerTest {
         assert (!messageEventList.contains(message));
         assert (eventsMap.get(message.getMessageID()) == null);
 
-        MessageEventLogger.deleted(message);
+        MessageEventLogger.getInstance().deleted(message);
 
-        messageEventList = MessageEventLogger.getEventsFor(message.getMessageID());
+        messageEventList = MessageEventLogger.getInstance().getEventsFor(message.getMessageID());
 
         assert (messageEventList.getFirst().getType() == MessageEventType.deleted);
     }

@@ -5,6 +5,7 @@ import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.logging.LoggingCache;
+import com.ltsllc.miranda.logging.MessageEventLogger;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.logging.MessageLog;
 import com.ltsllc.miranda.properties.PropertiesHolder;
@@ -200,6 +201,7 @@ class MirandaTest extends TestSuperclass {
     @Test
     public void mainLoopRunning () throws LtsllcException, IOException, InterruptedException {
         Miranda miranda = new Miranda();
+        MessageEventLogger.defineStatics();
         miranda.loadProperties();
         miranda.setMyUuid(UUID.randomUUID());
 

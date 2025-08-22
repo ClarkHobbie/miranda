@@ -39,7 +39,7 @@ public class DeleteMessage extends HttpServlet {
             throw new ServletException(e);
         }
 
-        MessageEventLogger.deleted(message);
+        MessageEventLogger.getInstance().deleted(message);
 
         out.println("<H1>Success</H1>");
 

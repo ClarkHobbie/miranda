@@ -70,6 +70,7 @@ public class MessageLog implements PropertyListener {
     protected MessageLog(ImprovedFile logfile, int loadLimit, ImprovedFile ownersFile) {
         cache = new LoggingCache(logfile, loadLimit);
         uuidToOwner = new LoggingMap(ownersFile);
+        messageEventLogger = new MessageEventLogger();
     }
 
     protected MessageLog() {
@@ -79,6 +80,7 @@ public class MessageLog implements PropertyListener {
         cache.setupCompaction();
         ImprovedFile ownerLog = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_OWNER_FILE));
         uuidToOwner = new LoggingMap(ownerLog);
+        messageEventLogger = new MessageEventLogger();
     }
 
     public static MessageLog getInstance() {
@@ -114,7 +116,7 @@ public class MessageLog implements PropertyListener {
      * @param ownerFile The owners file to check for.
      * @return True if the logfile exists, false otherwise.
      */
-    public static boolean shouldRecover(ImprovedFile logfile, ImprovedFile ownerFile) {
+    public static boolean shouldRecover(ImprovedFile logfile, ImprovedFile ownerFile, ImprovedFile eventFile) {
         logger.debug("entering shouldRecover");
         boolean returnValue = logfile.exists();
         if (returnValue) {
@@ -126,6 +128,12 @@ public class MessageLog implements PropertyListener {
             if (returnValue) {
                 logger.debug("owner log, " + ownerFile + ", exists");
                 events.info("owner log, " + ownerFile + ", exists");
+            } else if (eventFile.exists()) {
+                returnValue = true;
+                logger.debug("event file exists");
+                events.info ("event file exists");
+            } else {
+                returnValue = false;
             }
         }
 
@@ -334,6 +342,9 @@ public class MessageLog implements PropertyListener {
         Message message = null;
         try {
             message = cache.get(uuid);
+            if (message == null) {
+                throw new RuntimeException("null message in remove");
+            }
         } catch (LtsllcException e) {
             throw new RuntimeException(e);
         }
