@@ -5,24 +5,24 @@ import com.ltsllc.miranda.message.Message;
 import java.util.*;
 
 public class MessageEventLogger {
-    protected static List<MessageEvent> log = new ArrayList<>();
-    protected static Map<UUID, List<MessageEvent>> map = new HashMap<>();
+    protected List<MessageEvent> log = new ArrayList<>();
+    protected Map<UUID, List<MessageEvent>> map = new HashMap<>();
     protected static MessageEventLogger instance = null;
 
-    public static List<MessageEvent> getLog() {
+    public List<MessageEvent> getLog() {
         return log;
     }
 
-    public static void setLog(List<MessageEvent> log) {
-        MessageEventLogger.log = log;
+    public void setLog(List<MessageEvent> log) {
+        this.log = log;
     }
 
-    public static Map<UUID, List<MessageEvent>> getMap() {
+    public Map<UUID, List<MessageEvent>> getMap() {
         return map;
     }
 
-    public static void setMap(Map<UUID, List<MessageEvent>> map) {
-        MessageEventLogger.map = map;
+    public void setMap(Map<UUID, List<MessageEvent>> map) {
+        this.map = map;
     }
 
     public static MessageEventLogger getInstance() {

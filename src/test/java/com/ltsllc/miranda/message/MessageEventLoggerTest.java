@@ -57,9 +57,10 @@ class MessageEventLoggerTest {
 
     @Test
     void getListFor() {
+        MessageEventLogger.defineStatics();
         Message message = buildMessage();
-        List<MessageEvent> messageEventList = MessageEventLogger.getLog();
-        Map<UUID, List<MessageEvent>> eventsMap = MessageEventLogger.getMap();
+        List<MessageEvent> messageEventList = MessageEventLogger.getInstance().getLog();
+        Map<UUID, List<MessageEvent>> eventsMap = MessageEventLogger.getInstance().getMap();
 
         assert (!messageEventList.contains(message));
         assert (eventsMap.get(message.getMessageID()) == null);
@@ -74,8 +75,8 @@ class MessageEventLoggerTest {
     @Test
     void delivered() {
         Message message = buildMessage();
-        List<MessageEvent> messageEventList = MessageEventLogger.getLog();
-        Map<UUID, List<MessageEvent>> eventsMap = MessageEventLogger.getMap();
+        List<MessageEvent> messageEventList = MessageEventLogger.getInstance().getLog();
+        Map<UUID, List<MessageEvent>> eventsMap = MessageEventLogger.getInstance().getMap();
 
         assert (!messageEventList.contains(message));
         assert (eventsMap.get(message.getMessageID()) == null);
@@ -91,8 +92,8 @@ class MessageEventLoggerTest {
     void attemptFailed() {
         Message message = buildMessage();
         MessageEventLogger.defineStatics();
-        List<MessageEvent> messageEventList = MessageEventLogger.getLog();
-        Map<UUID, List<MessageEvent>> eventsMap = MessageEventLogger.getMap();
+        List<MessageEvent> messageEventList = MessageEventLogger.getInstance().getLog();
+        Map<UUID, List<MessageEvent>> eventsMap = MessageEventLogger.getInstance().getMap();
 
         assert (!messageEventList.contains(message));
         assert (eventsMap.get(message.getMessageID()) == null);
@@ -107,8 +108,8 @@ class MessageEventLoggerTest {
     @Test
     void deleted() {
         Message message = buildMessage();
-        List<MessageEvent> messageEventList = MessageEventLogger.getLog();
-        Map<UUID, List<MessageEvent>> eventsMap = MessageEventLogger.getMap();
+        List<MessageEvent> messageEventList = MessageEventLogger.getInstance().getLog();
+        Map<UUID, List<MessageEvent>> eventsMap = MessageEventLogger.getInstance().getMap();
 
         assert (!messageEventList.contains(message));
         assert (eventsMap.get(message.getMessageID()) == null);
