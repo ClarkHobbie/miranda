@@ -142,7 +142,11 @@ public class MessageLog implements PropertyListener {
         return returnValue;
     }
 
-    /**
+    public void deliveryAttempted (Message message) {
+        messageEventLogger.deliveryAttempted(message);
+    }
+
+    /*
      * Recover from a crash
      *
      * <p>

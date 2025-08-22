@@ -974,7 +974,7 @@ public class Miranda implements PropertyListener {
         }
         inflight.add(message);
 
-        MessageEventLogger.getInstance().deliveryAttempted(message);
+        MessageLog.getInstance().deliveryAttempted(message);
 
         AsyncHttpClient httpClient = Dsl.asyncHttpClient();
 
