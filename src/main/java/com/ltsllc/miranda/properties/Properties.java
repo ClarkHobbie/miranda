@@ -20,6 +20,7 @@ public enum Properties {
     compaction,
     coalescePeriod,
     deadNodeTimeout,
+    events,
     heartBeat,
     heartBeatTimeout,
     hostName,

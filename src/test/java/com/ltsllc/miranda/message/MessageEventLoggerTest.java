@@ -6,6 +6,7 @@ import com.ltsllc.miranda.logging.MessageEventType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -17,7 +18,7 @@ class MessageEventLoggerTest {
     }
 
     @Test
-    void added() {
+    void added() throws IOException {
         Message message = buildMessage();
         List<MessageEvent> messageEventList = MessageEventLogger.getInstance().getEventsFor(message.getMessageID());
 
@@ -56,7 +57,7 @@ class MessageEventLoggerTest {
     }
 
     @Test
-    void getListFor() {
+    void getListFor() throws IOException {
         MessageEventLogger.defineStatics();
         Message message = buildMessage();
         List<MessageEvent> messageEventList = MessageEventLogger.getInstance().getLog();

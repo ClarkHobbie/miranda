@@ -118,23 +118,24 @@ public class MessageLog implements PropertyListener {
      */
     public static boolean shouldRecover(ImprovedFile logfile, ImprovedFile ownerFile, ImprovedFile eventFile) {
         logger.debug("entering shouldRecover");
-        boolean returnValue = logfile.exists();
-        if (returnValue) {
+        boolean returnValue = false;
+
+        if (logfile.exists()) {
             logger.debug("message log, " + logfile + ", exists");
             events.info("message log, " + logfile + ", exists");
-        } else {
-            returnValue = ownerFile.exists();
 
-            if (returnValue) {
-                logger.debug("owner log, " + ownerFile + ", exists");
-                events.info("owner log, " + ownerFile + ", exists");
-            } else if (eventFile.exists()) {
-                returnValue = true;
-                logger.debug("event file exists");
-                events.info ("event file exists");
-            } else {
-                returnValue = false;
-            }
+            returnValue = true;
+        } else if (ownerFile.exists()){
+            logger.debug("owner log, " + ownerFile + ", exists");
+            events.info("owner log, " + ownerFile + ", exists");
+
+            returnValue = true;;
+        } else if (eventFile.exists()) {
+            returnValue = true;
+            logger.debug("event file exists");
+            events.info ("event file exists");
+        } else {
+            returnValue = false;
         }
 
         logger.debug("leaving shouldRecover with " + returnValue);
@@ -159,8 +160,9 @@ public class MessageLog implements PropertyListener {
      * @return A new instance, based on the parameters passed to the method.
      * @throws IOException If there are problems reading the various input logfiles.
      */
-    public static MessageLog recover(ImprovedFile logfile, int loadLimit, ImprovedFile ownersFile, UUID owner) throws IOException, LtsllcException {
-        return getInstance().performRecover(logfile, loadLimit, ownersFile,owner);
+    public static MessageLog recover(ImprovedFile logfile, int loadLimit, ImprovedFile ownersFile,
+                                     UUID owner, ImprovedFile events) throws IOException, LtsllcException {
+        return getInstance().performRecover(logfile, loadLimit, ownersFile, owner, events);
     }
 
     /**
@@ -182,9 +184,11 @@ public class MessageLog implements PropertyListener {
      * @throws IOException     If there are problems reading the various input logfiles.
      * @throws LtsllcException If backup files already exist.
      */
-    public MessageLog performRecover(ImprovedFile logfile, int loadLimit, ImprovedFile ownersFile, UUID owner) throws IOException, LtsllcException {
+    public MessageLog performRecover(ImprovedFile logfile, int loadLimit, ImprovedFile ownersFile,
+                                     UUID owner, ImprovedFile eventsFile) throws IOException, LtsllcException {
         ImprovedFile messageBackup = new ImprovedFile(logfile.getName() + ".backup");
         ImprovedFile ownersBackup = new ImprovedFile(ownersFile.getName() + ".backup");
+        ImprovedFile eventsBackup = new ImprovedFile(eventsFile.getName() + ".backup");
 
         if (messageBackup.exists())
         {
@@ -197,6 +201,11 @@ public class MessageLog implements PropertyListener {
             ownersBackup.delete();
         }
 
+        if (eventsBackup.exists()) {
+            logger.info("removing backup " + eventsBackup);
+            eventsBackup.delete();
+        }
+
         if (logfile.exists()) {
             logfile.copyTo(messageBackup);
         }
@@ -204,8 +213,15 @@ public class MessageLog implements PropertyListener {
         if (ownersFile.exists()) {
             ownersFile.copyTo(ownersBackup);
         }
+
+        if (eventsFile.exists()) {
+            eventsFile.copyTo(eventsBackup);
+        }
+
         cache = new LoggingCache(logfile, loadLimit);
         uuidToOwner = new LoggingMap(ownersFile);
+        messageEventLogger = new MessageEventLogger(eventsFile);
+
         setOwnerTo(Miranda.getInstance().getMyUuid());
 
         return this;
@@ -453,7 +469,7 @@ public class MessageLog implements PropertyListener {
 
     /**
      * This method calls another method to deal with a property being changed.
-     *
+     * <p>
      * <H>
      * The different types of property change that this method can deal with are:
      * <TABLE border="1">

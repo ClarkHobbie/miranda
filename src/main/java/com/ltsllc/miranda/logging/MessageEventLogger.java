@@ -1,13 +1,27 @@
 package com.ltsllc.miranda.logging;
 
+import com.ltsllc.commons.io.ImprovedFile;
+import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.message.Message;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
 
 public class MessageEventLogger {
     protected List<MessageEvent> log = new ArrayList<>();
     protected Map<UUID, List<MessageEvent>> map = new HashMap<>();
     protected static MessageEventLogger instance = null;
+    protected ImprovedFile file = null;
+
+    public MessageEventLogger() {
+        String fileName = Miranda.getProperties().getProperty(Miranda.PROPERTY_EVENTS_FILE);
+        file = new ImprovedFile(fileName);
+    }
+
+    public MessageEventLogger(ImprovedFile eventsFile) {
+        this.file = eventsFile;
+    }
 
     public List<MessageEvent> getLog() {
         return log;
@@ -29,10 +43,8 @@ public class MessageEventLogger {
         return instance;
     }
 
-    public synchronized void added(Message message) {
+    public synchronized void added(Message message) throws IOException {
         MessageEvent messageEvent = new MessageEvent(message.getMessageID(), MessageEventType.added);
-
-        log.add(messageEvent);
 
         List<MessageEvent> messageEventList = getEventsFor(message.getMessageID());
         messageEventList.add(messageEvent);

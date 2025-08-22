@@ -276,6 +276,15 @@ public class Miranda implements PropertyListener {
      */
     public static final String PROPERTY_DEFAULT_USE_HEART_BEATS = "true";
 
+    /**
+     * The location for the system events file.
+     */
+    public static final String PROPERTY_EVENTS_FILE = com.ltsllc.miranda.properties.Properties.events.toString();
+
+    /**
+     * default location for the system events file
+     */
+    public static final String PROPERTY_DEFAULT_EVENTS_FILE = "events.log";
 
     /**
      * The logger to use
@@ -882,6 +891,7 @@ public class Miranda implements PropertyListener {
         properties.setIfNull(PROPERTY_COALESCE_PERIOD, PROPERTY_DEFAULT_COALESCE_PERIOD);
         properties.setIfNull(PROPERTY_SCAN_PERIOD, PROPERTY_DEFAULT_SCAN_PERIOD);
         properties.setIfNull(PROPERTY_USE_HEARTBEATS, PROPERTY_DEFAULT_USE_HEART_BEATS);
+        properties.setIfNull(PROPERTY_EVENTS_FILE, PROPERTY_DEFAULT_EVENTS_FILE);
     }
 
     /**
@@ -1198,9 +1208,11 @@ public class Miranda implements PropertyListener {
         PropertiesHolder p = properties;
         ImprovedFile messageFile = new ImprovedFile(p.getProperty(PROPERTY_MESSAGE_LOG));
         ImprovedFile ownerFile = new ImprovedFile(p.getProperty(PROPERTY_OWNER_FILE));
+        ImprovedFile eventsFile = new ImprovedFile(p.getProperty(PROPERTY_EVENTS_FILE));
+
         int loadLimit = p.getIntProperty(PROPERTY_CACHE_LOAD_LIMIT);
         UUID owner = UUID.fromString(p.getProperty(PROPERTY_UUID));
-        MessageLog.recover(messageFile, loadLimit, ownerFile, owner);
+        MessageLog.recover(messageFile, loadLimit, ownerFile, owner, eventsFile);
 
         logger.debug("leaving recovery");
     }
@@ -1220,6 +1232,9 @@ public class Miranda implements PropertyListener {
         ImprovedFile messagesBackup = new ImprovedFile(p.getProperty(PROPERTY_MESSAGE_LOG) + ".backup");
         ImprovedFile owners = new ImprovedFile(p.getProperty(PROPERTY_OWNER_FILE));
         ImprovedFile ownersBackup = new ImprovedFile(p.getProperty(PROPERTY_OWNER_FILE) + ".backup");
+        ImprovedFile events = new ImprovedFile(p.getProperty(PROPERTY_EVENTS_FILE));
+        ImprovedFile eventsBackup = new ImprovedFile(p.getProperty(PROPERTY_EVENTS_FILE) + ".backup");
+
         int loadLimit = p.getIntProperty(PROPERTY_CACHE_LOAD_LIMIT);
 
         if (!messagesBackup.exists()) {
@@ -1238,7 +1253,15 @@ public class Miranda implements PropertyListener {
             throw new LtsllcException("failed to rename " + ownersBackup + " to " + owners);
         }
 
-        MessageLog.recover(messages, loadLimit, owners, owner);
+        if (!eventsBackup.exists()) {
+            throw new LtsllcException("backup file, " + eventsBackup + ", does not exist");
+        }
+
+        if (!eventsBackup.renameTo(events)) {
+            throw new RuntimeException("failed to rename " + eventsBackup + " to " + events);
+        }
+
+        MessageLog.recover(messages, loadLimit, owners, owner, events);
 
         logger.debug("leaving recoverLocally");
     }
