@@ -2,4 +2,105 @@
 Miranda is about making HTML POSTs reliable.  You POST a message to Miranda, and it worries
 about making sure it's delivered.
 
+## Messages
+The system revolves around messages.  They have a number of
+attributes including
+* A delivery URL
+* A status URL
+* Some parameters and some values
+* The contents of the message
+
+### The delivery URL
+The delivery URL is the URL that miranda tries to POST to in order
+to deliver the message.
+
+### The status URL
+The status URL is the URL that miranda POSTs to in order to 
+inform the client that a message has been delivered.  Such a POST
+includes the MESSAGE_ID parameter set to the message's UUID, a
+parameter SUBJECT set to MESSAGE_DELIVERED, and the STATUS parameter
+set to the status code the delivery URL got when it delivered
+the message.  If miranda fails it sends the MESSAGE_ID parameter
+set to the message's UUID, the SUBJECT parameter set to
+MESSAGE_DELIVERY_FAILED, and the STATUS parameter set to the return
+code miranda got when it tried to deliver the message.
+
+### Some parameters and some values
+The parameters and their values that were used when the message
+was POSTed to miranda are saved along with the message and passed
+when making a POST to the delivery URL.
+
+### The contents of the message
+The contents of the message, as bytes, is past to the delivery
+URL.
+
+## How the thing works
+* POST to /api/newMessage
+* miranda POSTs to the delivery URL
+* miranda POSTs to the status URL with the outcome 
+## Ports
+Miranda listens to many port for messages including
+* Port 3030
+* Port 2021
+
+### Port 3030
+Miranda listens to this port for various URLs.  These include
+* / or index.html
+* /api/coalesce
+* /api/connections/details
+* /api/deleteMessage
+* /api/deliver
+* /api/newMessage
+* /api/numberOfConnections
+* /api/numberOfMessages
+* /api/properties
+* /api/receiveStatus
+* /api/saveProperties
+* /api/status
+* /api/trackMessage
+* /api/queue 
+
+### / or index.html
+Also called the index and the welcome page this URL.
+
+### /api/coalesce
+Causes miranda to 'coalesce' it's nodes.  If two nodes point to the
+same node then they are merged together.  Two nodes point at the
+same thing if they have the same ID. When two nodes merge, the most recent time of last activity
+becomes the node's time of last activity.
+
+### /api/connections/details
+This servlet prints out a table with a row for each connection to other nodes in the 
+cluster.  Each row contains:
+* a representation of the connection to the node
+* the host for the node
+* the node's id
+* the node's state
+
+### /api/deleteMessage
+Delete a message given by its message ID, specified by the parameter messageId.
+
+### /api/deliver
+A URL for testing, this servlet simply prints out the parameters and content
+of the POST.
+
+### /api/newMessage
+Create a new message.  This servlet receives a new POST.  It looks for the 
+parameters DELIVERY_URL, which becomes the URL that miranda tries to deliver
+the message, and STATUS_URL, the URL that miranda will POST status updates to.
+The contents of the POST become the content that miranda uses when delivering
+the message.
+
+## Files
+Miranda uses files to do a number of things.  Theses files include
+* messages.log
+* owners.log
+* miranda.properties
+* messages.log.backup
+* owners.log.backup
+
+### messages.log
+This is the systems logfile.  It contains all the messages that the
+system delivered or will deliver along with the delivery URL, the
+status URL, the parameters and the contents of the message.
 
