@@ -38,6 +38,31 @@ URL.
 * POST to /api/newMessage
 * miranda POSTs to the delivery URL
 * miranda POSTs to the status URL with the outcome 
+
+### POST to /api/newMessage
+Miranda will look for a DELIVERY_URL where the message should be delivered and
+a STATUS_URL parameter where status updates will go.  The other parameters
+and the content of the message are passed to the delivery URL.  The servlet
+responds with the message's new ID.
+
+### miranda POSTs to the delivery URL
+Miranda will attempt to deliver the message by POSTing to the delivery URL.
+The parameters (other than DELIVERY_URL and STATUS_URL) that were passed to 
+the servlet are passed to the delivery URL along with the content of
+the original message, are sent as well.
+
+### miranda POSTs to the status URL with the outcome
+Miranda will attempt to POST a status update to the status URL. If no status 
+URL was given then no update is sent.  The message
+sets the MESSAGE_ID parameter to the ID of the message for the 
+message that a delivery was attempted.  Miranda set the SUBJECT parameter to
+MESSAGE_DELIVERED for a delivery and MESSAGE_DELIVERY_FAILED for a failed
+attempt.  In any case, miranda sets the STATUS parameter to the status code
+returned to it.  
+
+In the case of a failure, miranda will keep trying until it succeeds.
+
+# Details
 ## Ports
 Miranda listens to many port for messages including
 * Port 3030
