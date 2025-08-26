@@ -116,6 +116,8 @@ the message, and STATUS_URL, the URL that miranda will POST status updates to.
 The contents of the POST become the content that miranda uses when delivering
 the message.
 
+### /api/numberOfConnections
+
 ## Files
 Miranda uses files to do a number of things.  Theses files include
 * messages.log

@@ -45,8 +45,8 @@ function getProperty(name) {
     return null;
 }
 function refreshHostPort() {
-    var host=getProperty("host");
-    var port=getProperty("port");
+    var host=getProperty("thisHost");
+    var port=getProperty("thisPort");
     var hostPort=document.getElementById("hostPort");
     hostPort.innerHTML = host + ":" + port;
 }

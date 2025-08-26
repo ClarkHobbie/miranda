@@ -748,19 +748,20 @@ public class Miranda implements PropertyListener {
         resourceHandler.setResourceBase("www");
 
         ServletContextHandler servletContextHandler = new ServletContextHandler();
-        servletContextHandler.addServlet(NumberOfConnections.class, "/api/numberOfConnections");
-        servletContextHandler.addServlet(Properties.class, "/api/properties");
-        servletContextHandler.addServlet(SaveProperties.class, "/api/saveProperties");
-        servletContextHandler.addServlet(NumberOfMessages.class, "/api/numberOfMessages");
-        servletContextHandler.addServlet(Status.class, "/api/status");
         servletContextHandler.addServlet(Coalesce.class, "/api/coalesce");
         servletContextHandler.addServlet(ConnectionDetails.class, "/api/connections/details");
-        servletContextHandler.addServlet(NewMessage.class, "/api/newMessage");
-        servletContextHandler.addServlet(TrackMessage.class, "/api/trackMessage");
-        servletContextHandler.addServlet(Queue.class, "/api/queue");
         servletContextHandler.addServlet(DeleteMessage.class, "/api/deleteMessage");
         servletContextHandler.addServlet(PostReceiver.class, "/api/deliver");
+        servletContextHandler.addServlet(Properties.class, "/api/properties");
+        servletContextHandler.addServlet(MessageInfo.class, "/api/messageInfo");
+        servletContextHandler.addServlet(NumberOfConnections.class, "/api/numberOfConnections");
+        servletContextHandler.addServlet(NumberOfMessages.class, "/api/numberOfMessages");
+        servletContextHandler.addServlet(NewMessage.class, "/api/newMessage");
         servletContextHandler.addServlet(PostReceiver.class, "/api/receiveStatus");
+        servletContextHandler.addServlet(SaveProperties.class, "/api/saveProperties");
+        servletContextHandler.addServlet(Status.class, "/api/status");
+        servletContextHandler.addServlet(TrackMessage.class, "/api/trackMessage");
+        servletContextHandler.addServlet(Queue.class, "/api/queue");
 
         HandlerList handlers = new HandlerList();
         handlers.setHandlers(new Handler[]{resourceHandler, servletContextHandler});

@@ -29,13 +29,13 @@ public class Queue extends HttpServlet {
         out.println("    <TH>Actions</TH>");
         out.println("  </TR>");
         for (int i = 0; i < messageList.size(); i++) {
+            Message message = messageList.get(i);
             out.println("<TR>");
             out.print("<TD>");
             out.print(i);
             out.println("</TD>");
 
             out.println("<TD>");
-            Message message = messageList.get(i);
             out.println(message.getMessageID().toString());
             out.println("</TD>");
 
@@ -58,6 +58,12 @@ public class Queue extends HttpServlet {
             out.println("<BUTTON TYPE='SUBMIT'>Track</BUTTON>");
             out.println("</FORM>");
 
+            out.println("<FORM METHOD='POST' ACTION='/api/messageInfo'>");
+            out.println("<INPUT TYPE='HIDDEN' NAME='ID' VALUE='" + message.getMessageID().toString() + "'>");
+
+            out.println("<BUTTON TYPE='SUBMIT'>Info</BUTTON>");
+            out.println("</FORM>");
+
             out.println("<FORM METHOD='POST' ACTION='/api/deleteMessage'>");
 
             out.print("<INPUT TYPE='HIDDEN' NAME='messageId' VALUE='");
@@ -70,5 +76,7 @@ public class Queue extends HttpServlet {
             out.println("</TD>");
             out.println("</TR>");
         }
+
+        out.println("</TABLE>");
     }
 }
