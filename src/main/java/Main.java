@@ -1,5 +1,6 @@
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.miranda.Miranda;
+import com.ltsllc.miranda.MirandaThread;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -34,6 +35,7 @@ public class Main {
 
         logger.info("starting miranda");
         Miranda miranda = new Miranda();
+
         miranda = Miranda.getInstance();
         int iterations = 0;
         /*
@@ -56,25 +58,7 @@ public class Main {
         System.out.println("Config File: " + defaultConfiguration.getName());
 
          */
-        try {
-            miranda.startUp(args);
-        } catch (Exception e) {
-            logger.error("Exception during startup", e);
-            System.exit(1);
-        }
-        try {
-            for (;;) {
-                miranda.mainLoop();
-                iterations++;
-                if (iterations % 1000 == 0) {
-                    System.gc();
-                }
-            }
-        } catch (LtsllcException | IOException e) {
-            logger.error ("Exception while running", e);
-            System.exit(1);
-        }
-
-        System.exit(Miranda.exitCode);
+        MirandaThread thread = new MirandaThread();
+        thread.start();
     }
 }

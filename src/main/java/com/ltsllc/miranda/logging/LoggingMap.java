@@ -247,4 +247,9 @@ public class LoggingMap {
     public synchronized Collection<UUID> values () {
         return uuidToUuid.values();
     }
+
+    public synchronized void clear() {
+        uuidToUuid.clear();
+        file.clear();
+    }
 }

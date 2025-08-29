@@ -6,26 +6,36 @@ import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.TestSuperclass;
+import com.ltsllc.miranda.logging.MessageEventLogger;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.logging.MessageLog;
 import com.ltsllc.miranda.netty.HeartBeatHandler;
 import io.netty.channel.embedded.EmbeddedChannel;
 import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.util.*;
 
 class ClusterTest extends TestSuperclass {
+    public static Logger logger = LogManager.getLogger(ClusterTest.class);
 
     @BeforeAll
     public static void setup() {
         Configurator.setRootLevel(Level.DEBUG);
     }
 
+    @AfterEach
+    public void tearDown () {
+        stopJetty();
+    }
 
 
     public void connect() throws LtsllcException, CloneNotSupportedException {
@@ -36,15 +46,16 @@ class ClusterTest extends TestSuperclass {
         ImprovedRandom improvedRandom = new ImprovedRandom();
         Cluster.setRandomNumberGenerator(improvedRandom);
 
+        InetSocketAddress inetSocketAddress = new InetSocketAddress("192.168.0.12", 2020);
 
-         InetSocketAddress inetSocketAddress = new InetSocketAddress("192.168.0.12", 2020);
-        // when(mockIoConnector.connect(inetSocketAddress)).thenReturn(mockConnectFuture);
-
-
-
+        stopJetty();
 
         miranda.parseNodes();
-        Cluster.getInstance().start(miranda.getSpecNodes());
+        try {
+            Cluster.getInstance().start(miranda.getSpecNodes());
+        } catch (BindException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /*
@@ -133,27 +144,23 @@ class ClusterTest extends TestSuperclass {
     }
 
     @Test
-    public void listen() throws LtsllcException, IOException {
-        ImprovedFile events = new ImprovedFile("events.log");
+    public void listen() throws LtsllcException {
+        Cluster.defineStatics();
 
-        try {
-            Miranda miranda = new Miranda();
-            miranda.loadProperties();
-
-            Cluster.defineStatics();
-
-            Cluster.getInstance().listen();
-
-            assert(Cluster.getInstance().isBound());
-
-        } finally {
-            if (events.exists()) {
-                boolean deleted = events.delete();
-                if (deleted) {
-                    System.out.println("deleted");
-                }
+        int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
+        boolean listenFailed = true;
+        Cluster cluster = Cluster.getInstance();
+        for (int i = 0; listenFailed && i < 5; i++) {
+            try {
+                cluster.listen(port + i);
+                listenFailed = false;
+            } catch (BindException e) {
+                // swallow the exception
             }
+
         }
+
+        assert(Cluster.getInstance().isBound());
     }
 
 
@@ -347,13 +354,20 @@ class ClusterTest extends TestSuperclass {
 
     @Test
     public void addNode () {
-        Cluster cluster = buildCluster();
-        EmbeddedChannel embeddedChannel = new EmbeddedChannel();
-        Node node = new Node(UUID.randomUUID(), "71.237.68.250", 2021, embeddedChannel);
+        Cluster cluster = null;
+        try {
+            cluster = buildCluster();
+            EmbeddedChannel embeddedChannel = new EmbeddedChannel();
+            Node node = new Node(UUID.randomUUID(), "71.237.68.250", 2021, embeddedChannel);
 
-        cluster.addNode(node);
+            cluster.addNode(node);
 
-        assert (cluster.containsNode(node));
+            assert (cluster.containsNode(node));
+        } finally {
+            if (cluster != null) {
+                cluster.close();
+            }
+        }
     }
 
     @Test

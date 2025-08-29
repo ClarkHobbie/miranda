@@ -24,6 +24,19 @@ public class MessageEventLogger {
         this.file = eventsFile;
     }
 
+    public void clear() {
+        ImprovedFile backup = new ImprovedFile(file.getAbsolutePath() + ".backup");
+        if (backup.exists()) {
+            backup.delete();;
+        }
+
+        try {
+            file.backup(backup);
+        } catch (LtsllcException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public List<MessageEvent> getLog() {
         return log;
     }

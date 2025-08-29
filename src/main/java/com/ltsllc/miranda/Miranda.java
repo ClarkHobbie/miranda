@@ -56,6 +56,25 @@ public class Miranda implements PropertyListener {
     public static PrintStream err = System.err;
     public static int exitCode = 0;
 
+    public void stopJetty() {
+        Miranda miranda = Miranda.getInstance();
+        if (miranda == null) {
+            return;
+        }
+
+        Server server2 = miranda.getServer();
+        if (server2 == null) {
+            return;
+        }
+
+        try {
+            server2.stop();
+            server2.join();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public class CallbackRunable implements Runnable {
 
         @Override
@@ -72,7 +91,7 @@ public class Miranda implements PropertyListener {
     /**
      * The port number to use if it's not set.  The default is 2020
      */
-    public static final String PROPERTY_DEFAULT_CLUSTER_PORT = "2021";
+    public static final String PROPERTY_DEFAULT_CLUSTER_PORT = "2020";
     public static final String PROPERTY_PROPERTIES_FILE = "properties";
 
     /**
@@ -287,9 +306,28 @@ public class Miranda implements PropertyListener {
     public static final String PROPERTY_DEFAULT_EVENTS_FILE = "events.log";
 
     /**
+     * How long to wait between attempts
+     */
+    public static final String PROPERTY_WAIT_BETWEEN_SENDS = com.ltsllc.miranda.properties.Properties.waitBetweenSends.toString();
+
+    /**
+     * The default period of time to wait in between sends
+     */
+    public static final String PROPERTY_DEFAULT_WAIT_BETWEEN_SENDS = "1"; // 1 millisecond
+
+    /**
+     * The maximum amount of time to wait between sends
+     */
+    public static final String PROPERTY_MAX_WAIT_BETWEEN_SENDS = com.ltsllc.miranda.properties.Properties.maxWaitBetweenSends.toString();
+
+    /**
+     * The default maximum wait between sends
+     */
+    public static final String PROPERTY_DEFAULT_MAX_WAIT_BETWEEN_SENDS = "3600000"; // 1 hour
+    /**
      * The logger to use
      */
-    protected static final Logger logger = LogManager.getLogger(Miranda.class);
+    public static final Logger logger = LogManager.getLogger(Miranda.class);
 
     /**
      * The logger to use for system events like system startup, shutdown, message creation, delivery, etc.
@@ -302,6 +340,11 @@ public class Miranda implements PropertyListener {
     public static Miranda instance = new Miranda();
 
     /**
+     * The jetty server
+     */
+    protected Server server = null;
+
+    /**
      * Should miranda keep running?
      */
     protected boolean keepRunning = true;
@@ -311,11 +354,7 @@ public class Miranda implements PropertyListener {
      */
     protected static PropertiesHolder properties;
 
-    /**
-     * The jetty server that receives new messages
-     */
-    protected Server server;
-
+ 
     /**
      * A list of node specifications that make up the cluster
      */
@@ -459,7 +498,6 @@ public class Miranda implements PropertyListener {
     public void setRestartIndex(int restartIndex) {
         this.restartIndex = restartIndex;
     }
-
 
     /**
      * The constructor for the class
@@ -631,6 +669,7 @@ public class Miranda implements PropertyListener {
                     Miranda.properties.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT),
                     restartIndex
             );
+
             if (temp != null) {
                 for (Message message : temp.list) {
                     deliver(message);
@@ -662,14 +701,7 @@ public class Miranda implements PropertyListener {
     /**
      * determine if we should recover and if we should do so
      */
-    public void checkRecovery() throws IOException, LtsllcException {
-        try {
-            synchronized (this) {
-                wait(6000);
-            }
-        } catch (InterruptedException e) {
-            ;
-        }
+    public synchronized void checkRecovery() throws IOException, LtsllcException {
         if (shouldRecover()) {
             event.info("preforming recovery");
             recover();
@@ -693,6 +725,10 @@ public class Miranda implements PropertyListener {
     public void startUp(String[] args) throws Exception {
         event.info("Miranda starting up");
         logger.debug("Miranda starting up");
+
+        MessageLog.defineStatics();
+        Cluster.defineStatics();
+
         loadProperties();
         setupMisc();
 
@@ -893,6 +929,8 @@ public class Miranda implements PropertyListener {
         properties.setIfNull(PROPERTY_SCAN_PERIOD, PROPERTY_DEFAULT_SCAN_PERIOD);
         properties.setIfNull(PROPERTY_USE_HEARTBEATS, PROPERTY_DEFAULT_USE_HEART_BEATS);
         properties.setIfNull(PROPERTY_EVENTS_FILE, PROPERTY_DEFAULT_EVENTS_FILE);
+        properties.setIfNull(PROPERTY_WAIT_BETWEEN_SENDS, PROPERTY_DEFAULT_WAIT_BETWEEN_SENDS);
+        properties.setIfNull(PROPERTY_MAX_WAIT_BETWEEN_SENDS, PROPERTY_DEFAULT_WAIT_BETWEEN_SENDS);
     }
 
     /**
@@ -963,7 +1001,20 @@ public class Miranda implements PropertyListener {
      * @throws IOException If there is a problem with the manipulation of the logfiles
      */
     public void deliver(Message message) throws IOException {
+        logger.debug("entering deliver with " + message.getMessageID());
+
         if (null == message) {
+            logger.debug("leaving deliver --- null message");
+            return;
+        }
+
+        if (message.getNextSend() == 0) {
+            logger.debug("leaving deliver --- message.getNextSend() returns 0");
+            return;
+        }
+
+        if (message.getNextSend() > System.currentTimeMillis()) {
+            logger.debug("leaving deliver --- message.getNextSend() (" + message.getNextSend() + ") is less than the current time (" + System.currentTimeMillis() + ")");
             return;
         }
 
@@ -971,9 +1022,24 @@ public class Miranda implements PropertyListener {
         // don't send if we haven't gotten a reply from the message we already sent
         //
         if (inflight.contains(message)) {
+            logger.debug("leaving deliver --- message is already in flight");
             return;
         }
         inflight.add(message);
+
+        message.setLastSend(System.currentTimeMillis());
+
+        double exponent = message.getNumberOfSends() + 1;
+        double period = properties.getLongProperty(PROPERTY_MAX_WAIT_BETWEEN_SENDS);
+        long waitTime = (long) Math.pow(period, exponent);
+        long maxWait = properties.getLongProperty(PROPERTY_MAX_WAIT_BETWEEN_SENDS);
+        if (waitTime > maxWait || waitTime <= 0) {
+            waitTime = maxWait;
+        }
+        long currentTime = System.currentTimeMillis();
+        long nextSend = currentTime + waitTime;
+        message.setNextSend(nextSend);
+        message.setNumberOfSends(message.getNumberOfSends() + 1);
 
         MessageLog.getInstance().deliveryAttempted(message);
 
@@ -981,24 +1047,14 @@ public class Miranda implements PropertyListener {
 
         List<Param> paramList = new ArrayList<>();
 
-        if (null != message.getDeliveryURL()) {
-            Param param = new Param("DELIVERY_URL", message.getDeliveryURL());
-            paramList.add(param);
-        }
-
-        if (null != message.getStatusURL()) {
-            Param param = new Param("STATUS_URL", message.getStatusURL());
-            paramList.add(param);
-        }
-
-        if (null != message.getContents()) {
-            Param param = new Param("CONTENT", HexConverter.toHexString(message.getContents()));
-            paramList.add(param);
+        for (Param formal : message.getParamList() ) {
+            Param actual = new Param(formal.getName(), formal.getValue());
+            paramList.add (actual);
         }
 
         Request request = httpClient.preparePost(message.getDeliveryURL())
-                .setFormParams(message.getParamList())
-                //.setBody(message.getContents())
+                .setFormParams(paramList)
+                .setBody(message.getContents())
                 .build();
 
 
@@ -1009,6 +1065,8 @@ public class Miranda implements PropertyListener {
             public void run() {
                 try {
                     Response response = listenableFuture.get();
+                    logger.debug("got response back: " + response.getStatusCode());
+
                     inflight.remove(message);
                     message.setStatus(response.getStatusCode());
 
@@ -1038,6 +1096,8 @@ public class Miranda implements PropertyListener {
         };
 
         listenableFuture.addListener(callback, executor);
+
+        logger.debug("leaving deliver");
      }
 
     public void sendFailed(Message message, Response response, AsyncHttpClient client) {

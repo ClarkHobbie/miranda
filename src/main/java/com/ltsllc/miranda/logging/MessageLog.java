@@ -343,7 +343,7 @@ public class MessageLog implements PropertyListener {
      *                ownership information was previously entered, and only the message will be added.
      * @throws IOException If a problem is encountered while reading or writing the logfiles
      */
-    public void add(Message message, UUID owner) throws IOException, LtsllcException {
+    public synchronized void add(Message message, UUID owner) throws IOException, LtsllcException {
         logger.debug("entering add with message: " + message + " and owner: " + owner);
 
         cache.add(message);
@@ -354,6 +354,15 @@ public class MessageLog implements PropertyListener {
         messageEventLogger.added(message);
 
         logger.debug("leaving add");
+    }
+
+    public synchronized void clear () {
+        logger.debug("entering clear");
+
+        cache.clear();
+        uuidToOwner.clear();
+
+        logger.debug("leaving clear");
     }
 
     /**

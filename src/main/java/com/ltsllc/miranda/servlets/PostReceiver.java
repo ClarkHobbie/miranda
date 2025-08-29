@@ -26,22 +26,20 @@ public class PostReceiver extends HttpServlet {
     {
         String content = request.getParameter(PARAM_CONTENT);
 
-        if (content == null) {
-            ServletInputStream in = null;
-            try {
-                in = request.getInputStream();
-            } catch (IOException e) {
-                throw new ServletException(e);
-            }
-            byte[] buffer = null;
-            try {
-                buffer = in.readAllBytes();
-            } catch (IOException e) {
-                throw new ServletException(e);
-            }
-
-            content = (buffer == null) ? "mull" : new String(buffer);
+        ServletInputStream in = null;
+        try {
+            in = request.getInputStream();
+        } catch (IOException e) {
+            throw new ServletException(e);
         }
+        byte[] buffer = null;
+        try {
+            buffer = in.readAllBytes();
+        } catch (IOException e) {
+            throw new ServletException(e);
+        }
+
+        content = (buffer == null) ? "mull" : new String(buffer);
 
         StringBuilder builder = new StringBuilder();
         Enumeration<String> enumeration = request.getParameterNames();
@@ -57,6 +55,6 @@ public class PostReceiver extends HttpServlet {
             }
         }
 
-        logger.debug("Received POST with params: " + builder.toString());
+        logger.debug("Received POST with params: " + builder.toString() + " and content: " + content);
     }
 }

@@ -84,6 +84,10 @@ public class LoggingCache implements Alarmable{
     }
 
     public void loadMessages() throws IOException {
+        if (!file.exists()) {
+            return;
+        }
+
         FileInputStream fis = null;
         InputStreamReader inputStreamReader = null;
         BufferedReader reader = null;
@@ -279,6 +283,15 @@ public class LoggingCache implements Alarmable{
         // finally, return the message
         //
         return uuidToMessage.get(uuid);
+    }
+
+    public synchronized void clear() {
+        currentLoad = 0;
+        uuidToMessage.clear();
+        uuidToLocation.clear();
+        uuidToInMemory.clear();
+        uuidToTimesReferenced.clear();
+        file.clear();
     }
 
     public static class CopyMessagesResult {

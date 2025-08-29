@@ -25,6 +25,7 @@ public enum Properties {
     heartBeatTimeout,
     hostName,
     loggingLevel,
+    maxWaitBetweenSends,
     messageLogfile,
     messagePort,
     ownerFile,
@@ -34,5 +35,6 @@ public enum Properties {
     thisHost,
     thisPort,
     useHeartbeats,
+    waitBetweenSends,
     uuid
 }

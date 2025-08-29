@@ -38,6 +38,9 @@ public class Message implements Comparable<Message> {
     protected List<Param> paramList = new ArrayList<>();
     protected byte[] contents;
     protected UUID messageID;
+    protected long lastSend = 0;
+    protected int numberOfSends = 0;
+    protected long nextSend = 0;
 
     public Message () {
         super();
@@ -95,6 +98,30 @@ public class Message implements Comparable<Message> {
 
     public void setParamList(List<Param> paramList) {
         this.paramList = paramList;
+    }
+
+    public synchronized long getLastSend() {
+        return lastSend;
+    }
+
+    public void setLastSend(long lastSend) {
+        this.lastSend = lastSend;
+    }
+
+    public int getNumberOfSends() {
+        return numberOfSends;
+    }
+
+    public void setNumberOfSends(int numberOfSends) {
+        this.numberOfSends = numberOfSends;
+    }
+
+    public long getNextSend() {
+        return nextSend;
+    }
+
+    public void setNextSend(long nextSend) {
+        this.nextSend = nextSend;
     }
 
     public String toString () {

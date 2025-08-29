@@ -3,6 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <title>New Message</title>
+    <SCRIPT>
+        params = [];
+        function updateParameters() {
+            paramName=document.getElementById('PARAM_NAME').value;
+            paramValue = document.getElementById('PARAM_VALUE').value;
+            alert(paramName + ' = ' + paramValue);
+        }
+    </SCRIPT>
 </head>
 <body>
 <H1>New Message</H1>
@@ -12,12 +20,20 @@
         <TH>Name</TH><TH>Value</TH>
     </TR>
     <TR>
-        <TH>To (Delivery URL)</TH>
-        <TH><INPUT NAME="DELIVERY_URL" TYPE="TEXT" SIZE="100"></TH>
+        <TD>To (Delivery URL)</TD>
+        <TD><INPUT NAME="DELIVERY_URL" TYPE="TEXT" SIZE="100"></TD>
     </TR>
     <TR>
-        <TH>Status (Status URL)</TH>
-        <TH><INPUT NAME="STATUS_URL" TYPE="TEXT" SIZE="100"> </TH>
+        <TD>Status (Status URL)</TD>
+        <TD><INPUT NAME="STATUS_URL" TYPE="TEXT" SIZE="100"> </TD>
+    </TR>
+    <TR>
+        <TD>Params</TD>
+    </TR>
+    <TR>
+        <TD><INPUT ID="PARAM_NAME" NAME="PARAM_NAME" TYPE="TEXT" SIZE="100"></TD>
+        <TD><INPUT ID="PARAM_VALUE" NAME="PARAM_VALUE" TYPE="TEXT" SIZE="100">
+        <BUTTON ONCLICK="updateParameters()">Add</BUTTON> </TD>
     </TR>
     <TR>
         <TH>Contents</TH>

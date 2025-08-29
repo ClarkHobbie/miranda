@@ -90,7 +90,7 @@ class NewMessageTest extends TestSuperclass {
         Message message1 = createTestMessage(UUID.fromString(strUuid));
         message1.setStatus(401);
         String s1 = message1.everythingToString();
-        String s2 = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 STATUS: HTTP://localhost:8080 DELIVERY: HTTP://localhost:8080 LAST STATUS: 401 CONTENTS: 010203";
+        String s2 = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 STATUS: HTTP://localhost:3030/api/receiveStatus DELIVERY: HTTP://localhost:3030/api/deliver LAST STATUS: 401 CONTENTS: 010203";
         boolean result = s1.equals(s2);
         assert (result);
     }
@@ -99,7 +99,7 @@ class NewMessageTest extends TestSuperclass {
     public void internalsToString () {
         String  strUuid = "12345678-9abc-def1-2345-6789abcdef12";
         Message message = createTestMessage(UUID.fromString(strUuid));
-        String s2 = "ID: 12345678-9abc-def1-2345-6789abcdef12 PARAMS: STATUS: HTTP://localhost:8080 DELIVERY: HTTP://localhost:8080 CONTENTS: 010203";
+        String s2 = "ID: 12345678-9abc-def1-2345-6789abcdef12 PARAMS: STATUS: HTTP://localhost:3030/api/receiveStatus DELIVERY: HTTP://localhost:3030/api/deliver CONTENTS: 010203";
         String returned = message.internalsToString();;
         StringComparrison stringComparrison = new StringComparrison();
         stringComparrison.compare(s2, returned);
@@ -111,7 +111,7 @@ class NewMessageTest extends TestSuperclass {
     public void longToString () {
         String strUuid = "12345678-9abc-def1-2345-6789abcdef12";
         Message message = createTestMessage(UUID.fromString(strUuid));
-        String s2 = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 PARAMS: STATUS: HTTP://localhost:8080 DELIVERY: HTTP://localhost:8080 CONTENTS: 010203";
+        String s2 = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 PARAMS: STATUS: HTTP://localhost:3030/api/receiveStatus DELIVERY: HTTP://localhost:3030/api/deliver CONTENTS: 010203";
         String returned = message.longToString();
         StringComparrison stringComparrison = new StringComparrison();
         stringComparrison.compare(s2, returned);
@@ -121,7 +121,7 @@ class NewMessageTest extends TestSuperclass {
 
     @Test
     public void readEverything () {
-        String s = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 STATUS: HTTP://localhost:8080 DELIVERY: HTTP://localhost:8080 CONTENTS: 010203";
+        String s = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 STATUS: HTTP://localhost:3030/api/receiveStatus DELIVERY: HTTP://localhost:3030/api/deliver CONTENTS: 010203";
         String  strUuid = "12345678-9abc-def1-2345-6789abcdef12";
         Message message = createTestMessage(UUID.fromString(strUuid));
         message.setStatus(401);
@@ -132,7 +132,7 @@ class NewMessageTest extends TestSuperclass {
     @Test
     public void readLongFormat () {
         String  strUuid = "12345678-9abc-def1-2345-6789abcdef12";
-        String s2 = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 STATUS: HTTP://localhost:8080 DELIVERY: HTTP://localhost:8080 CONTENTS: 010203";
+        String s2 = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 STATUS: HTTP://localhost:3030/api/receiveStatus DELIVERY: HTTP://localhost:3030/api/deliver CONTENTS: 010203";
         Message message1 = createTestMessage(UUID.fromString(strUuid));
         assert (message1.equals(Message.readLongFormat(s2)));
     }
@@ -140,7 +140,7 @@ class NewMessageTest extends TestSuperclass {
     @Test
     public void readLongFormatFromScanner () {
         String  strUuid = "12345678-9abc-def1-2345-6789abcdef12";
-        String s = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 STATUS: HTTP://localhost:8080 DELIVERY: HTTP://localhost:8080 CONTENTS: 010203";
+        String s = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 STATUS: HTTP://localhost:3030/api/receiveStatus DELIVERY: HTTP://localhost:3030/api/deliver CONTENTS: 010203";
         Message message = createTestMessage(UUID.fromString(strUuid));
         Scanner scanner = new Scanner(s);
         assert (message.equals(Message.readLongFormat(scanner)));

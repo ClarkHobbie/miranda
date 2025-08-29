@@ -19,10 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-import java.util.UUID;
+import java.util.*;
 
 import static org.mockito.Mockito.when;
 
@@ -215,6 +212,7 @@ class MirandaTest extends TestSuperclass {
         Cluster.defineStatics();
 
         Message message = createTestMessage(UUID.randomUUID());
+        message.setNextSend(System.currentTimeMillis());
         List<Message> list = new ArrayList<>();
         list.add(message);
         MessageLog mockMessageLog = Mockito.mock(MessageLog.class);
@@ -258,54 +256,162 @@ class MirandaTest extends TestSuperclass {
 
     @Test
     public void deliver () throws LtsllcException, IOException {
+        try {
+            ImprovedFile temp = new ImprovedFile("messages.log.backup");
+            if (temp.exists()) {
+                temp.delete();
+            }
+
+            temp = new ImprovedFile("owners.log.backup");
+            if (temp.exists()) {
+                temp.delete();
+            }
+
+            Thread thread = startMiranda();
+
+            setLoggingLevel("io.netty", Level.WARN);
+
+            Miranda miranda = Miranda.getInstance();
+
+            long currentTime = System.currentTimeMillis();
+            Message message = createTestMessage(UUID.randomUUID());
+            message.setNextSend(currentTime);
+
+            Message message2 = createTestMessage(UUID.randomUUID());
+            long sendTime = currentTime + 100000;
+            message2.setNextSend(sendTime);
+
+            MessageLog.getInstance().add(message, miranda.getMyUuid());
+            MessageLog.getInstance().add(message2, miranda.getMyUuid());
+
+            assert (message.getNumberOfSends() == 0);
+            assert (message.getLastSend() == 0);
+
+            logger.debug("thread state: " + thread.getState());
+
+            synchronized (this) {
+                try {
+                    wait(1000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            logger.debug("thread state: " + thread.getState());
+
+            assert (isMirandaRunning() == true);
+            assert (!miranda.getInflight().contains(message));
+            assert (message.getLastSend() != 0);
+            assert (message.getNumberOfSends() != 0);
+            assert (message.getNextSend() != 0);
+
+            Set<Message> messageSet = miranda.getInflight();
+            boolean inSet = messageSet.contains(message2);
+
+            assert (!inSet);
+            long lastSend = message2.getLastSend();
+            assert (lastSend == 0);
+
+            long numberOfSends = message2.getNumberOfSends();
+            assert (numberOfSends == 0);
+
+            long nextSend = message2.getNextSend();
+            assert (nextSend == currentTime + 100000);
+        } finally {
+            MessageLog.getInstance().clear();
+        }
+    }
+
+    @Test
+    public void deliver2 () throws LtsllcException, IOException {
         Miranda miranda = new Miranda();
-        miranda.loadProperties();
 
-        Message message = createTestMessage(UUID.randomUUID());
+        try {
+            Thread thread = startMiranda();
+            MessageLog.defineStatics();
 
-        miranda.deliver(message);
+            logger.debug("thread state: " + thread.getState());
 
-        assert (miranda.getInflight().contains(message));
+            Message message = createTestMessage(UUID.randomUUID());
+
+            UUID uuid = UUID.fromString("7f246518-c9bb-417d-b61d-08c2e9d2aed8");
+            message.setMessageID(uuid);
+
+            long currentTime = System.currentTimeMillis();
+            message.setNextSend(currentTime);
+
+            assert (message.getNumberOfSends() == 0);
+            assert (message.getLastSend() == 0);
+
+            logger.debug("thread state: " + thread.getState());
+
+            MessageLog.getInstance().add(message, miranda.getMyUuid());
+
+            synchronized (this) {
+                try {
+                    wait(1000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            assert (message.getLastSend() != 0);
+            assert (message.getNumberOfSends() != 0);
+            assert (message.getNextSend() != 0);
+        } finally {
+            stopMiranda();
+            MessageLog.getInstance().clear();
+        }
     }
 
     @Test
     public void parseNodes () throws LtsllcException {
-        Miranda miranda = new Miranda();
-        miranda.loadProperties();
-
-        ImprovedFile properties = new ImprovedFile("miranda.properties");
-        ImprovedFile backup = new ImprovedFile("miranda.properties.backup");
-        ImprovedFile test = new ImprovedFile("test03.properties");
         try {
-            properties.copyTo(backup);
-//            properties.delete();
-//            test.copyTo(properties);
-            miranda.loadProperties();
-
-            assert (miranda.specNodes.size() == 0);
-            miranda.parseNodes();
-            assert (miranda.specNodes.size() == 1);
-        } finally {
-            if (backup.exists()) {
-                properties.delete();
-                backup.renameTo(properties);
+            synchronized (this) {
+                try {
+                    wait(1000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             }
+
+            startMiranda();
+
+            Miranda miranda = Miranda.getInstance();
+
+            ImprovedFile properties = new ImprovedFile("miranda.properties");
+            ImprovedFile backup = new ImprovedFile("miranda.properties.backup");
+            ImprovedFile test = new ImprovedFile("test03.properties");
+            try {
+                properties.copyTo(backup);
+                //            properties.delete();
+                //            test.copyTo(properties);
+                miranda.loadProperties();
+
+
+                miranda.parseNodes();
+                assert (miranda.specNodes.size() == 1);
+            } finally {
+                if (backup.exists()) {
+                    properties.delete();
+                    backup.renameTo(properties);
+                }
+            }
+        } finally {
+            stopMiranda();
         }
     }
 
     @Test
     public void releasePorts () throws Exception {
-        Miranda miranda = new Miranda();
-        miranda.loadProperties();
+        startMiranda();
 
-        try {
-            miranda.startMessagePort();
-            miranda.releasePorts();
-
-            miranda.getServer().start();
-        } finally {
-            miranda.getServer().stop();
+        synchronized (this) {
+            wait(1000);
         }
+        Miranda miranda = Miranda.getInstance();
+
+        miranda.getServer().stop();
     }
 
     @Test

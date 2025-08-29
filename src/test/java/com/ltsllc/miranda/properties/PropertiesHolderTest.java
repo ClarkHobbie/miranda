@@ -76,7 +76,7 @@ public class PropertiesHolderTest {
                 {Miranda.PROPERTY_MESSAGE_LOG, Miranda.PROPERTY_DEFAULT_MESSAGE_LOG},
                 {Miranda.PROPERTY_BID_TIMEOUT, Miranda.PROPERTY_DEFAULT_BID_TIMEOUT},
                 {Miranda.PROPERTY_OWNER_FILE, Miranda.PROPERTY_DEFAULT_OWNER_FILE},
-                {Properties.cluster1.toString() + "Port", "2021"},
+                {Properties.cluster1.toString() + "Port", "2020"},
                 {Miranda.PROPERTY_COMPACTION_TIME, Miranda.PROPERTY_DEFAULT_COMPACTION_TIME},
                 {Miranda.PROPERTY_THIS_PORT, Miranda.PROPERTY_DEFAULT_CLUSTER_PORT},
                 {Miranda.PROPERTY_SCAN_PERIOD, Miranda.PROPERTY_DEFAULT_SCAN_PERIOD},

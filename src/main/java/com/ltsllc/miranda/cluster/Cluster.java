@@ -27,6 +27,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.*;
@@ -82,7 +83,7 @@ import java.util.concurrent.TimeUnit;
  * </PRE>
  * The other nodes make no reply.
  */
-public class Cluster implements Alarmable, PropertyListener {
+public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
     public static final long IOD_TIMEOUT = 1000;
     public static final TimeUnit IOD_TIMEOUT_UNITS = TimeUnit.MILLISECONDS;
     public static final long IONM_TIMEOUT = 1000;
@@ -169,6 +170,17 @@ public class Cluster implements Alarmable, PropertyListener {
     public void setServerBootstrap(ServerBootstrap serverBootstrap) {
         this.serverBootstrap = serverBootstrap;
     }
+
+    protected Channel channel = null;
+
+    public Channel getChannel() {
+        return channel;
+    }
+
+    public void setChannel(Channel channel) {
+        this.channel = channel;
+    }
+
 
     protected Election election;
 
@@ -412,12 +424,12 @@ public class Cluster implements Alarmable, PropertyListener {
      *
      * @param list A list of nodes that make up the cluster.
      * @throws LtsllcException Both listen and connectNode, which this method calls, throw this exception.
-     * @see #listen()
      * @see #connectNodes(List)
      */
-    public void start(List<SpecNode> list) throws LtsllcException, CloneNotSupportedException {
-        Miranda.getProperties().listen(this, Properties.cluster);
-        listen();
+    public void start(List<SpecNode> list) throws LtsllcException, CloneNotSupportedException, BindException {
+        Miranda.getProperties().listen(this, Properties.clusterPort);
+        int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
+        listen(port);
         connectNodes(list);
     }
 
@@ -426,30 +438,48 @@ public class Cluster implements Alarmable, PropertyListener {
      *
      * @throws LtsllcException If there is a problem listening
      */
-    public void listen() throws LtsllcException {
+    public void listen(int port) throws LtsllcException, BindException {
         logger.debug("entering listen ");
         if (nodes == null) {
             nodes = new ArrayList<>();
         }
 
-        int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_THIS_PORT);
         Miranda.getProperties().listen(this, Properties.cluster);
 
         SocketAddress socketAddress = new InetSocketAddress(port);
 
-        ChannelFuture channelFuture = serverBootstrap.bind(socketAddress);
+        ChannelFuture channelFuture = null;
+
+        int failedCount = 0;
+        boolean listenFailed = true;
         try {
-            channelFuture.await();
+            while (listenFailed && failedCount < 5) {
+                channelFuture = serverBootstrap.bind(socketAddress);
+                channelFuture.await();
+                if (channelFuture.isSuccess()) {
+                    listenFailed = false;
+                } else {
+                    failedCount++;
+                }
+            }
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
+
         if (channelFuture.isSuccess()) {
             bound = true;
             logger.info("listening at port " + Miranda.getProperties().getProperty(Miranda.PROPERTY_THIS_PORT)
                 + " and thread: " + Thread.currentThread()
             );
+            channel = channelFuture.channel();
         } else {
-            throw new RuntimeException("bind failed");
+            try {
+                throw channelFuture.exceptionNow();
+            } catch (BindException e) {
+                throw e;
+            } catch (Throwable e) {
+                throw new RuntimeException(e);
+            }
         }
 
         logger.debug("leaving listen");
@@ -502,6 +532,8 @@ public class Cluster implements Alarmable, PropertyListener {
      * @return true if we were able to connect to the node, false otherwise.
      */
     public boolean connectToNode(Node node, boolean isLoopback) throws LtsllcException, CloneNotSupportedException {
+        logger.debug("entering connectToNode with ip address: " + node.getHost());
+
         boolean returnValue = false;
         severMode = false; // we are trying to connect to someone
         logger.debug("entering connectToNode with " + node.getHost() + ":" + node.getPort());
@@ -966,7 +998,7 @@ public class Cluster implements Alarmable, PropertyListener {
         try {
             switch (propertyChangedEvent.getProperty()) {
                 case clusterPort: {
-                    listen();
+                    listen(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
                     break;
                 }
 
@@ -979,7 +1011,7 @@ public class Cluster implements Alarmable, PropertyListener {
                     throw new UncheckedLtsllcException("propertyChanged called with " + propertyChangedEvent.getProperty());
                 }
             }
-        } catch (LtsllcException e) {
+        } catch (LtsllcException | BindException e) {
             throw new UncheckedLtsllcException(e);
         }
     }
@@ -1137,6 +1169,32 @@ public class Cluster implements Alarmable, PropertyListener {
             channelFuture.await();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
+        }
+
+        if (channelFuture.isSuccess()) {
+            channel = channelFuture.channel();
+        }
+    }
+
+    @Override
+    public void close () {
+        logger.debug("close called");
+        if (channel != null) {
+            try {
+                channel.close().await();
+            } catch (InterruptedException e) {
+                // swallow the exception
+            }
+        }
+    }
+
+    public void stop () {
+        if (channel != null) {
+            try {
+                channel.close().await();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 }
