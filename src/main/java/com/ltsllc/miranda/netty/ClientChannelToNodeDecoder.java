@@ -8,7 +8,6 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
 
 /**
  * A ChannelInboundHandlerAdapter that translates ByteBufs to Strings

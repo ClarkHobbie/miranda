@@ -1,6 +1,5 @@
 package com.ltsllc.miranda;
 
-import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.properties.PropertiesHolder;
@@ -9,9 +8,7 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
-import org.junit.jupiter.api.BeforeAll;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;

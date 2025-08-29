@@ -1,4 +1,3 @@
-import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.MirandaThread;
 import org.apache.logging.log4j.Level;
@@ -9,8 +8,6 @@ import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 
-import java.io.IOException;
-import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.Map;
 

@@ -1,7 +1,7 @@
 package com.ltsllc.miranda.servlets;
 
-import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.logging.MessageLog;
+import com.ltsllc.miranda.message.Message;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

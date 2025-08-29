@@ -9,9 +9,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.Enumeration;
-import java.util.Iterator;
 
 public class PostReceiver extends HttpServlet {
     public static final String PARAM_DELIVERY_URL = "DELIVERY_URL";

@@ -1,8 +1,6 @@
 package com.ltsllc.miranda.servlets;
 
-import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.logging.MessageEvent;
-import com.ltsllc.miranda.logging.MessageEventLogger;
 import com.ltsllc.miranda.logging.MessageLog;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,7 +10,10 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
 
 public class TrackMessage extends HttpServlet {
     public static final String PARAM_MESSAGE_ID = "messageId";

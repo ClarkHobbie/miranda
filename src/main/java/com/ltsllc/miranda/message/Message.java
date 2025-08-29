@@ -2,14 +2,12 @@ package com.ltsllc.miranda.message;
 
 import com.ltsllc.commons.HexConverter;
 import com.ltsllc.commons.io.ScannerWithUnget;
-import com.ltsllc.miranda.Miranda;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.asynchttpclient.AsyncCompletionHandler;
 import org.asynchttpclient.Param;
 import org.asynchttpclient.Response;
 
-import java.io.FileWriter;
 import java.util.*;
 
 /**
