@@ -349,6 +349,10 @@ public class MessageLog implements PropertyListener {
     public synchronized void add(Message message, UUID owner) throws IOException, LtsllcException {
         logger.debug("entering add with message: " + message + " and owner: " + owner);
 
+        if (message.getNextSend() <= 0) {
+            message.setNextSend(System.currentTimeMillis());
+        }
+
         cache.add(message);
         if (null != owner) {
             uuidToOwner.add(message.getMessageID(), owner);
@@ -589,7 +593,7 @@ public class MessageLog implements PropertyListener {
             return null;
         }
         else {
-            Message m = Message.readEverything(s);
+            Message m = Message.readLongFormat(s);
             return m;
         }
 

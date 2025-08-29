@@ -272,13 +272,17 @@ class MirandaTest extends TestSuperclass {
 
             Miranda miranda = Miranda.getInstance();
 
-            long currentTime = System.currentTimeMillis();
+            long now = System.currentTimeMillis();
+            String strUuid = "c4fa2935-034a-4602-ae10-0f829a3bf16f";
             Message message = createTestMessage(UUID.randomUUID());
-            message.setNextSend(currentTime);
+            message.setNextSend(now);
+            message.setMessageID(UUID.fromString(strUuid));
 
+            strUuid = "7a8afadf-2954-48f1-9477-c4eb627f1a9b";
             Message message2 = createTestMessage(UUID.randomUUID());
-            long sendTime = currentTime + 100000;
+            long sendTime = now + 1000000;
             message2.setNextSend(sendTime);
+            message2.setMessageID(UUID.fromString(strUuid));
 
             MessageLog.getInstance().add(message, miranda.getMyUuid());
             MessageLog.getInstance().add(message2, miranda.getMyUuid());
@@ -315,7 +319,7 @@ class MirandaTest extends TestSuperclass {
             assert (numberOfSends == 0);
 
             long nextSend = message2.getNextSend();
-            assert (nextSend == currentTime + 100000);
+            assert (nextSend == now + 1000000);
         } finally {
             MessageLog.getInstance().clear();
         }

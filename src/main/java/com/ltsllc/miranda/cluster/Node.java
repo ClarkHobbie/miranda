@@ -1570,8 +1570,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("entering startTimeout");
 
         setState(ClusterConnectionStates.START);
-        throw new RuntimeException("start timeOut");
-
     }
 
     /**

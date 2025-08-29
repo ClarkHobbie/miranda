@@ -201,6 +201,12 @@ public class Message implements Comparable<Message> {
         stringBuffer.append(statusURL);
         stringBuffer.append(" DELIVERY: ");
         stringBuffer.append(deliveryURL);
+        stringBuffer.append(" NUMBER_OF_SENDS: ");
+        stringBuffer.append(numberOfSends);
+        stringBuffer.append(" LAST_SEND: ");
+        stringBuffer.append(lastSend);
+        stringBuffer.append(" NEXT_SEND: ");
+        stringBuffer.append(nextSend);
         stringBuffer.append(" CONTENTS: ");
         stringBuffer.append(HexConverter.toHexString(contents));
 
@@ -234,6 +240,7 @@ public class Message implements Comparable<Message> {
      * @return The encoded message.
      */
     public static Message readLongFormat (String s) {
+        logger.debug("entering readLongFormat with " + s);
         Message newMessage = new Message();
         Scanner scanner = new Scanner(s);
 
@@ -243,97 +250,33 @@ public class Message implements Comparable<Message> {
     public static Message readLongFormat (Scanner scanner) {
         ScannerWithUnget scannerWithUnget = new ScannerWithUnget(scanner);
         Message newMessage = new Message();
-        String temp;
-        List<Param> paramList = new ArrayList<>();
-        boolean isFirst = true;
-
         scannerWithUnget.next();scannerWithUnget.next(); // MESSAGE ID:
-        newMessage.messageID = UUID.fromString(scannerWithUnget.next());
+        String temp;
+        String strID = scannerWithUnget.next();;
+        newMessage.setMessageID(UUID.fromString(strID));
+        List<Param> paramList = new ArrayList<>();
+        String name = null;
         temp = scannerWithUnget.next(); // PARAMS:
-        while (!temp.equalsIgnoreCase("STATUS:")) {
-            String name = null;
-            if (isFirst) {
-                name = scannerWithUnget.next();
-
-                if (name.equalsIgnoreCase("STATUS:")) {
-                    break;
-                }
-
-                isFirst = false;
-            } else {
-                name = temp;
-            }
-            temp = scannerWithUnget.next(); // =
+        for (name = scannerWithUnget.next(); !name.equals("STATUS:"); name = scannerWithUnget.next()) {
+            temp = scannerWithUnget.next();  // =
             String value = scannerWithUnget.next();
-            Param param = new Param(name, value);
+            Param param = new Param(name,value);
             paramList.add(param);
-
-            temp = scannerWithUnget.next();
         }
 
         newMessage.paramList = paramList;
+
         newMessage.statusURL = scannerWithUnget.next();
         temp = scannerWithUnget.next(); // DELIVERY:
         newMessage.deliveryURL = scannerWithUnget.next();
+        temp = scannerWithUnget.next(); // NUMBER_OF_SENDS:
+        newMessage.numberOfSends = Integer.parseInt(scannerWithUnget.next());
+        temp = scannerWithUnget.next(); // LAST_SEND:
+        newMessage.lastSend = Long.parseLong(scannerWithUnget.next());
+        temp = scannerWithUnget.next(); // NEXT_SEND:
+        newMessage.nextSend = Long.parseLong(scannerWithUnget.next());
         temp = scannerWithUnget.next(); // CONTENTS:
         newMessage.contents = HexConverter.toByteArray(scannerWithUnget.next());
-
-        return newMessage;
-
-    }
-
-
-    /**
-     * Return a string with all the information we have about the message
-     *
-     * This method is very similar to {@link Message#longToString()} except it includes information that
-     * {@link Message#longToString()} leaves out.  The format for the string is:
-     * <PRE>
-     * MESSAGE ID: &lt;UUID of message&gt; STATUS: &lt;status URL&gt; DELIVERY: &lt;delivery URL&gt; LAST STATUS: &lt;status code from last delivery attempt&gt; CONTENTS: &lt;hex encoded contents&gt;
-     * </PRE>
-     *
-     * @return The message, in the format discussed above
-     */
-    public String everythingToString () {
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append("MESSAGE ID: ");
-        stringBuffer.append(messageID);
-        stringBuffer.append(" STATUS: ");
-        stringBuffer.append(statusURL);
-        stringBuffer.append(" DELIVERY: ");
-        stringBuffer.append(deliveryURL);
-        stringBuffer.append(" LAST STATUS: ");
-        stringBuffer.append(status);
-        stringBuffer.append(" CONTENTS: ");
-        stringBuffer.append(HexConverter.toHexString(contents));
-
-        return stringBuffer.toString();
-    }
-
-    /**
-     * Read a message in everything format
-     *
-     * The everything format is:
-     * <PRE>
-     *
-     * </PRE>
-     * MESSAGE ID: &lt;UUID of message&gt; STATUS: &lt;status URL&gt; DELIVERY: &lt;delivery URL&gt; LAST STATUS: &lt;status code from last delivery attempt&gt; CONTENTS: &lt;hex encoded contents&gt;
-     * @param s The string to read from
-     * @return The encoded format
-     */
-    public static Message readEverything (String s) {
-        Message newMessage = new Message();
-
-        Scanner scanner = new Scanner(s);
-        scanner.next();scanner.next(); // MESSAGE ID:
-        newMessage.messageID = UUID.fromString(scanner.next());
-        scanner.next(); // STATUS:
-        newMessage.statusURL = scanner.next();
-        scanner.next(); // DELIVERY:
-        newMessage.deliveryURL = scanner.next();
-        scanner.next(); // CONTENTS
-        String raw = scanner.next();
-        newMessage.contents = HexConverter.toByteArray(raw);
 
         return newMessage;
     }

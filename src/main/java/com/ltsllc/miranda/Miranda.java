@@ -1011,9 +1011,18 @@ public class Miranda implements PropertyListener {
             return;
         }
 
-        if (message.getNextSend() > System.currentTimeMillis()) {
-            logger.debug("leaving deliver --- message.getNextSend() (" + message.getNextSend() + ") is less than the current time (" + System.currentTimeMillis() + ")");
+
+        long now = System.currentTimeMillis();
+        if (message.getNextSend() > now) {
+            logger.debug("leaving deliver --- message.getNextSend() (" + message.getNextSend() + ") is greater than the current time (" + System.currentTimeMillis() + ")");
             return;
+        }
+
+        if (message.getMessageID().equals(UUID.fromString("7a8afadf-2954-48f1-9477-c4eb627f1a9b"))) {
+            int i = 0;
+            i++;
+            long sendTime = message.getNextSend();
+            i++;
         }
 
         //
