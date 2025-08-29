@@ -64,6 +64,9 @@ public class TestSuperclass {
         }
         miranda.stopJetty();
 
+        //
+        // close the netty ports
+        //
         Cluster cluster = Cluster.getInstance();
         if (cluster == null) {
             return;
