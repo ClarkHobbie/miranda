@@ -2,11 +2,9 @@ package com.ltsllc.miranda.cluster;
 
 
 import com.ltsllc.commons.LtsllcException;
-import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.TestSuperclass;
-import com.ltsllc.miranda.logging.MessageEventLogger;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.logging.MessageLog;
 import com.ltsllc.miranda.netty.HeartBeatHandler;
@@ -34,7 +32,7 @@ class ClusterTest extends TestSuperclass {
 
     @AfterEach
     public void tearDown () {
-        stopJetty();
+        closePorts();
     }
 
 
@@ -48,7 +46,7 @@ class ClusterTest extends TestSuperclass {
 
         InetSocketAddress inetSocketAddress = new InetSocketAddress("192.168.0.12", 2020);
 
-        stopJetty();
+        closePorts();
 
         miranda.parseNodes();
         try {

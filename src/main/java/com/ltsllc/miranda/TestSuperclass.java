@@ -57,12 +57,7 @@ public class TestSuperclass {
         return thread;
     }
 
-    public void stopMiranda () {
-        Miranda miranda = Miranda.getInstance();
-        miranda.stopJetty();
-    }
-
-    public void stopJetty () {
+    public void closePorts() {
         Miranda miranda = Miranda.getInstance();
         if (miranda == null) {
             return;
