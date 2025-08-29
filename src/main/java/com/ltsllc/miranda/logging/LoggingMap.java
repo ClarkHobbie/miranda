@@ -17,14 +17,14 @@ public class LoggingMap {
     /**
      * A map from message ID to the UUID of the owner of that message
      */
-    protected Map<UUID, UUID> uuidToUuid = new HashMap<>();
+    protected Map<UUID, UUID> uuidToOwner = new HashMap<>();
 
-    public Map<UUID, UUID> getUuidToUuid() {
-        return uuidToUuid;
+    public Map<UUID, UUID> getUuidToOwner() {
+        return uuidToOwner;
     }
 
-    public void setUuidToUuid(Map<UUID, UUID> uuidToUuid) {
-        this.uuidToUuid = uuidToUuid;
+    public void setUuidToOwner(Map<UUID, UUID> uuidToOwner) {
+        this.uuidToOwner = uuidToOwner;
     }
 
     public ImprovedFile getFile() {
@@ -90,7 +90,7 @@ public class LoggingMap {
         //
         // then add it to the map
         //
-        uuidToUuid.put(message, owner);
+        uuidToOwner.put(message, owner);
     }
 
     /**
@@ -100,7 +100,7 @@ public class LoggingMap {
      * @return The owner UUID for the message or null if we do not know.
      */
     public synchronized UUID get (UUID message) {
-        return uuidToUuid.get(message);
+        return uuidToOwner.get(message);
     }
 
     /**
@@ -127,7 +127,7 @@ public class LoggingMap {
             while (line != null) {
                 Scanner scanner = new Scanner(line);
                 UUID message = UUID.fromString(scanner.next());
-                if (uuidToUuid.containsKey(message)) {
+                if (uuidToOwner.containsKey(message)) {
                     bufferedWriter.write(line);
                     bufferedWriter.newLine();
                 } else {
@@ -161,7 +161,7 @@ public class LoggingMap {
      * Remove an association from memory
      */
     public synchronized void remove (UUID uuid) {
-        uuidToUuid.remove(uuid);
+        uuidToOwner.remove(uuid);
     }
 
     /**
@@ -197,7 +197,7 @@ public class LoggingMap {
             while (line != null) {
                 Scanner scanner = new Scanner(line);
                 UUID message = UUID.fromString(scanner.next());
-                uuidToUuid.put(message, owner);
+                uuidToOwner.put(message, owner);
 
                 line = bufferedReader.readLine();
             }
@@ -216,7 +216,7 @@ public class LoggingMap {
         FileWriter fileWriter = new FileWriter(file);
         BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
         try {
-            for (UUID message : uuidToUuid.keySet() ) {
+            for (UUID message : uuidToOwner.keySet() ) {
                 bufferedWriter.write(message.toString());
                 bufferedWriter.write(" ");
                 bufferedWriter.write(owner.toString());
@@ -238,18 +238,18 @@ public class LoggingMap {
      * @return The collection of all keys
      */
     public synchronized Collection<UUID> getAllKeys () {
-        return uuidToUuid.keySet();
+        return uuidToOwner.keySet();
     }
 
     /**
      * Get a collection of all values
      */
     public synchronized Collection<UUID> values () {
-        return uuidToUuid.values();
+        return uuidToOwner.values();
     }
 
     public synchronized void clear() {
-        uuidToUuid.clear();
+        uuidToOwner.clear();
         file.clear();
     }
 }
