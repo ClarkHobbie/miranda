@@ -44,12 +44,7 @@ public class NewMessage extends HttpServlet {
         message.setContents(contents.getBytes());
         message.setMessageID(UUID.randomUUID());
 
-        try {
-            MessageLog.getInstance().add(message, Miranda.getInstance().getMyUuid());
-        } catch (LtsllcException e) {
-            throw new RuntimeException(e);
-        }
-        Cluster.getInstance().informOfNewMessage(message);
+        UUID uuid = Miranda.getInstance().newMessage(message);
 
         PrintWriter out = response.getWriter();
         response.setContentType("HTML");

@@ -26,12 +26,26 @@ public class MirandaThread extends Thread {
             }
         }
 
+        if (startupFailed) {
+            throw new RuntimeException("startup failed");
+        }
+
         while (miranda.isKeepRunning()) {
             try {
                 miranda.mainLoop();
 
                 if (miranda.getIterations() % 1000 == 0) {
                     System.gc();
+                }
+
+                if (miranda.getIterations() % 500 == 0) {
+                    synchronized (this) {
+                        try {
+                            wait(500);
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
                 }
             } catch (IOException | LtsllcException e) {
                 throw new RuntimeException(e);

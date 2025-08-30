@@ -304,8 +304,8 @@ public class LoggingCache implements Alarmable{
      * @return The resulting list, and the restartIndexIn value for the next call
      */
     public synchronized CopyMessagesResult copyMessages (int limit,int restartIndexIn) {
-        CopyMessagesResult temp = new CopyMessagesResult();
-        temp.list = new ArrayList<>();
+        CopyMessagesResult copyMessagesResult = new CopyMessagesResult();
+        copyMessagesResult.list = new ArrayList<>();
 
         Iterator<UUID> iter = uuidToMessage.keySet().iterator();
 
@@ -317,7 +317,7 @@ public class LoggingCache implements Alarmable{
         //
         while (iter.hasNext() && (restartIndexIn != index)) {
             index++;
-            temp.restartIndex++;
+            copyMessagesResult.restartIndex++;
             iter.next();
         }
 
@@ -333,20 +333,20 @@ public class LoggingCache implements Alarmable{
         //
         while (iter.hasNext()) {
             UUID u = iter.next();
-            temp.restartIndex++;
+            copyMessagesResult.restartIndex++;
             Message m = uuidToMessage.get(u);
 
             if ((spaceUsed + m.getContents().length) <= limit) {
-                temp.list.add(m);
-                temp.restartIndex = -1;
+                copyMessagesResult.list.add(m);
+                copyMessagesResult.restartIndex = -1;
                 spaceUsed += m.getContents().length;
             } else {
                 break;
             }
         }
 
-        temp.restartIndex++;
-        return temp;
+        copyMessagesResult.restartIndex++;
+        return copyMessagesResult;
     }
 
     /**

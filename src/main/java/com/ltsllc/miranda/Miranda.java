@@ -640,21 +640,6 @@ public class Miranda implements PropertyListener {
      * @throws IOException If there is a problem copying the messages
      */
     public synchronized void mainLoop() throws IOException, LtsllcException {
-        //
-        // run garbage collection to avoid running out of memory
-        //
-        if (iterations % 1000 == 0) {
-            Runtime.getRuntime().gc();
-        }
-
-        if (iterations % 500 == 0) {
-            try {
-                wait(500);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
         if (keepRunning) {
             /*
              * Try and deliver some messages
@@ -664,17 +649,20 @@ public class Miranda implements PropertyListener {
             }
 
             LoggingCache.CopyMessagesResult temp = MessageLog.getInstance().copyMessages(
-                    Miranda.properties.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT),
-                    restartIndex
+                Miranda.properties.getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT),
+                restartIndex
             );
 
             if (temp != null) {
                 for (Message message : temp.list) {
-                    deliver(message);
+                    try {
+                        deliver(message);
+                    } catch (LtsllcException e) {
+                        logger.warn("caught LtsllcExceeption during deliver", e);
+                    }
                 }
 
                 restartIndex = temp.restartIndex;
-
             }
             iterations++;
         }
@@ -998,7 +986,7 @@ public class Miranda implements PropertyListener {
      * @param message The message to
      * @throws IOException If there is a problem with the manipulation of the logfiles
      */
-    public void deliver(Message message) throws IOException {
+    public void deliver(Message message) throws IOException, LtsllcException {
         logger.debug("entering deliver with " + message.getMessageID());
 
         if (null == message) {
@@ -1018,13 +1006,6 @@ public class Miranda implements PropertyListener {
             return;
         }
 
-        if (message.getMessageID().equals(UUID.fromString("7a8afadf-2954-48f1-9477-c4eb627f1a9b"))) {
-            int i = 0;
-            i++;
-            long sendTime = message.getNextSend();
-            i++;
-        }
-
         //
         // don't send if we haven't gotten a reply from the message we already sent
         //
@@ -1034,10 +1015,8 @@ public class Miranda implements PropertyListener {
         }
         inflight.add(message);
 
-        message.setLastSend(System.currentTimeMillis());
-
         double exponent = message.getNumberOfSends() + 1;
-        double period = properties.getLongProperty(PROPERTY_MAX_WAIT_BETWEEN_SENDS);
+        double period = properties.getLongProperty(PROPERTY_WAIT_BETWEEN_SENDS);
         long waitTime = (long) Math.pow(period, exponent);
         long maxWait = properties.getLongProperty(PROPERTY_MAX_WAIT_BETWEEN_SENDS);
         if (waitTime > maxWait || waitTime <= 0) {
@@ -1059,11 +1038,17 @@ public class Miranda implements PropertyListener {
             paramList.add (actual);
         }
 
-        Request request = httpClient.preparePost(message.getDeliveryURL())
-                .setFormParams(paramList)
-                .setBody(message.getContents())
-                .build();
-
+        Request request = null;
+        try {
+            request = httpClient.preparePost(message.getDeliveryURL())
+                    .setFormParams(paramList)
+                    .setBody(message.getContents())
+                    .build();
+        } catch (Exception e) {
+            inflight.remove(message);
+            throw new LtsllcException(e);
+        }
+        message.setLastSend(System.currentTimeMillis());
 
         ListenableFuture<Response> listenableFuture = httpClient.executeRequest(request);
 
@@ -1400,5 +1385,19 @@ public class Miranda implements PropertyListener {
         Node node = new Node(myUuid, myHost, myPort, null);
         Cluster.getInstance().connectToNode(node, true);
         node.sendStart(true, false);
+    }
+
+    public UUID newMessage (Message message) {
+        UUID uuid = UUID.randomUUID();
+
+        try {
+            message.setMessageID(uuid);
+            MessageLog.getInstance().add(message, myUuid);
+            Cluster.getInstance().informOfNewMessage(message);
+        } catch (IOException | LtsllcException e) {
+            throw new RuntimeException(e);
+        }
+
+        return uuid;
     }
 }

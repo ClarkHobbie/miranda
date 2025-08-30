@@ -85,7 +85,7 @@ public class TestSuperclass {
     }
 
     public void setLoggingLevel (String component, Level level) {
-        Map map = new HashMap<>();
+        Map<String, Level> map = new HashMap<>();
         map.put(component, level);
         Configurator.setLevel(map);
     }
@@ -93,5 +93,13 @@ public class TestSuperclass {
     public boolean isMirandaRunning () {
         Miranda miranda = Miranda.getInstance();
         return (miranda.getIterations() > 0);
+    }
+
+    public synchronized void pause (long time) {
+        try {
+            wait(time);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

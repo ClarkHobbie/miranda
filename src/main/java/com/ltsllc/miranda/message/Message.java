@@ -192,6 +192,11 @@ public class Message implements Comparable<Message> {
         stringBuffer.append(messageID);
         stringBuffer.append(" PARAMS: ");
         for (Param param : paramList) {
+            if (param.getValue() == null || param.getValue().trim().equals("")) {
+                logger.debug("invalid parameter: " + param.getName() + " value is null or the empty string");
+                continue;
+            }
+
             stringBuffer.append(param.getName());
             stringBuffer.append(" = ");
             stringBuffer.append(param.getValue());
