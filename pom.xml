@@ -16,11 +16,12 @@
 
     </repositories>
 
-
     <properties>
         <maven.compiler.source>24</maven.compiler.source>
         <maven.compiler.target>24</maven.compiler.target>
+        <jakarta-servlet.version>5.0.0</jakarta-servlet.version>
     </properties>
+
     <build>
         <resources>
             <resource>
@@ -252,7 +253,6 @@
             <version>11.0.9</version>
         </dependency>
 
-
         <!-- apache commons-io  -->
         <dependency>
             <groupId>commons-io</groupId>
@@ -266,6 +266,13 @@
             <groupId>io.netty</groupId>
             <artifactId>netty-all</artifactId>
             <version>4.1.94.Final</version>
+        </dependency>
+
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <version>6.0.0</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 </project>

@@ -36,9 +36,11 @@ import org.apache.logging.log4j.Logger;
 import org.asynchttpclient.*;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.handler.HandlerList;
+import org.eclipse.jetty.server.handler.ContextHandler;
 import org.eclipse.jetty.server.handler.ResourceHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.jetbrains.annotations.NotNull;
 
@@ -763,36 +765,42 @@ public class Miranda implements PropertyListener {
         QueuedThreadPool threadPool = new QueuedThreadPool();
         threadPool.setName("server");
 
-        server = new Server(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_MESSAGE_PORT));
+        int port = properties.getIntProperty(PROPERTY_MESSAGE_PORT);
+        server = new Server(port);
 
         ResourceHandler resourceHandler = new ResourceHandler();
         resourceHandler.setWelcomeFiles(new String[]{"index.html"});
-        resourceHandler.setResourceBase("www");
+        resourceHandler.setWelcomeFiles(new String[]{"www"});
 
-        ServletContextHandler servletContextHandler = new ServletContextHandler();
-        servletContextHandler.addServlet(Coalesce.class, "/api/coalesce");
-        servletContextHandler.addServlet(ConnectionDetails.class, "/api/connections/details");
-        servletContextHandler.addServlet(DeleteMessage.class, "/api/deleteMessage");
-        servletContextHandler.addServlet(PostReceiver.class, "/api/deliver");
-        servletContextHandler.addServlet(Properties.class, "/api/properties");
-        servletContextHandler.addServlet(MessageInfo.class, "/api/messageInfo");
-        servletContextHandler.addServlet(NumberOfConnections.class, "/api/numberOfConnections");
-        servletContextHandler.addServlet(NumberOfMessages.class, "/api/numberOfMessages");
-        servletContextHandler.addServlet(NewMessage.class, "/api/newMessage");
-        servletContextHandler.addServlet(PostReceiver.class, "/api/receiveStatus");
-        servletContextHandler.addServlet(SaveProperties.class, "/api/saveProperties");
-        servletContextHandler.addServlet(Status.class, "/api/status");
-        servletContextHandler.addServlet(TrackMessage.class, "/api/trackMessage");
-        servletContextHandler.addServlet(Queue.class, "/api/queue");
+        // ServletHandler handler = new ServletHandler();
+        // server.setHandler(handler);
+        // handler.addServletWithMapping(Coalesce.class, "/api/coalesce");
 
-        HandlerList handlers = new HandlerList();
-        handlers.setHandlers(new Handler[]{resourceHandler, servletContextHandler});
-        server.setHandler(handlers);
 
+        ServletContextHandler servletContextHandler = new ServletContextHandler(ServletContextHandler.SESSIONS);
+
+        servletContextHandler.addServlet(new ServletHolder(new Coalesce()), "/api/coalesce");
+
+        // servletContextHandler.addServlet(Coalesce.class.toString(), "/api/coalesce");
+        servletContextHandler.addServlet(new ServletHolder(new ConnectionDetails()), "/api/connections/details");
+
+        servletContextHandler.addServlet(new ServletHolder(new DeleteMessage()), "/api/deleteMessage");
+        servletContextHandler.addServlet(new ServletHolder(new PostReceiver()), "/api/deliver");
+        servletContextHandler.addServlet(new ServletHolder(new Properties()), "/api/properties");
+        servletContextHandler.addServlet(new ServletHolder(new MessageInfo()), "/api/messageInfo");
+        servletContextHandler.addServlet(new ServletHolder(new NumberOfConnections()), "/api/numberOfConnections");
+        servletContextHandler.addServlet(new ServletHolder(new NumberOfMessages()), "/api/numberOfMessages");
+        servletContextHandler.addServlet(new ServletHolder(new NewMessage()), "/api/newMessage");
+        servletContextHandler.addServlet(new ServletHolder(new Queue()), "/api/queue");
+        servletContextHandler.addServlet(new ServletHolder(new PostReceiver()), "/api/receiveStatus");
+        servletContextHandler.addServlet(new ServletHolder(new SaveProperties()), "/api/saveProperties");
+        servletContextHandler.addServlet(new ServletHolder(new Status()), "/api/status");
+        servletContextHandler.addServlet(new ServletHolder(new TrackMessage()), "/api/trackMessage");
+
+        server.setHandler(servletContextHandler);
 
         // Start the Server, so it starts accepting connections from clients.
         server.start();
-        int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_MESSAGE_PORT);
         logger.debug("started up the port at " + port + " and thread: " + Thread.currentThread());
 
         logger.debug("leaving startMessagePort");

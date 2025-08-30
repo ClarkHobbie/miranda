@@ -578,4 +578,11 @@ public class MessageCache {
         uuidToNumberOfTimesReferenced.clear();
     }
 
+    public void clear() {
+        uuidToMessage.clear();
+        uuidToOnline.clear();
+        uuidToLocation.clear();
+        uuidToNumberOfTimesReferenced.clear();
+        logfile.clear();
+    }
 }
