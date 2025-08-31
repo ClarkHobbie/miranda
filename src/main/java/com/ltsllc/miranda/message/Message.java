@@ -45,6 +45,7 @@ public class Message implements Comparable<Message> {
     }
 
     public Message (Message message) {
+        this();
         status = message.status;
         deliveryURL = message.deliveryURL;
         statusURL = message.statusURL;

@@ -447,15 +447,20 @@ class MirandaTest extends TestSuperclass {
 
     @Test
     public void successfulMessage () throws LtsllcException, IOException {
-        Miranda miranda = new Miranda();
-        miranda.loadProperties();
+        try {
+            Miranda miranda = new Miranda();
 
-        Message message = createTestMessage(UUID.randomUUID());
-        MessageLog.getInstance().add(message, UUID.randomUUID());
+            miranda.loadProperties();
 
-        miranda.successfulMessage(message);
+            Message message = createTestMessage(UUID.randomUUID());
+            MessageLog.getInstance().add(message, UUID.randomUUID());
 
-        assert (MessageLog.getInstance().getOwnerOf(message.getMessageID()) == null);
+            miranda.successfulMessage(message);
+
+            assert (MessageLog.getInstance().getOwnerOf(message.getMessageID()) == null);
+        } finally {
+            MessageLog.getInstance().clear();
+        }
     }
 
     @Test

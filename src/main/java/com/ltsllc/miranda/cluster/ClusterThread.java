@@ -15,6 +15,8 @@ public class ClusterThread extends Thread {
     }
 
     public void run () {
+        Cluster.defineStatics();
+
         synchronized (this) {
             try {
                 wait(1000);

@@ -36,7 +36,6 @@ import static org.mockito.Mockito.*;
 @MockitoSettings(strictness = Strictness.LENIENT)
 public class NodeTest {
 
-
     public Message createTestMessage (UUID uuid) {
         Message message = new Message();
         message.setMessageID(uuid);

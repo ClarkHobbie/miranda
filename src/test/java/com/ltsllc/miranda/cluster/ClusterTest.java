@@ -271,16 +271,6 @@ class ClusterTest extends TestSuperclass {
     public void divideUpMessages () {
         Miranda miranda = new Miranda();
         Cluster.defineStatics();
-        List<Message> list = new ArrayList<>();
-
-        for (int i = 0; i < 100; i++) {
-            Message message = new Message();
-            message.setMessageID(UUID.randomUUID());
-            message.setDeliveryURL("http://localhost:3030");
-            message.setContents("hi there".getBytes());
-            message.setStatusURL("http://localhost:3030");
-            list.add(message);
-        }
 
         List<Node> voterList = new ArrayList<>();
         EmbeddedChannel channel = new EmbeddedChannel();

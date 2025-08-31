@@ -34,13 +34,12 @@ import io.netty.util.ResourceLeakDetectorFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.asynchttpclient.*;
-import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.handler.ContextHandler;
+import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.util.resource.Resource;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.jetbrains.annotations.NotNull;
 
@@ -722,7 +721,6 @@ public class Miranda implements PropertyListener {
 
         logger.debug("About to start cluster port");
         setupClustering();
-
         setupMessageLog();
 
         logger.debug("determine if we should recover");
@@ -768,20 +766,19 @@ public class Miranda implements PropertyListener {
         int port = properties.getIntProperty(PROPERTY_MESSAGE_PORT);
         server = new Server(port);
 
+        HandlerList handlerList = new HandlerList();
+
         ResourceHandler resourceHandler = new ResourceHandler();
+        Resource base = Resource.newResource("C:/Users/clark/IdeaProjects/miranda/www");
+        resourceHandler.setBaseResource(base);
         resourceHandler.setWelcomeFiles(new String[]{"index.html"});
-        resourceHandler.setWelcomeFiles(new String[]{"www"});
 
-        // ServletHandler handler = new ServletHandler();
-        // server.setHandler(handler);
-        // handler.addServletWithMapping(Coalesce.class, "/api/coalesce");
-
+        handlerList.addHandler(resourceHandler);
 
         ServletContextHandler servletContextHandler = new ServletContextHandler(ServletContextHandler.SESSIONS);
 
         servletContextHandler.addServlet(new ServletHolder(new Coalesce()), "/api/coalesce");
 
-        // servletContextHandler.addServlet(Coalesce.class.toString(), "/api/coalesce");
         servletContextHandler.addServlet(new ServletHolder(new ConnectionDetails()), "/api/connections/details");
 
         servletContextHandler.addServlet(new ServletHolder(new DeleteMessage()), "/api/deleteMessage");
@@ -797,7 +794,9 @@ public class Miranda implements PropertyListener {
         servletContextHandler.addServlet(new ServletHolder(new Status()), "/api/status");
         servletContextHandler.addServlet(new ServletHolder(new TrackMessage()), "/api/trackMessage");
 
-        server.setHandler(servletContextHandler);
+        handlerList.addHandler(servletContextHandler);
+
+        server.setHandler(handlerList);
 
         // Start the Server, so it starts accepting connections from clients.
         server.start();
@@ -1108,7 +1107,7 @@ public class Miranda implements PropertyListener {
         param = new Param("SUBJECT", "MESSAGE_DELIVERY_FAILED");
         list.add(param);
 
-        Integer integer = new Integer(response.getStatusCode());
+        Integer integer = Integer.valueOf(response.getStatusCode());
         param = new Param("STATUS", integer.toString());
         list.add(param);
 
@@ -1127,7 +1126,7 @@ public class Miranda implements PropertyListener {
         param = new Param("SUBJECT", "MESSAGE_DELIVERED");
         list.add(param);
 
-        Integer integer = new Integer(response.getStatusCode());
+        Integer integer = Integer.valueOf(response.getStatusCode());
         param = new Param("STATUS", integer.toString());
         list.add(param);
 

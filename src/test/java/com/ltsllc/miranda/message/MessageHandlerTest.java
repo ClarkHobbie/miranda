@@ -8,6 +8,7 @@ import org.apache.logging.log4j.core.config.Configurator;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+
 public class MessageHandlerTest {
     public static final Logger logger = LogManager.getLogger();
     @BeforeAll

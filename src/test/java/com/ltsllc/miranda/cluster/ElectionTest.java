@@ -78,35 +78,39 @@ class ElectionTest {
 
     @Test
     void divideUpNodesMessages() throws IOException, LtsllcException {
-        Election election = buildElection();
-        Node deadNode = election.getVoters().getFirst().getNode();
-        election.getVoters().remove(0);
-        Node node1 = election.getVoters().get(0).getNode();
-        Node node2 = election.getVoters().get(1).getNode();
+        try {
+            Election election = buildElection();
+            Node deadNode = election.getVoters().getFirst().getNode();
+            election.getVoters().remove(0);
+            Node node1 = election.getVoters().get(0).getNode();
+            Node node2 = election.getVoters().get(1).getNode();
 
-        MessageLog.defineStatics();
-        Message message = buildMessage();
-        message.setContents(HexConverter.regularStringToByteArray("Hi there"));
-        MessageLog.getInstance().add(message, deadNode.getUuid());
+            MessageLog.defineStatics();
+            Message message = buildMessage();
+            message.setContents(HexConverter.regularStringToByteArray("Hi there"));
+            MessageLog.getInstance().add(message, deadNode.getUuid());
 
-        message = buildMessage();
-        byte[] array = HexConverter.regularStringToByteArray("low there");
-        message.setContents(array);
-        MessageLog.getInstance().add(message, deadNode.getUuid());
+            message = buildMessage();
+            byte[] array = HexConverter.regularStringToByteArray("low there");
+            message.setContents(array);
+            MessageLog.getInstance().add(message, deadNode.getUuid());
 
-        message = buildMessage();
-        message.setContents("medium there".getBytes());
-        MessageLog.getInstance().add(message, deadNode.getUuid());
+            message = buildMessage();
+            message.setContents("medium there".getBytes());
+            MessageLog.getInstance().add(message, deadNode.getUuid());
 
-        election.setDeadNode(deadNode.getUuid());
-        election.divideUpNodesMessages();
+            election.setDeadNode(deadNode.getUuid());
+            election.divideUpNodesMessages();
 
-        EmbeddedChannel channel = (EmbeddedChannel) node1.getChannel();
-        String string1 = channel.readOutbound();
-        channel = (EmbeddedChannel) node2.getChannel();
-        String string2 = channel.readOutbound();
+            EmbeddedChannel channel = (EmbeddedChannel) node1.getChannel();
+            String string1 = channel.readOutbound();
+            channel = (EmbeddedChannel) node2.getChannel();
+            String string2 = channel.readOutbound();
 
-        assert (string1.length() > 0 || string2.length() > 0);
+            assert (string1.length() > 0 || string2.length() > 0);
+        } finally {
+            MessageLog.getInstance().clear();
+        }
     }
 
     @Test
