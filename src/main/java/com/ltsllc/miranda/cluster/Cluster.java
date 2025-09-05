@@ -789,6 +789,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
      * @param newOwner The new owner of the message.
      * @param message  The message whose ownership is to be transferred
      */
+    /*
     public synchronized void takeOwnershipOf(UUID newOwner, UUID message) {
         for (Node node : nodes) {
             if (node.getChannel() != null) {
@@ -798,6 +799,8 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
             }
         }
     }
+
+     */
 
     /**
      * A node has been declared dead --- divide up its messages among the connected survivors
@@ -816,7 +819,6 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
                 Miranda.getProperties().getLongProperty(Miranda.PROPERTY_DEAD_NODE_TIMEOUT));
 
     }
-
 
     /**
      * a dead node timeout occurred
@@ -846,7 +848,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
      */
     public void sendError () {
         for (Node node: nodes) {
-            node.sendErrorStart();
+            node.sendError();
             node.setState(ClusterConnectionStates.START);
         }
     }
@@ -902,7 +904,6 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         awaitingDeadNodeAcks.put (sendingNode, false);
     }
 
-
     /**
      * We received an ack to our dead node
      */
@@ -938,8 +939,6 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
      * @param sender
      */
     public void sendDeadNode (UUID deadNode, UUID sender) {
-        StringBuilder sb = new StringBuilder(Node.DEAD_NODE);
-
         for (Node node : nodes) {
             if (node.getUuid().equals(deadNode)) {
                 continue;
@@ -1016,7 +1015,6 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         }
     }
 
-
     /**
      * Return the number of nodes in the cluster
      *
@@ -1037,11 +1035,14 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
      * @param messageUuid  The message to be assigned
      * @throws LtsllcException If there is a problem finding the assignee
      */
+    /*
     public void assignMessageTo(UUID receiverUuid, UUID messageUuid) throws LtsllcException, IOException {
         Node node = findNode(receiverUuid);
         node.assignMessage(messageUuid);
     }
 
+
+     */
     /**
      * Find a node amongst all the nodes in the cluster
      *

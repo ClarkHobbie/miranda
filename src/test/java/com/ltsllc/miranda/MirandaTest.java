@@ -39,6 +39,8 @@ class MirandaTest extends TestSuperclass {
 
     @BeforeEach
     void setupEach () {
+        ImprovedFile improvedFile = new ImprovedFile("messages.log");
+        improvedFile.clear();
         MessageLog.defineStatics();
     }
 
@@ -191,7 +193,7 @@ class MirandaTest extends TestSuperclass {
     public void mainLoopNotRunning () throws LtsllcException, IOException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
-        Message message = createTestMessage(UUID.randomUUID());
+        Message message = createTestMessage(UUID.randomUUID(), UUID.randomUUID());
         List<Message> list = new ArrayList<>();
         list.add(message);
         Miranda.getInstance().setKeepRunning(false);
@@ -210,7 +212,7 @@ class MirandaTest extends TestSuperclass {
 
         Cluster.defineStatics();
 
-        Message message = createTestMessage(UUID.randomUUID());
+        Message message = createTestMessage(UUID.randomUUID(), UUID.randomUUID());
         message.setNextSend(System.currentTimeMillis());
         List<Message> list = new ArrayList<>();
         list.add(message);

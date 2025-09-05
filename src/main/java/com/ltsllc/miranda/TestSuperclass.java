@@ -1,5 +1,6 @@
 package com.ltsllc.miranda;
 
+import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.properties.PropertiesHolder;
@@ -21,8 +22,13 @@ public class TestSuperclass {
     public static Logger logger = LogManager.getLogger(TestSuperclass.class);
 
     public Message createTestMessage(UUID uuid) {
+        return createTestMessage(uuid, UUID.randomUUID());
+    }
+
+    public Message createTestMessage(UUID uuid, UUID owner) {
         Message message = new Message();
         message.setMessageID(uuid);
+        message.setOwner(owner);
         message.setStatusURL("HTTP://localhost:3030/api/receiveStatus");
         message.setDeliveryURL("HTTP://localhost:3030/api/deliver");
         byte[] contents = {1, 2, 3};
@@ -101,5 +107,10 @@ public class TestSuperclass {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void clearMessageLog () {
+        ImprovedFile improvedFile = new ImprovedFile("messages.log");
+        improvedFile.clear();
     }
 }

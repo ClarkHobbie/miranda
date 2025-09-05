@@ -86,8 +86,8 @@ class NewMessageTest extends TestSuperclass {
     @Test
     public void longToString () {
         String strUuid = "12345678-9abc-def1-2345-6789abcdef12";
-        Message message = createTestMessage(UUID.fromString(strUuid));
-        String s2 = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 PARAMS: STATUS: HTTP://localhost:3030/api/receiveStatus DELIVERY: HTTP://localhost:3030/api/deliver NUMBER_OF_SENDS: 0 LAST_SEND: 0 NEXT_SEND: 0 CONTENTS: 010203";
+        Message message = createTestMessage(UUID.fromString(strUuid), UUID.fromString("12345678-9abc-def1-2345-6789abcdef12"));
+        String s2 = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 OWNER: 12345678-9abc-def1-2345-6789abcdef12 PARAMS: STATUS: HTTP://localhost:3030/api/receiveStatus DELIVERY: HTTP://localhost:3030/api/deliver NUMBER_OF_SENDS: 0 LAST_SEND: 0 NEXT_SEND: 0 CONTENTS: 010203";
         String returned = message.longToString();
         StringComparrison stringComparrison = new StringComparrison();
         stringComparrison.compare(s2, returned);
@@ -98,7 +98,7 @@ class NewMessageTest extends TestSuperclass {
     @Test
     public void readLongFormat () {
         String  strUuid = "12345678-9abc-def1-2345-6789abcdef12";
-        String s2 = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 PARAMS: STATUS: HTTP://localhost:3030/api/receiveStatus DELIVERY: HTTP://localhost:3030/api/deliver NUMBER_OF_SENDS: 0 LAST_SEND: 0 NEXT_SEND: 0 CONTENTS: 010203";
+        String s2 = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 OWNER: 12345678-9abc-def1-2345-6789abcdef12 PARAMS: STATUS: HTTP://localhost:3030/api/receiveStatus DELIVERY: HTTP://localhost:3030/api/deliver NUMBER_OF_SENDS: 0 LAST_SEND: 0 NEXT_SEND: 0 CONTENTS: 010203";
         Message message1 = createTestMessage(UUID.fromString(strUuid));
         assert (message1.equals(Message.readLongFormat(s2)));
     }
@@ -106,7 +106,7 @@ class NewMessageTest extends TestSuperclass {
     @Test
     public void readLongFormatFromScanner () {
         String  strUuid = "12345678-9abc-def1-2345-6789abcdef12";
-        String s = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 PARAMS: STATUS: HTTP://localhost:3030/api/receiveStatus DELIVERY: HTTP://localhost:3030/api/deliver NUMBER_OF_SENDS: 0 LAST_SEND: 0 NEXT_SEND: 0 CONTENTS: 010203";
+        String s = "MESSAGE ID: 12345678-9abc-def1-2345-6789abcdef12 OWNER: 12345678-9abc-def1-2345-6789abcdef12 PARAMS: STATUS: HTTP://localhost:3030/api/receiveStatus DELIVERY: HTTP://localhost:3030/api/deliver NUMBER_OF_SENDS: 0 LAST_SEND: 0 NEXT_SEND: 0 CONTENTS: 010203";
         Message message = createTestMessage(UUID.fromString(strUuid));
         Scanner scanner = new Scanner(s);
         assert (message.equals(Message.readLongFormat(scanner)));

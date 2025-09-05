@@ -4,6 +4,7 @@ import com.ltsllc.commons.HexConverter;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.Miranda;
+import com.ltsllc.miranda.TestSuperclass;
 import com.ltsllc.miranda.message.Message;
 import org.junit.jupiter.api.Test;
 
@@ -12,21 +13,10 @@ import java.util.UUID;
 
 import static com.ltsllc.miranda.logging.MessageLog.getInstance;
 
-class LoggingCacheTest {
+class LoggingCacheTest extends TestSuperclass {
 
     public Message createMessage () {
-        Message m = new Message();
-        m.setMessageID(UUID.randomUUID());
-        m.setStatus(0);
-
-        String contents = "hi there";
-        String contentsHex = HexConverter.toHexString(contents.getBytes());
-        m.setContents(contents.getBytes());
-
-        m.setStatusURL("google.com");
-        m.setDeliveryURL("google.com");
-
-        return m;
+        return createTestMessage(UUID.randomUUID());
     }
 
 

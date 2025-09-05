@@ -39,6 +39,7 @@ public class Message implements Comparable<Message> {
     protected long lastSend = 0;
     protected int numberOfSends = 0;
     protected long nextSend = 0;
+    protected UUID owner;
 
     public Message () {
         super();
@@ -51,6 +52,14 @@ public class Message implements Comparable<Message> {
         statusURL = message.statusURL;
         contents = Arrays.copyOf(message.contents, message.contents.length);
         messageID = new UUID(message.messageID.getMostSignificantBits(), message.messageID.getLeastSignificantBits());
+    }
+
+    public UUID getOwner() {
+        return owner;
+    }
+
+    public void setOwner(UUID owner) {
+        this.owner = owner;
     }
 
     public String getDeliveryURL() {
@@ -184,13 +193,15 @@ public class Message implements Comparable<Message> {
      *
      * @return The string as discussed.
      */
-    public String internalsToString () {
+    public String longFormatToString () {
         String returnValue = null;
 
         StringBuffer stringBuffer = new StringBuffer();
 
         stringBuffer.append ("ID: ");
         stringBuffer.append(messageID);
+        stringBuffer.append(" OWNER: ");
+        stringBuffer.append(owner);
         stringBuffer.append(" PARAMS: ");
         for (Param param : paramList) {
             if (param.getValue() == null || param.getValue().trim().equals("")) {
@@ -234,7 +245,7 @@ public class Message implements Comparable<Message> {
         StringBuffer stringBuffer = new StringBuffer();
 
         stringBuffer.append ("MESSAGE ");
-        stringBuffer.append(internalsToString());
+        stringBuffer.append(longFormatToString());
 
         return stringBuffer.toString();
     }
@@ -254,12 +265,22 @@ public class Message implements Comparable<Message> {
     }
 
     public static Message readLongFormat (Scanner scanner) {
+        /*
+         * Long format has the form:
+         * MESSAGE ID: <UUID> OWNER: <UUID> PARAMS: <name> = <value> STATUS: <URL> DELIVERY: <URL> NUMBER_OF_SENDS:
+         * <number of sends> LAST_SEND: <time> NEXT_SEND: <time> CONTENTS: <hex encoded string>
+         */
         ScannerWithUnget scannerWithUnget = new ScannerWithUnget(scanner);
         Message newMessage = new Message();
         scannerWithUnget.next();scannerWithUnget.next(); // MESSAGE ID:
         String temp;
-        String strID = scannerWithUnget.next();;
+        String strID = scannerWithUnget.next();
         newMessage.setMessageID(UUID.fromString(strID));
+
+        temp = scannerWithUnget.next();  // OWNER:
+        String strOwner = scannerWithUnget.next();
+        newMessage.setOwner(UUID.fromString(strOwner));
+
         List<Param> paramList = new ArrayList<>();
         String name = null;
         temp = scannerWithUnget.next(); // PARAMS:
@@ -329,5 +350,26 @@ public class Message implements Comparable<Message> {
     @Override
     public int hashCode () {
         return (int) (messageID.getMostSignificantBits() & messageID.getLeastSignificantBits());
+    }
+
+    public void convertToUpperCase() {
+        deliveryURL = deliveryURL.toUpperCase();
+        statusURL = statusURL.toUpperCase();
+        contents = contents.toString().toUpperCase().getBytes();
+        messageID = UUID.fromString(messageID.toString().toUpperCase());
+        owner = UUID.fromString(owner.toString().toUpperCase());
+        paramList = convertParamListToUpperCase(paramList);
+    }
+
+    public List<Param> convertParamListToUpperCase(List<Param> paramList) {
+        List<Param> newList = new ArrayList<>();
+        for (Param param : paramList) {
+            String newName = param.getName().toUpperCase();
+            String newValue = param.getValue().toUpperCase();
+            Param newParam = new Param(newName, newValue);
+            newList.add(newParam);
+        }
+
+        return newList;
     }
 }

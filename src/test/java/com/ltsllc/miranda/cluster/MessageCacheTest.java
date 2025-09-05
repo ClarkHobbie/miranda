@@ -3,8 +3,10 @@ package com.ltsllc.miranda.cluster;
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.Miranda;
+import com.ltsllc.miranda.TestSuperclass;
 import com.ltsllc.miranda.logging.MessageLog;
 import com.ltsllc.miranda.message.Message;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -12,7 +14,12 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class MessageCacheTest {
+class MessageCacheTest extends TestSuperclass {
+
+    @BeforeEach
+    void setup () {
+        clearMessageLog();
+    }
 
     @Test
     void addNullMessage() throws LtsllcException {
@@ -178,6 +185,7 @@ class MessageCacheTest {
         Message message1 = new Message();
         message1.setContents(new byte[512]);
         message1.setMessageID(UUID.randomUUID());
+        message1.setOwner(UUID.randomUUID());
         message1.setDeliveryURL("http://localhost");
         message1.setStatusURL("http://localhost");
         message1.setStatusURL("http://localhost");
@@ -206,6 +214,7 @@ class MessageCacheTest {
         Message message1 = new Message();
         message1.setContents(new byte[512]);
         message1.setMessageID(UUID.randomUUID());
+        message1.setOwner(UUID.randomUUID());
         message1.setDeliveryURL("http://localhost");
         message1.setStatusURL("http://localhost");
         message1.setStatusURL("http://localhost");
@@ -215,6 +224,7 @@ class MessageCacheTest {
         Message message = new Message();
         message.setContents(new byte[548]);
         message.setMessageID(UUID.randomUUID());
+        message.setOwner(UUID.randomUUID());
         message.setDeliveryURL("http://localhost");
         message.setStatusURL("http://localhost");
         message.setStatusURL("http://localhost");
@@ -239,6 +249,7 @@ class MessageCacheTest {
         Message message1 = new Message();
         message1.setContents(buff);
         message1.setMessageID(UUID.randomUUID());
+        message1.setOwner(UUID.randomUUID());
         message1.setDeliveryURL("http://localhost");
         message1.setStatusURL("http://localhost");
         message1.setStatusURL("http://localhost");
@@ -248,6 +259,7 @@ class MessageCacheTest {
         Message message = new Message();
         message.setContents(new byte[548]);
         message.setMessageID(UUID.randomUUID());
+        message.setOwner(UUID.randomUUID());
         message.setDeliveryURL("http://localhost");
         message.setStatusURL("http://localhost");
         message.setStatusURL("http://localhost");

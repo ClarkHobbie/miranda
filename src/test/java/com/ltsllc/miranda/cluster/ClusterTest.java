@@ -2,6 +2,7 @@ package com.ltsllc.miranda.cluster;
 
 
 import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.TestSuperclass;
@@ -183,9 +184,11 @@ class ClusterTest extends TestSuperclass {
 
 
     public void reconnectSuccess() throws LtsllcException, CloneNotSupportedException {
+        ImprovedFile improvedFile = new ImprovedFile("messages.log");
+        improvedFile.clear();
+
         Miranda miranda = new Miranda();
         miranda.loadProperties();
-
         Cluster.defineStatics();
 
         List<Node> list = new ArrayList<>();
@@ -244,7 +247,7 @@ class ClusterTest extends TestSuperclass {
         assert (!MessageLog.getInstance().getOwnerOf(message3Uuid).equals(node2Uuid));
     }
 
-
+/*
     @Test
     public void takeOwnershipOf () throws LtsllcException {
         Miranda miranda = new Miranda();
@@ -266,6 +269,8 @@ class ClusterTest extends TestSuperclass {
         String s = channel.readOutbound();
         assert (s.startsWith(Node.TAKE));
     }
+
+     */
 
     @Test
     public void divideUpMessages () {
