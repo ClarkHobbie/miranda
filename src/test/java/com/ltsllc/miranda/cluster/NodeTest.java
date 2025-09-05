@@ -222,7 +222,7 @@ public class NodeTest extends TestSuperclass
         MessageLog mockMessageLog = mock(MessageLog.class);
         MessageLog.setInstance(mockMessageLog);
 
-        StringBuffer strMessage = new StringBuffer();
+        StringBuilder strMessage = new StringBuilder();
         strMessage.append(Node.NEW_MESSAGE);
         UUID uuid = UUID.fromString("123e4567-e89b-42d3-a456-556642440000");
         strMessage.append(" ");
