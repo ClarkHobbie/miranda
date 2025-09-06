@@ -42,11 +42,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     /*
      * message name constants
      */
-    // public static final String ASSIGN = "ASSIGN MESSAGE";
     public static final String DEAD_NODE = "DEAD NODE";
     public static final String ERROR = "ERROR";
-    // public static final String ERROR_START = "ERROR_START";
-    // public static final String GET_MESSAGE = "GET MESSAGE";
     public static final String HEART_BEAT_START = "HEART BEAT START";
     public static final String HEART_BEAT = "HEART BEAT";
     public static final String LEADER = "LEADER";
@@ -579,26 +576,10 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
     public void handleStateGeneral(MessageType messageType, String s) throws LtsllcException, IOException {
         switch (messageType) {
-            /*
-            case ASSIGN: {
-                handleAssign(s);
-                break;
-            }
-
-
-             */
             case DEAD_NODE: {
                 handleDeadNode(s);
                 break;
             }
-
-            /*
-            case GET_MESSAGE: {
-                handleGetMessage(s);
-                break;
-            }
-
-             */
 
             case MESSAGE_DELIVERED: {
                 handleMessageDelivered(s);
@@ -695,12 +676,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
         if (s.startsWith(DEAD_NODE)) {
             messageType = MessageType.DEAD_NODE;
-//        } else if (s.startsWith(ERROR_START)) {
-//            messageType = MessageType.ERROR_START;
         } else if (s.startsWith(ERROR)) {
             messageType = MessageType.ERROR;
-//        } else if (s.startsWith(GET_MESSAGE)) {
-//            messageType = MessageType.GET_MESSAGE;
         } else if (s.startsWith(HEART_BEAT_START)) {
             messageType = MessageType.HEART_BEAT_START;
         } else if (s.startsWith(HEART_BEAT)) {
@@ -715,8 +692,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             messageType = MessageType.MESSAGES_END;
         } else if (s.startsWith(MESSAGES)) {
             messageType = MessageType.MESSAGES;
-//        } else if (s.startsWith(MESSAGE_NOT_FOUND)) {
-//            messageType = MessageType.MESSAGE_NOT_FOUND;
         } else if (s.startsWith(MESSAGE)) {
             messageType = MessageType.MESSAGE;
         } else if (s.startsWith(NEW_NODE_CONFIRMED)) {
@@ -743,8 +718,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             messageType = MessageType.SYNCHRONIZE_START;
         } else if (s.startsWith(SYNCHRONIZE)) {
             messageType = MessageType.SYNCHRONIZE;
-        //} else if (s.startsWith(TAKE)) {
-          //  messageType = MessageType.TAKE;
         } else if (s.startsWith(TIMEOUT)) {
             messageType = MessageType.TIMEOUT;
         }
@@ -897,26 +870,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
         ChannelFuture future = channel.writeAndFlush(stringBuilder.toString());
 
-
-/*
-        try {
-            logger.debug("about to call await.  Current thread: " + Thread.currentThread());
-            future.await();
-            logger.debug("done with await");
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-
-
-
-        if (!future.isSuccess()) {
-            throw new RuntimeException(future.exceptionNow());
-        }
-
-        logger.debug("wrote " + stringBuilder);
-*/
-
-
         if (uuid != null && uuid.equals(Miranda.getInstance().getMyUuid())) {
             isLoopback = true;
             ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
@@ -932,8 +885,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             timeoutsMet.put(Alarms.START, false);
         }
         logger.debug("leaving sendStart");
-
-
     }
 
     /**
@@ -1056,35 +1007,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
         logger.debug("leaving handleMessage");
     }
-
-    /**
-     * Handle a get message message
-     * <p>
-     * This method takes care of reading in the message ID and sending back the requested message.
-     *
-     * @param input A string containing the new message message.  Note that this method assumes that this string has
-     *              been capitalized.
-     * @throws IOException If there is a problem looking up the message in the cache.
-     */
-    /*
-    protected void handleGetMessage(String input) throws IOException, LtsllcException {
-        logger.debug("entering handleGetMessage with input = " + input);
-        Scanner scanner = new Scanner(input);
-        scanner.skip(GET_MESSAGE);
-        UUID uuid = UUID.fromString(scanner.next());
-        registerUuid(uuid);
-        if (!MessageLog.getInstance().contains(uuid)) {
-            logger.debug("cache miss, sending MESSAGE NOT FOUND");
-            channel.writeAndFlush(MESSAGE_NOT_FOUND);
-        } else {
-            Message message = MessageLog.getInstance().get(uuid);
-            logger.debug("cache hit, message = " + message.longToString() + "; sending message");
-            sendMessage(message);
-        }
-        logger.debug("leaving handleGetMessage");
-    }
-
-     */
 
     /**
      * Send a message message
@@ -1241,53 +1163,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         Message message = Message.readLongFormat(input);
         MessageLog.getInstance().add(message,message.getOwner());
     }
-
-    /**
-     * The IoSession has been opened --- start synchronizing if the Miranda synchronization flag has been set.
-     */
-    /*
-    public void sessionOpened() throws IOException {
-        if (Miranda.getInstance().getSynchronizationFlag()) {
-            synchronize();
-        }
-    }
-    */
-
-
-
-    /**
-     * Go into the synchronization state.
-     *
-     * <p>
-     * This starts the synchronization process by going into the synchronization state and sending a synchronization
-     * start message
-     * </P>
-     */
-    /*
-    public void synchronize() throws IOException {
-        Miranda.getInstance().setSynchronizationFlag(false);
-
-        sendSynchronizationStart();
-        pushState(state);
-        setState(SYNCHRONIZING);
-        setOnline(true);
-    }
-
-     */
-
-    /**
-     * An exception was caught on the IoSession --- send an error then send a start message
-     *
-     * @param throwable The exception.
-     */
-    /*
-    public void exceptionCaught(Throwable throwable) {
-        logger.error("caught exception starting over", throwable);
-        channel.writeAndFlush(ERROR_START);
-        sendStart(true, false);
-    }
-    */
-
 
     /**
      * The IoSession for this node has closed --- remove it from the cluster.
@@ -1702,35 +1577,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     }
 
     /**
-     * Send a DEAD NODE START message
-     *
-     * @param uuid The uuid of the dead node
-     */
-    /*
-    public void sendDeadNodeStart(UUID uuid) {
-        logger.debug("entering sendDeadNode with " + uuid);
-
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(DEAD_NODE_START);
-        stringBuffer.append(" ");
-        stringBuffer.append(uuid);
-        stringBuffer.append(" ");
-        stringBuffer.append(Miranda.getInstance().getMyUuid());
-        stringBuffer.append(" ");
-        stringBuffer.append(ourRandom.nextInt());
-
-        channel.writeAndFlush(stringBuffer.toString());
-        logger.debug("wrote " + stringBuffer);
-        AlarmClock.getInstance().scheduleOnce(this, Alarms.DEAD_NODE,
-                Miranda.getProperties().getLongProperty(Miranda.PROPERTY_DEAD_NODE_TIMEOUT));
-        timeoutsMet.put(Alarms.DEAD_NODE, false);
-
-        logger.debug("leaving sendDeadNode");
-    }
-    */
-
-
-    /**
      * The node has timed out waiting for a reply to a dead node start message
      */
     public void deadNodeTimeout() {
@@ -1817,7 +1663,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         }
     }
 
-
     /**
      * The end of the messages has been encountered.  This is basically the end of the synchronization process.
      *
@@ -1870,41 +1715,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         sendAllMessages();
         sendAllOwners();
     }
-
-    /**
-     * Tell another node to take possession of a message
-     *
-     * @param uuid The id of the message we are assigning.
-     */
-    /*
-    public void assignMessage(UUID uuid) throws IOException {
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(ASSIGN);
-        stringBuffer.append(" ");
-        stringBuffer.append(uuid);
-        channel.writeAndFlush(stringBuffer.toString());
-    }
-    */
-
-    /**
-     * Take possession of a message
-     * <H>
-     * This method tells the cluster that this node is taking possession of the message.
-     * </H>
-     *
-     * @param input The assignment message.
-     */
-    /*
-    public void handleAssign(String input) {
-        Scanner scanner = new Scanner(input);
-        scanner.next();
-        scanner.next(); // ASSIGN MESSAGE
-        UUID uuid = UUID.fromString(scanner.next());
-
-        Cluster.getInstance().takeOwnershipOf(Miranda.getInstance().getMyUuid(), uuid);
-    }
-
-     */
 
     public void handleStartAcknowledged(String input) {
         Scanner scanner = new Scanner(input);
@@ -2117,16 +1927,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         }
 
     }
-
-    /**
-     * send an error start over the channel
-     */
-    /*
-    public void sendErrorStart() {
-        channel.writeAndFlush(ERROR_START);
-    }
-    */
-
 
     public boolean isOnline() {
         return uuid != null;
