@@ -114,7 +114,7 @@ public class Election {
         List<UUID> messages = MessageLog.getInstance().getAllMessagesOwnedBy(uuid);
         for (UUID message : messages) {
             Voter voter = random.choose(voters);
-            voter.node.sendTakeOwnershipOf(voter.node.getUuid(), message);
+            voter.node.sendNewOwner(message, voter.getNode().getUuid());
         }
     }
 

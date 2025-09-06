@@ -67,7 +67,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public static final String START_ACKNOWLEDGED = "START ACKNOWLEDGED";
     public static final String SYNCHRONIZE = "SYNCHRONIZE";
     public static final String SYNCHRONIZE_START = "SYNCHRONIZE START";
-    public static final String TAKE = "TAKE";
     public static final String TIMEOUT = "TIMEOUT";
 
     protected boolean online;
@@ -744,8 +743,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             messageType = MessageType.SYNCHRONIZE_START;
         } else if (s.startsWith(SYNCHRONIZE)) {
             messageType = MessageType.SYNCHRONIZE;
-        } else if (s.startsWith(TAKE)) {
-            messageType = MessageType.TAKE;
+        //} else if (s.startsWith(TAKE)) {
+          //  messageType = MessageType.TAKE;
         } else if (s.startsWith(TIMEOUT)) {
             messageType = MessageType.TIMEOUT;
         }
@@ -1246,11 +1245,14 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     /**
      * The IoSession has been opened --- start synchronizing if the Miranda synchronization flag has been set.
      */
+    /*
     public void sessionOpened() throws IOException {
         if (Miranda.getInstance().getSynchronizationFlag()) {
             synchronize();
         }
     }
+    */
+
 
 
     /**
@@ -1261,6 +1263,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * start message
      * </P>
      */
+    /*
     public void synchronize() throws IOException {
         Miranda.getInstance().setSynchronizationFlag(false);
 
@@ -1269,6 +1272,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         setState(SYNCHRONIZING);
         setOnline(true);
     }
+
+     */
 
     /**
      * An exception was caught on the IoSession --- send an error then send a start message
@@ -1753,47 +1758,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("leaving sendDeadNode");
     }
 
-    /**
-     * Take ownership of the specified messages
-     *
-     * @param messages A list of uuids that the node "owns."
-     * @throws IOException If the MessageLog throws this exception
-     */
-    /*
-    public void takeOwnershipOf(List<UUID> messages) throws IOException {
-        logger.debug("entering takeOwnershipOf");
-
-        for (UUID uuid : messages) {
-            MessageLog.getInstance().setOwner(uuid, this.uuid);
-            Cluster.getInstance().takeOwnershipOf(Miranda.getInstance().getMyUuid(), uuid);
-        }
-
-        logger.debug("leaving takeOwnershipOf");
-    }
-
-     */
-
-    /**
-     * Send a take message to the node
-     *
-     * @param owner   The (new) owner of the message.
-     * @param message The message whose ownership will be changed.
-     */
-    public void sendTakeOwnershipOf(UUID owner, UUID message) {
-        logger.debug("entering sendTakeOwnershipOf with owner = " + owner + " and message = " + message);
-
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(TAKE);
-        stringBuffer.append(" ");
-        stringBuffer.append(owner);
-        stringBuffer.append(" ");
-        stringBuffer.append(message);
-
-        channel.writeAndFlush(stringBuffer.toString());
-        logger.debug("wrote " + stringBuffer);
-
-        logger.debug("leaving sendTakeOwnershipOf");
-    }
 
     /**
      * Handle a take message

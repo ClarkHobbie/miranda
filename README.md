@@ -128,7 +128,6 @@ message.  Messages include:
 * leader
 * message delivered
 * messages
-* message not found
 * new message
 * new node
 * new node confirmed
