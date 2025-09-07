@@ -367,14 +367,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("leaving messageReceived with state = " + state);
     }
 
-    public void handleStateAwaitingOrders(MessageType messageType, String s) throws IOException {
-        switch (messageType) {
-            case OWNER -> {
-                handleOwner(s);
-            }
-        }
-    }
-
     public void handleStateAwaitingAck(MessageType messageType, String s) {
         switch (messageType) {
             case DEAD_NODE -> {
@@ -407,19 +399,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("leaving handleStateAwaitingAssignments");
     }
 
-
-    public void handleStateDeadNode(MessageType messageType, String s) throws LtsllcException {
-        switch (messageType) {
-            case DEAD_NODE -> {
-                if (!isDeadNodeAcknowledge(s)) {
-                    ignoreMessage(messageType, s);
-                } else {
-                    // start here
-                }
-            }
-        }
-    }
-
     public void handleStateMessage(MessageType messageType, String s) throws LtsllcException, IOException {
         switch (messageType) {
             case MESSAGE: {
@@ -447,11 +426,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             }
 
             case MESSAGE_DELIVERED: {
-                break;
-            }
-
-            case TAKE: {
-                handleTake(s);
                 break;
             }
 
@@ -545,11 +519,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                 break;
             }
 
-            case TAKE: {
-                handleTake(s);
-                break;
-            }
-
             case START_START: {
                 handleStartStart(s);
                 break;
@@ -627,11 +596,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
             case SYNCHRONIZE_START: {
                 handleSynchronizationStartInGeneral(s);
-                break;
-            }
-
-            case TAKE: {
-                handleTake(s);
                 break;
             }
 
@@ -1602,27 +1566,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         channel.writeAndFlush(stringBuffer.toString());
 
         logger.debug("leaving sendDeadNode");
-    }
-
-
-    /**
-     * Handle a take message
-     *
-     * @param input A string containing the take message.
-     * @throws IOException If there is a problem transferring ownership
-     */
-    public void handleTake(String input) throws IOException {
-        logger.debug("entering handleTake");
-
-        Scanner scanner = new Scanner(input);
-        scanner.next(); // TAKE
-
-        UUID owner = UUID.fromString(scanner.next());
-        UUID message = UUID.fromString(scanner.next());
-
-        MessageLog.getInstance().setOwner(message, owner);
-
-        logger.debug("leaving handleTake");
     }
 
     /**

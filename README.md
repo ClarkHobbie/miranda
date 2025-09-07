@@ -125,7 +125,6 @@ message.  Messages include:
 * dead node
 * error
 * heart beat
-* leader
 * message delivered
 * messages
 * new message
@@ -136,13 +135,8 @@ message.  Messages include:
 * start
 * start acknowledged
 * synchronize start
-* take
 * timeout
 
-#### assign
-````
-ASSIGN <UUID>
-````
 This message tells the receiver to take ownship (try to deliver) a message.
 
 #### dead node
@@ -202,29 +196,9 @@ MESSAGES <messages> MESSAGES END
 SYNCHRONIZE START <UUID> <host> <port> <time>
 ```
 
-#### message not found
-```
-MESSAGE NOT FOUND
-```
-
 #### dead node
 ```
 DEAD NODE <UUID>
-```
-
-#### take
-```
-TAKE <owner UUID> <message UUID>
-```
-
-#### assign 
-```
-ASSIGN MESSAGE <message UUID>
-```
-
-#### leader
-```
-LEADER <leader UUID>
 ```
 
 ## Files

@@ -728,6 +728,170 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
         channel = channel;
     }
 
+    @Test
+    void handleStateAwaitingAck() {
+    }
+
+    @Test
+    void handleStateAwaitingAssignments() {
+    }
+
+    @Test
+    void handleStateDeadNode() {
+    }
+
+    @Test
+    void handleStateMessage() {
+    }
+
+    @Test
+    void handleStateSynchronizing() {
+    }
+
+    @Test
+    void handleStateStart() {
+    }
+
+    @Test
+    void handleStateGeneral() {
+    }
+
+    @Test
+    void testSendDeadNode() {
+    }
+
+    @Test
+    void determineMessageType() {
+    }
+
+    @Test
+    void isDeadNodeAcknowledge() {
+    }
+
+    @Test
+    void handleStartStart() {
+    }
+
+    @Test
+    void sendStart() {
+    }
+
+    @Test
+    void handleSynchronizeStartInStart() {
+    }
+
+    @Test
+    void testHandleMessage() {
+    }
+
+    @Test
+    void testSendMessage() {
+    }
+
+    @Test
+    void testHandleError() {
+    }
+
+    @Test
+    void testHandleMessageDelivered() {
+    }
+
+    @Test
+    void testHandleNewMessage() {
+    }
+
+    @Test
+    void testHandleSendOwners() {
+    }
+
+    @Test
+    void handleOwner() {
+    }
+
+    @Test
+    void sendAllMessages() {
+    }
+
+    @Test
+    void testHandleReceiveMessage() {
+    }
+
+    @Test
+    void addId() {
+    }
+
+    @Test
+    void handleStartStartGeneral() {
+    }
+
+    @Test
+    void handleSynchronize() {
+    }
+
+    @Test
+    void sendSynchronizationStart() {
+    }
+
+    @Test
+    void handleStartSynchronizing() {
+    }
+
+    @Test
+    void handleDeadNodeStart() {
+    }
+
+    @Test
+    void handleDeadNode() {
+    }
+
+    @Test
+    void testSendDeadNode1() {
+    }
+
+    @Test
+    void notifyOfDelivery() {
+    }
+
+    @Test
+    void handleStartAcknowledgedGeneral() {
+    }
+
+    @Test
+    void handleErrorGeneral() {
+    }
+
+    @Test
+    void handleLeader() {
+    }
+
+    @Test
+    void sendError() {
+    }
+
+    @Test
+    void handleStateAwaitingAssignmentsNewMessage() {
+    }
+
+    @Test
+    void handleOwnerEnd() {
+    }
+
+    @Test
+    void handleStateAwaitingOrdersDeadNode() {
+    }
+
+    @Test
+    void awaitAck() {
+    }
+
+    @Test
+    void handleStateAwaitingAckDeadNode() {
+    }
+
+    @Test
+    void sendNewOwner() {
+    }
+
     /*
     @Test
     public void deadNodeTimeout () throws LtsllcException, InterruptedException, IOException, CloneNotSupportedException {
