@@ -808,7 +808,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
      * @param uuid The uuid of the node being declared dead.
      * @throws IOException If there is a problem transferring ownership.
      */
-    public synchronized void deadNode(UUID uuid, Node node) throws IOException {
+    public synchronized void deadNode(UUID uuid, UUID proposedLeader, int bid) throws IOException {
         sendDeadNode(uuid, Miranda.getInstance().getMyUuid());
         awaitAcks(node.getUuid());
         setDeadNodeTimeout();

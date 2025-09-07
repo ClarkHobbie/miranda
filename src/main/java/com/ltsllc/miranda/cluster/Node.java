@@ -43,6 +43,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * message name constants
      */
     public static final String DEAD_NODE = "DEAD NODE";
+    public static final String DEAD_NODE_ACK = "DEAD NODE ACKNOWLEDGE";
     public static final String ERROR = "ERROR";
     public static final String HEART_BEAT_START = "HEART BEAT START";
     public static final String HEART_BEAT = "HEART BEAT";
@@ -612,11 +613,15 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     }
 
     public void sendDeadNode(UUID deadNode, UUID senderID) {
+        // a dead node message has the form
+        // DEAD NODE <uuid of dead node> <uuid of this node> <integer bid>
         StringBuilder sb = new StringBuilder(DEAD_NODE);
         sb.append(" ");
         sb.append(deadNode);
         sb.append(" ");
-        sb.append(uuid.toString());
+        sb.append(deadNode.toString());
+        sb.append(' ');
+        sb.append(senderID.toString());
         sb.append(' ');
         sb.append(ourRandom.nextInt());
 
@@ -1462,38 +1467,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     }
 
     /**
-     * Handles a dead node start message by sending back a dead node message of it own
-     *
-     * @param input The dead node start message.
-     */
-    public void handleDeadNodeStart(String input) throws LtsllcException, IOException {
-        logger.debug("entering handleDeadNodeStart");
-
-        Scanner scanner = new Scanner(input);
-        scanner.next();
-        scanner.next();
-        scanner.next(); // DEAD NODE START
-        String deadNodeStr = scanner.next();
-
-        int vote = scanner.nextInt();
-
-        Cluster.getInstance().vote(Miranda.getInstance().getMyUuid(), vote);
-
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(DEAD_NODE);
-        stringBuffer.append(" ");
-        stringBuffer.append(deadNodeStr);
-        stringBuffer.append(" ");
-        stringBuffer.append(Miranda.getInstance().getMyUuid());
-        stringBuffer.append(" ");
-        stringBuffer.append(ourRandom.nextInt());
-
-        channel.writeAndFlush(stringBuffer.toString());
-
-        logger.debug("leaving handleDeadNodeStart");
-    }
-
-    /**
      * Handle a dead node message
      *
      * <p>
@@ -1507,7 +1480,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * </PRE>
      * </P>
      */
-    public void handleDeadNode(String input) throws LtsllcException {
+    public void handleDeadNode(String input) throws LtsllcException, IOException {
         logger.debug("entering handleDeadNode");
 
         pushState(state);
@@ -1515,7 +1488,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         state = AWAITING_ASSIGNMENTS;
 
         //
-        // a dead node message has the form: DEAD NODE <UUID of dead node> <UUID of leader>
+        // a dead node message has the form: DEAD NODE <UUID of dead node> <random int>
         //
         timeoutsMet.put(Alarms.DEAD_NODE, true);
         Scanner scanner = new Scanner(input);
@@ -1523,16 +1496,18 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         scanner.next(); // DEAD
         scanner.next(); // NODE
         UUID deadNode = UUID.fromString(scanner.next()); // uuid of dead node
-        UUID leader = UUID.fromString(scanner.next());
+        UUID newLeader = UUID.fromString(scanner.next());
+        int bid = scanner.nextInt();
+
+        Cluster.getInstance().deadNode(deadNode, newLeader, bid);
+        newLeader = Cluster.getInstance().getLeaderUuid();
 
         //
         // send acknowledgment
         //
-        StringBuilder sb = new StringBuilder(DEAD_NODE);
+        StringBuilder sb = new StringBuilder(DEAD_NODE_ACK);
         sb.append(" ");
-        sb.append(deadNode.toString());
-        sb.append(" ");
-        sb.append(leader.toString());
+        sb.append(newLeader.toString());
 
         channel.writeAndFlush(sb.toString());
 
@@ -1550,22 +1525,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         sendStart(true, false);
 
         logger.debug("leaving deadNodeTimeout");
-    }
-
-    /**
-     * We have been asked to send a dead node message
-     */
-    public void sendDeadNode(UUID uuid) {
-        logger.debug("entering sendDeadNode");
-
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(DEAD_NODE);
-        stringBuffer.append(" ");
-        stringBuffer.append(uuid);
-
-        channel.writeAndFlush(stringBuffer.toString());
-
-        logger.debug("leaving sendDeadNode");
     }
 
     /**

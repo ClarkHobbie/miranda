@@ -161,15 +161,15 @@ public class NodeTest extends TestSuperclass
 
         node.setState(ClusterConnectionStates.GENERAL);
 
-        LoggingCache mockCache = mock(LoggingCache.class);
-
         UUID uuid = UUID.fromString("123E4567-E89B-42D3-A456-556642440000");
 
         String strMessage = Node.DEAD_NODE;
         strMessage += " ";
         strMessage += uuid;
         strMessage += " ";
-        strMessage += UUID.randomUUID();
+        strMessage += UUID.randomUUID().toString();
+        strMessage += " ";
+        strMessage += random.nextInt();
 
         List<Node> list = new ArrayList<>();
         list.add(node);
@@ -180,7 +180,6 @@ public class NodeTest extends TestSuperclass
 
         assert(node.getState() == ClusterConnectionStates.AWAITING_ASSIGNMENTS);
     }
-
 
 
     @Test
@@ -711,21 +710,6 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
         synchronized (this) {
             wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_START_TIMEOUT));
         }
-    }
-
-
-    @Test
-    public void sendDeadNode () throws LtsllcException {
-        Miranda miranda = new Miranda();
-        miranda.loadProperties();
-
-        UUID nodeUuid = UUID.randomUUID();
-
-        EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(nodeUuid, "71.237.68.250", 2020, channel);
-        node.sendDeadNode (UUID.randomUUID());
-
-        channel = channel;
     }
 
     @Test

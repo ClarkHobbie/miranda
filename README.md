@@ -196,11 +196,6 @@ MESSAGES <messages> MESSAGES END
 SYNCHRONIZE START <UUID> <host> <port> <time>
 ```
 
-#### dead node
-```
-DEAD NODE <UUID>
-```
-
 ## Files
 Miranda uses files to do a number of things.  Theses files include
 * messages.log
