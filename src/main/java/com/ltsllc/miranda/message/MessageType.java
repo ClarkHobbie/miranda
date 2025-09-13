@@ -6,12 +6,10 @@ package com.ltsllc.miranda.message;
  * This class represents the type of message we are dealing with.
  */
 public enum MessageType {
-    ASSIGN,
-    BID,
     DEAD_NODE,
+    DIVIDE_MESSAGES,
     ERROR,
     ERROR_START,
-    GET_MESSAGE,
     HEART_BEAT_START,
     HEART_BEAT,
     MESSAGE,
@@ -33,7 +31,6 @@ public enum MessageType {
     START_ACKNOWLEDGED,
     SYNCHRONIZE,
     SYNCHRONIZE_START,
-    TAKE,
     TIMEOUT,
     UNKNOWN
 }

@@ -6,6 +6,8 @@ import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.TestSuperclass;
+import com.ltsllc.miranda.alarm.AlarmClock;
+import com.ltsllc.miranda.alarm.Alarms;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.logging.MessageLog;
 import com.ltsllc.miranda.netty.HeartBeatHandler;
@@ -43,7 +45,7 @@ class ClusterTest extends TestSuperclass {
 
         Cluster.getInstance().setNodes(new ArrayList<>());
         ImprovedRandom improvedRandom = new ImprovedRandom();
-        Cluster.setRandomNumberGenerator(improvedRandom);
+        Cluster.setRandom(improvedRandom);
 
         InetSocketAddress inetSocketAddress = new InetSocketAddress("192.168.0.12", 2020);
 
@@ -196,81 +198,9 @@ class ClusterTest extends TestSuperclass {
         Node node = new Node(UUID.randomUUID(),"192.168.0.3", port, null);
         list.add(node);
         Cluster.getInstance().setNodes(list);
-
-
-        InetSocketAddress inetSocketAddress = new InetSocketAddress("192.168.0.3", port);
-
-
         Cluster.getInstance().reconnect();
         assert (Cluster.getInstance().allConnected());
     }
-
-
-    public void deadNode() throws LtsllcException, IOException {
-        Miranda miranda = new Miranda();
-        miranda.loadProperties();
-
-        Cluster.defineStatics();
-
-
-        MessageLog.defineStatics();
-
-        UUID node1Uuid = UUID.fromString("00000000-0000-0000-0000-000000000000");
-
-        // Node node1 = new Node(node1Uuid, "192.168.0.20", 2020, mockIoSession);
-        // Cluster.getInstance().addNode(node1, mockIoSession);
-
-        UUID node2Uuid = UUID.fromString("00000000-0000-0000-0000-000000000001");
-        // Node node2 = new Node(node2Uuid, "192.168.0.12", 2020, mockIoSession);
-        // Cluster.getInstance().addNode(node2, mockIoSession);
-
-        UUID node3Uuid = UUID.fromString("00000000-0000-0000-0000-000000000002");
-        // Node node3 = new Node(node3Uuid, "192.168.0.30", 2020, mockIoSession);
-        // Cluster.getInstance().addNode(node3, mockIoSession);
-
-        UUID message1Uuid = UUID.fromString("12345678-9abc-def0-1234-567890123456");
-        UUID message2Uuid = UUID.fromString("cdef0123-4567-89ab-cdef-0123456789ab");
-        UUID message3Uuid = UUID.fromString("cdef0123-5467-89ab-cdef-0123456789ab");
-
-        Message message1 = createTestMessage(message1Uuid);
-        MessageLog.getInstance().add(message1, node2Uuid);
-
-        Message message2 = createTestMessage(message2Uuid);
-        MessageLog.getInstance().add(message2, node2Uuid);
-
-        Message message3 = createTestMessage(message3Uuid);
-        MessageLog.getInstance().add(message3, node2Uuid);
-        
-
-        assert (!MessageLog.getInstance().getOwnerOf(message1Uuid).equals(node2Uuid));
-        assert (!MessageLog.getInstance().getOwnerOf(message2Uuid).equals(node2Uuid));
-        assert (!MessageLog.getInstance().getOwnerOf(message3Uuid).equals(node2Uuid));
-    }
-
-/*
-    @Test
-    public void takeOwnershipOf () throws LtsllcException {
-        Miranda miranda = new Miranda();
-        miranda.loadProperties();
-
-        Cluster.defineStatics();
-
-
-
-        EmbeddedChannel channel = new EmbeddedChannel();
-        for (int i = 0; i < 3; i++) {
-            Node node = new Node(UUID.randomUUID(), "192.168.0.20", 2020, channel);
-            Cluster.getInstance().addNode(node);
-        }
-
-        UUID nodeUuid = UUID.randomUUID();
-        UUID messageUuid = UUID.randomUUID();
-        Cluster.getInstance().takeOwnershipOf(nodeUuid, messageUuid);
-        String s = channel.readOutbound();
-        assert (s.startsWith(Node.TAKE));
-    }
-
-     */
 
     @Test
     public void divideUpMessages () {
@@ -292,15 +222,18 @@ class ClusterTest extends TestSuperclass {
         Cluster cluster = new Cluster();
 
         EmbeddedChannel embeddedChannel = new EmbeddedChannel();
-        Node node = new Node(UUID.randomUUID(), "71.237.68.250", 2021, embeddedChannel);
+        embeddedChannel.pipeline().addLast(Cluster.HEART_BEAT, new HeartBeatHandler(embeddedChannel));
+        Node node = new Node(UUID.fromString("00000000-0000-0000-0000-000000000000"), "10.0.0.236", 2020, embeddedChannel);
         cluster.addNode(node);
 
         embeddedChannel = new EmbeddedChannel();
-        node = new Node(UUID.randomUUID(), "71.237.68.250", 2021, embeddedChannel);
+        embeddedChannel.pipeline().addLast(Cluster.HEART_BEAT, new HeartBeatHandler(embeddedChannel));
+        node = new Node(UUID.fromString("00000000-0000-0000-0000-000000000001"), "10.0.0.237", 2020, embeddedChannel);
         cluster.addNode(node);
 
         embeddedChannel = new EmbeddedChannel();
-        node = new Node(UUID.randomUUID(), "71.237.68.250", 2021, embeddedChannel);
+        embeddedChannel.pipeline().addLast(Cluster.HEART_BEAT, new HeartBeatHandler(embeddedChannel));
+        node = new Node(UUID.fromString("00000000-0000-0000-0000-000000000002"), "10.0.0..238", 2020, embeddedChannel);
         cluster.addNode(node);
 
         return cluster;
@@ -365,25 +298,113 @@ class ClusterTest extends TestSuperclass {
 
     @Test
     public void coalesce () throws LtsllcException, CloneNotSupportedException {
-        Cluster cluster = buildCluster();
+        Cluster.defineStatics();
+        Cluster cluster = Cluster.getInstance();
 
         EmbeddedChannel embeddedChannel = new EmbeddedChannel();
 
-        Node node = new Node(UUID.randomUUID(), "71.237.68.250", 2021, embeddedChannel);
+        Node node = new Node(UUID.randomUUID(), "71.237.68.250", 2020, embeddedChannel);
         cluster.addNode(node);
 
-        Node node2 = new Node(UUID.randomUUID(), "71.237.68.250", 2021, embeddedChannel);
-        cluster.addNode(node2);
+        Node node2 = new Node(UUID.randomUUID(), "71.237.68.250", 2020, embeddedChannel);
         node2.setUuid(node.getUuid());
+        cluster.addNode(node2);
 
         cluster.coalesce();
 
-        assert (cluster.getNodes().size() == 2);
+        assert (cluster.getNodes().size() == 1);
     }
 
     @Test
     public void alarm () {
         Cluster cluster = buildCluster();
 
+    }
+
+    @Test
+    public void deadNodeTimeout () {
+        Cluster cluster = buildCluster();
+        Cluster.setInstance(cluster);
+        UUID deadNodeUuid = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        Node deadNode = null;
+
+        for (Node node : cluster.getNodes()) {
+            if (node.getUuid().equals(deadNodeUuid)) {
+                deadNode = node;
+            }
+        }
+
+        cluster.setDeadNode(deadNodeUuid);
+
+        assert (cluster.getNodes().contains(deadNode));
+
+        AlarmClock.getInstance().scheduleOnce(cluster, Alarms.DEAD_NODE, 100);
+
+        synchronized (this) {
+            try {
+                wait(400);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        assert (!cluster.getNodes().contains(deadNode));
+    }
+
+    @Test
+    public void leaderTimeout () {
+        Cluster cluster = buildCluster();
+        Cluster.setInstance(cluster);
+
+        Election election = buildElection();
+        cluster.setElection(election);
+
+        AlarmClock.getInstance().scheduleOnce(cluster, Alarms.LEADER, 100);
+
+        synchronized (this) {
+            try {
+                wait(200);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        UUID leaderUuid = UUID.fromString("00000000-0000-0000-0000-000000000000");
+        assert (election.getLeader().getNode().getUuid().equals(leaderUuid));
+    }
+
+    public Election buildElection() {
+        Cluster cluster = Cluster.getInstance();
+        UUID deadNode = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+        Election election = new Election(deadNode);
+
+        UUID uuid = UUID.fromString("00000000-0000-0000-0000-000000000000");
+        Node node = null;
+        for (Node node2 : cluster.getNodes()) {
+            if (node2.getUuid().equals(uuid)) {
+                node = node2;
+            }
+        }
+        Election.Voter voter = new Election.Voter();
+        voter.setNode(node);
+        voter.vote = Integer.MAX_VALUE;
+
+        election.addVoter(voter);
+
+        uuid = UUID.fromString("00000000-0000-0000-0000-000000000002");
+        node = null;
+        for (Node node2 : cluster.getNodes()) {
+            if (node2.getUuid().equals(uuid)) {
+                node = node2;
+            }
+        }
+        voter = new Election.Voter();
+        voter.setNode(node);
+        voter.vote = 0;
+
+        election.addVoter(voter);
+
+        return election;
     }
 }

@@ -14,6 +14,8 @@ public enum Alarms {
     DEAD_NODE, // the dead node timeout
     HEART_BEAT, // time to send a heart beat
     HEART_BEAT_TIMEOUT, // timeout waiting for a heart beat response
+    LEADER, // The period of time to wait for all nodes to respond to a leader message
     SCAN, // time to scan the connections
     START // the start timeout
+    ;
 }

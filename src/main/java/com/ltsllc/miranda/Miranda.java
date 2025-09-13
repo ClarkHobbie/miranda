@@ -319,6 +319,9 @@ public class Miranda implements PropertyListener {
      */
     public static final String PROPERTY_MAX_WAIT_BETWEEN_SENDS = com.ltsllc.miranda.properties.Properties.maxWaitBetweenSends.toString();
 
+    public static final String PROPERTY_LEADER_TIMEOUT = com.ltsllc.miranda.properties.Properties.leaderAckTimeout.toString();
+    public static final String PROPERTY_DEFAULT_LEADER_TIMEOUT = "1000";
+
     /**
      * The default maximum wait between sends
      */
@@ -924,6 +927,7 @@ public class Miranda implements PropertyListener {
         properties.setIfNull(PROPERTY_EVENTS_FILE, PROPERTY_DEFAULT_EVENTS_FILE);
         properties.setIfNull(PROPERTY_WAIT_BETWEEN_SENDS, PROPERTY_DEFAULT_WAIT_BETWEEN_SENDS);
         properties.setIfNull(PROPERTY_MAX_WAIT_BETWEEN_SENDS, PROPERTY_DEFAULT_WAIT_BETWEEN_SENDS);
+        properties.setIfNull(PROPERTY_LEADER_TIMEOUT, PROPERTY_DEFAULT_LEADER_TIMEOUT);
     }
 
     /**

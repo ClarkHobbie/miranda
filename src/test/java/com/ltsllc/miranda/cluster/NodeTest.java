@@ -154,10 +154,10 @@ public class NodeTest extends TestSuperclass
 
     @Test
     public void testGeneralDeadNode () throws LtsllcException, IOException, CloneNotSupportedException {
-        SecureRandom random = new SecureRandom();
         Cluster.defineStatics();
+
         EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(UUID.randomUUID(),"71.237.68.250",2020, channel);
+        Node node = new Node(UUID.randomUUID(),"10.0.0.236",2020, channel);
 
         node.setState(ClusterConnectionStates.GENERAL);
 
@@ -166,22 +166,42 @@ public class NodeTest extends TestSuperclass
         String strMessage = Node.DEAD_NODE;
         strMessage += " ";
         strMessage += uuid;
-        strMessage += " ";
-        strMessage += UUID.randomUUID().toString();
-        strMessage += " ";
-        strMessage += random.nextInt();
 
-        List<Node> list = new ArrayList<>();
-        list.add(node);
-        Election election = new Election(list,uuid);
-        Cluster.getInstance().setElection(election);
+        node.sendDeadNode(uuid);
 
-        node.messageReceived(strMessage);
+        String message = channel.readOutbound();
 
-        assert(node.getState() == ClusterConnectionStates.AWAITING_ASSIGNMENTS);
+        assert (message.equalsIgnoreCase(strMessage));
     }
 
+    @Test
+    public void deadNodeAck () {
+        Cluster.defineStatics();
 
+        UUID uuid = UUID.fromString("123E4567-E89B-42D3-A456-556642440000");
+
+        Election election = new Election(uuid);
+        Cluster cluster = Cluster.getInstance();
+        cluster.setElection(election);
+
+        EmbeddedChannel channel = new EmbeddedChannel();
+        Node node = new Node(UUID.randomUUID(),"10.0.0.236",2020, channel);
+
+        node.setState(ClusterConnectionStates.GENERAL);
+
+        node.sendDeadNodeAck(uuid);
+
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Node.DEAD_NODE_ACK);
+        stringBuilder.append(' ');
+        stringBuilder.append(uuid.toString());
+        stringBuilder.append(' ');
+        stringBuilder.append(node.getUuid().toString());
+
+        String message = channel.readOutbound();
+
+        assert (message.startsWith(stringBuilder.toString()));
+    }
     @Test
     public void testGeneralMessageDelivered () throws LtsllcException, IOException, CloneNotSupportedException {
         Cluster.defineStatics();
@@ -711,245 +731,5 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
             wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_START_TIMEOUT));
         }
     }
-
-    @Test
-    void handleStateAwaitingAck() {
-    }
-
-    @Test
-    void handleStateAwaitingAssignments() {
-    }
-
-    @Test
-    void handleStateDeadNode() {
-    }
-
-    @Test
-    void handleStateMessage() {
-    }
-
-    @Test
-    void handleStateSynchronizing() {
-    }
-
-    @Test
-    void handleStateStart() {
-    }
-
-    @Test
-    void handleStateGeneral() {
-    }
-
-    @Test
-    void testSendDeadNode() {
-    }
-
-    @Test
-    void determineMessageType() {
-    }
-
-    @Test
-    void isDeadNodeAcknowledge() {
-    }
-
-    @Test
-    void handleStartStart() {
-    }
-
-    @Test
-    void sendStart() {
-    }
-
-    @Test
-    void handleSynchronizeStartInStart() {
-    }
-
-    @Test
-    void testHandleMessage() {
-    }
-
-    @Test
-    void testSendMessage() {
-    }
-
-    @Test
-    void testHandleError() {
-    }
-
-    @Test
-    void testHandleMessageDelivered() {
-    }
-
-    @Test
-    void testHandleNewMessage() {
-    }
-
-    @Test
-    void testHandleSendOwners() {
-    }
-
-    @Test
-    void handleOwner() {
-    }
-
-    @Test
-    void sendAllMessages() {
-    }
-
-    @Test
-    void testHandleReceiveMessage() {
-    }
-
-    @Test
-    void addId() {
-    }
-
-    @Test
-    void handleStartStartGeneral() {
-    }
-
-    @Test
-    void handleSynchronize() {
-    }
-
-    @Test
-    void sendSynchronizationStart() {
-    }
-
-    @Test
-    void handleStartSynchronizing() {
-    }
-
-    @Test
-    void handleDeadNodeStart() {
-    }
-
-    @Test
-    void handleDeadNode() {
-    }
-
-    @Test
-    void testSendDeadNode1() {
-    }
-
-    @Test
-    void notifyOfDelivery() {
-    }
-
-    @Test
-    void handleStartAcknowledgedGeneral() {
-    }
-
-    @Test
-    void handleErrorGeneral() {
-    }
-
-    @Test
-    void handleLeader() {
-    }
-
-    @Test
-    void sendError() {
-    }
-
-    @Test
-    void handleStateAwaitingAssignmentsNewMessage() {
-    }
-
-    @Test
-    void handleOwnerEnd() {
-    }
-
-    @Test
-    void handleStateAwaitingOrdersDeadNode() {
-    }
-
-    @Test
-    void awaitAck() {
-    }
-
-    @Test
-    void handleStateAwaitingAckDeadNode() {
-    }
-
-    @Test
-    void sendNewOwner() {
-    }
-
-    /*
-    @Test
-    public void deadNodeTimeout () throws LtsllcException, InterruptedException, IOException, CloneNotSupportedException {
-        UUID nodeUuid = UUID.randomUUID();
-
-        Miranda miranda = new Miranda();
-        miranda.loadProperties();
-        Miranda.getProperties().setProperty(Miranda.PROPERTY_DEAD_NODE_TIMEOUT, "500");
-        miranda.setMyUuid(nodeUuid);
-        miranda.setMyHost("192.168.0.20");
-        miranda.setMyPort(2020);
-
-        EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(nodeUuid, "192.168.0.20", 2020, channel);
-        node.sendDeadNodeStart(UUID.randomUUID());
-
-        synchronized (this) {
-            wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_DEAD_NODE_TIMEOUT));
-        }
-
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(Node.START);
-        stringBuffer.append(" ");
-        stringBuffer.append(nodeUuid);
-        stringBuffer.append(" 192.168.0.20 2020 ");
-        stringBuffer.append(Miranda.getInstance().getMyStart());
-
-        String s = channel.readOutbound();
-        assert(s.startsWith("DEAD NODE START"));
-        assert(node.getState() == ClusterConnectionStates.START);
-    }
-
-
-    @Test
-    public void deadNodeTimeoutNot () throws InterruptedException, LtsllcException, IOException, CloneNotSupportedException {
-        Cluster.defineStatics();
-        UUID nodeUuid = UUID.randomUUID();
-
-        SecureRandom random = new SecureRandom();
-
-        Miranda miranda = new Miranda();
-        miranda.loadProperties();
-        Miranda.getProperties().setProperty(Miranda.PROPERTY_DEAD_NODE_TIMEOUT, "500");
-        miranda.setMyUuid(nodeUuid);
-        miranda.setMyHost("192.168.0.20");
-        miranda.setMyPort(2020);
-
-        EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(nodeUuid, "192.168.0.20", 2020, channel);
-        node.setState(ClusterConnectionStates.GENERAL);
-
-        UUID uuid = UUID.randomUUID();
-        node.sendDeadNodeStart(uuid);
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(Node.DEAD_NODE);
-        stringBuffer.append(" ");
-        stringBuffer.append(nodeUuid);
-        stringBuffer.append(" ");
-        stringBuffer.append(random.nextInt());
-
-        ArrayList<Node> list = new ArrayList<Node>();
-        list.add(node);
-        Election election = new Election(list,uuid);
-        Cluster.getInstance().setElection(election);
-
-        node.messageReceived(stringBuffer.toString());
-
-        synchronized (this) {
-            wait(2 * Miranda.getProperties().getLongProperty(Miranda.PROPERTY_DEAD_NODE_TIMEOUT));
-        }
-
-        assert (node.state != ClusterConnectionStates.START);
-    }
-
-     */
 
 }

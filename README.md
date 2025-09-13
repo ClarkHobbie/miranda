@@ -195,6 +195,22 @@ MESSAGES <messages> MESSAGES END
 ```
 SYNCHRONIZE START <UUID> <host> <port> <time>
 ```
+## Dead nodes
+Each node in a cluster sends out a heart beet message.  If the heart beet is not responded to in 
+the number of milliseconds specified br Miranda.PROPERTY_HEART_BEAT_INTERVAL then the node is
+assumed to be dead.
+
+The system responds to a dead node by sending out a dead node message and by setting
+a timer for Miranda.PROPERTY_DEAD_NODE_TIMEOUT milliseconds.  The dead node message
+also contains the sending node's UUID and an integer bid.  The node with the highest bid becomes
+the new leader.  If a tie has occurred, the nodes respond with a tie message and the 
+process begins again.
+
+When the dead node timer expires, the nodes respond with a leader message 
+with the UUID of the new leader.  
+
+The leader determines which nodes will take responsibility for delivering what
+messages.
 
 ## Files
 Miranda uses files to do a number of things.  Theses files include

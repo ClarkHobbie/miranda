@@ -40,9 +40,9 @@ public class AlarmClock {
         timer.schedule(alarmTimerTask, period, period);
     }
 
-    public void scheduleOnce (Alarmable receiver, Alarms alarm, long time) {
+    public void scheduleOnce (Alarmable receiver, Alarms alarm, long delay) {
         AlarmTimerTask alarmTimerTask = new AlarmTimerTask(receiver, alarm);
-        timer.schedule(alarmTimerTask, time);
+        timer.schedule(alarmTimerTask, delay);
     }
 
 }

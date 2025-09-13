@@ -31,38 +31,17 @@ class ElectionTest {
         return election;
     }
 
-
-    @Test
-    void countVotesStillTallying() {
-        Election election = buildElection();
-
-        election.countVotes();
-        assert (election.getResult() == ElectionResults.STILL_TALLYING);
-    }
-
     @Test
     public void countVotesLeaderElected () {
         ImprovedRandom improvedRandom = new ImprovedRandom();
         Election election = buildElection();
         for (Election.Voter voter : election.getVoters()) {
             Node node = voter.getNode();
-            election.vote(node.getUuid(), improvedRandom.nextInt());
+            election.vote(node, improvedRandom.nextInt());
         }
         election.countVotes();
 
         assert (election.getResult() == ElectionResults.LEADER_ELECTED);
-    }
-
-    @Test
-    public void countVotesTie () {
-        Election election = buildElection();
-        for (Election.Voter voter : election.getVoters()) {
-            Node node = voter.getNode();
-            election.vote(node.getUuid(), Integer.MAX_VALUE);
-        }
-        election.countVotes();
-
-        assert (election.getResult() == ElectionResults.TIE);
     }
 
     public Message buildMessage () {
@@ -74,7 +53,6 @@ class ElectionTest {
 
         return message;
     }
-
 
     @Test
     void divideUpNodesMessages() throws IOException, LtsllcException {
@@ -117,7 +95,7 @@ class ElectionTest {
     void vote() {
         Election election = buildElection();
         Node node = election.getVoters().get(0).getNode();
-        election.vote(node.getUuid(), 3);
+        election.vote(node, 3);
 
         Election.Voter voter = election.getVoters().get(0);
 

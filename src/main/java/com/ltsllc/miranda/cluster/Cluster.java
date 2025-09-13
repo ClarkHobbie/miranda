@@ -94,6 +94,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
     public static final String DECODER = "DECODER";
     public static final String LENGTH = "LENGTH";
 
+    protected Node leader;
     protected int nodeCount = 0;
 
     public int getNodeCount() {
@@ -121,7 +122,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
     /**
      * The random number generator.  Usually swapped out when you want to win (or lose) a bid.
      */
-    protected static ImprovedRandom randomNumberGenerator = new ImprovedRandom();
+    protected static ImprovedRandom random = new ImprovedRandom();
 
     protected static final Logger logger = LogManager.getLogger(Cluster.class);
     public static final Logger events = LogManager.getLogger("events");
@@ -233,16 +234,6 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         nodes = n;
     }
 
-    protected Map<UUID, Boolean> awaitingDeadNodeAcks;
-
-    public Map<UUID, Boolean> getAwaitingDeadNodeAcks() {
-        return awaitingDeadNodeAcks;
-    }
-
-    public void setAwaitingDeadNodeAcks(Map<UUID, Boolean> awaitingDeadNodeAcks) {
-        this.awaitingDeadNodeAcks = awaitingDeadNodeAcks;
-    }
-
     protected Map<HeartBeatHandler, UUID> heartBeatHandlerToUUIDMap = new HashMap<>();
 
     protected UUID deadNode;
@@ -262,8 +253,8 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
      * The random number generator is used mostly in bidding
      * </P>
      */
-    public static void setRandomNumberGenerator(ImprovedRandom randomNumberGenerator) {
-        Cluster.randomNumberGenerator = randomNumberGenerator;
+    public static void setRandom(ImprovedRandom randomNumberGenerator) {
+        Cluster.random = randomNumberGenerator;
     }
 
 
@@ -335,6 +326,9 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
 
         if (!alreadyPresent) {
             nodes.add(node);
+            if (leader == null) {
+                leader = node;
+            }
         }
 
         // if this is a loopback node, then ignore messages from it
@@ -744,11 +738,32 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
                 deadNodeTimeout();
                 break;
             }
+
+            case LEADER: {
+                leaderTimeout();
+                break;
+            }
+
             default: {
                 String msg = "unrecognized alarm: " + alarm;
                 logger.error(msg);
                 throw new LtsllcException(msg);
             }
+        }
+    }
+
+    /**
+     * The wait for a new leader has expired
+     */
+    public void leaderTimeout() {
+        if (election == null) {
+            throw new RuntimeException("null election in leaderTimeout");
+        }
+
+        election.countVotes();
+        leader = election.getLeader().getNode();
+        if (Miranda.getInstance().getMyUuid().equals(leader.getUuid())) {
+            leader.divideUpMessages(deadNode);
         }
     }
 
@@ -784,63 +799,38 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
     }
 
     /**
-     * Transfer the ownership of a message
+     * A node has been declared dead --- create a new election and vote
      *
-     * @param newOwner The new owner of the message.
-     * @param message  The message whose ownership is to be transferred
-     */
-    /*
-    public synchronized void takeOwnershipOf(UUID newOwner, UUID message) {
-        for (Node node : nodes) {
-            if (node.getChannel() != null) {
-                if (node.getChannel() != null) {
-                    node.sendTakeOwnershipOf(newOwner, message);
-                }
-            }
-        }
-    }
-
-     */
-
-    /**
-     * A node has been declared dead --- divide up its messages among the connected survivors
-     *
-     * @param uuid The uuid of the node being declared dead.
+     * @param deadNode The uuid of the node being declared dead.
+     * @param proposedLeader The proposed new leader
+     * @param bid The bid of the proposed leader
      * @throws IOException If there is a problem transferring ownership.
      */
-    public synchronized void deadNode(UUID uuid, UUID proposedLeader, int bid) throws IOException {
-        sendDeadNode(uuid, Miranda.getInstance().getMyUuid());
-        awaitAcks(node.getUuid());
-        setDeadNodeTimeout();
-    }
-
-    public void setDeadNodeTimeout() {
-        AlarmClock.getInstance().schedule(getInstance(), Alarms.DEAD_NODE,
+    public synchronized void startDeadNode(UUID deadNode, Node proposedLeader, int bid) {
+        election = new Election(deadNode);
+        election.vote(proposedLeader, bid);
+        AlarmClock.getInstance().scheduleOnce(this, Alarms.DEAD_NODE,
                 Miranda.getProperties().getLongProperty(Miranda.PROPERTY_DEAD_NODE_TIMEOUT));
-
     }
 
     /**
-     * a dead node timeout occurred
-     *
+     * A dead node timeout occurred.
      * <P>
-     *     See if this is due to our being the only survivor or because some node
-     *     took too long to respond.
-     * </P>
+     * This means that we can remove the node.
      */
-    public void deadNodeTimeout () throws IOException {
-        //
-        // sole survivor
-        //
-        if (nodes.size() == 1) {
-            divideUpNodesMessagesOnlyNode(nodes.get(0).getUuid());
+    public void deadNodeTimeout () {
+        Node theNode = null;
+        for (Node node : nodes) {
+            if (node.getUuid().equals(deadNode)) {
+                theNode = node;
+            }
         }
-        //
-        // a node took too long
-        //
-        else {
-            sendError();
+
+        if (theNode == null) {
+            throw new RuntimeException("theNode is null");
         }
+
+        nodes.remove(theNode);
     }
 
     /**
@@ -871,79 +861,6 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
             UUID newOwner = tempSurvivors.get().getUuid();
             for (Node node : survivingNodes) {
                 node.sendNewOwner(messageUuid, newOwner);
-            }
-        }
-
-    }
-
-    /**
-     * Await the arrival of an acknowledgements to a dead node.
-     */
-    public void awaitAcks(UUID deadNode) {
-        for (Node node: nodes) {
-            if (node.getUuid().equals(deadNode)) {
-                continue;
-            } else {
-                node.awaitAck(deadNode, Miranda.getInstance().getMyUuid());
-            }
-        }
-    }
-
-    /**
-     * We received an ack, but it was for a node other than what we indicated
-     * was the dead node.
-     */
-    public void awaitingDeadNodeWrongNode (UUID sendingNode, UUID actualNode) {
-        awaitingDeadNodeAcks.put (sendingNode, false);
-    }
-
-    /**
-     * We received an ack, but it specified a leader other than we wanted.
-     */
-    public void awaitingDeadNodeWrongLeader (UUID sendingNode, UUID actualLeader) {
-        awaitingDeadNodeAcks.put (sendingNode, false);
-    }
-
-    /**
-     * We received an ack to our dead node
-     */
-    public void awaitingDeadNodeAck (UUID node) {
-        awaitingDeadNodeAcks.put(node, true);
-        if (deadNodeAllAcksReceived()) {
-            sendNewOwners();
-        } else {
-
-        }
-    }
-
-    /**
-     * Have all the nodes that we were waiting on sent out acks?
-     *
-     * @return true if all the nodes we were waiting on returned an ack,
-     * false otherwise.
-     */
-    public boolean deadNodeAllAcksReceived () {
-        for (UUID uuid: awaitingDeadNodeAcks.keySet()) {
-            if (!awaitingDeadNodeAcks.get(uuid)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Send a dead node message to everyone in the cluster aside from the dead node.
-     *
-     * @param deadNode
-     * @param sender
-     */
-    public void sendDeadNode (UUID deadNode, UUID sender) {
-        for (Node node : nodes) {
-            if (node.getUuid().equals(deadNode)) {
-                continue;
-            } else {
-                node.sendDeadNode(deadNode, sender);
             }
         }
     }
@@ -1060,13 +977,6 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         throw new LtsllcException("could not find node for: " + uuid);
     }
 
-    public void divideUpNodesMessagesOnlyNode(UUID uuid) throws IOException {
-        List<UUID> list = MessageLog.getInstance().getAllMessagesOwnedBy(uuid);
-        for (UUID uuidOfMessage : list) {
-            MessageLog.getInstance().setOwner(uuidOfMessage, Miranda.getInstance().getMyUuid());
-        }
-    }
-
     public void setupScan() {
         AlarmClock.getInstance().scheduleOnce(this, Alarms.SCAN,
                 Miranda.getProperties().getLongProperty(Miranda.PROPERTY_SCAN_PERIOD));
@@ -1081,18 +991,40 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         }
     }
 
-    public synchronized void register(HeartBeatHandler heartBeatHandler, UUID uuid) {
-        heartBeatHandlerToUUIDMap.put(heartBeatHandler, uuid);
-    }
-
-
-    public void vote (UUID voter, int vote) throws LtsllcException {
+    public void vote (Node node, int vote) throws LtsllcException {
         if (null == election) {
             logger.error("null election in vote");
             throw new LtsllcException("null election in vote");
         }
 
-        election.vote(voter, vote);
+        election.vote(node, vote);
+
+        if (election.isTie()) {
+            sendTie();
+            sendDeadNode();
+        }
+    }
+
+    public void sendDeadNode() {
+        Miranda miranda = Miranda.getInstance();
+
+        for (Node node : nodes) {
+            if (node.getUuid().equals(miranda.getMyUuid())) {
+                node.sendDeadNode(deadNode);
+                break;
+            }
+        }
+    }
+
+    public void sendTie() {
+        Miranda miranda = Miranda.getInstance();
+
+        for (Node node : nodes) {
+            if (node.getUuid().equals(miranda.getMyUuid())) {
+                node.sendTie();
+                break;
+            }
+        }
     }
 
     public synchronized void sendLeader () throws LtsllcException {
@@ -1104,11 +1036,15 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
     }
 
     public UUID getLeaderUuid() throws LtsllcException {
-        if (null == election) {
-            throw new LtsllcException("null election");
-        }
+        return leader.getUuid();
+    }
 
-        return election.getLeader().getNode().getUuid();
+    public Node getLeader() {
+        return leader;
+    }
+
+    public void setLeader (Node leader) {
+        this.leader = leader;
     }
 
     public void countVotes() throws LtsllcException {
@@ -1197,5 +1133,9 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    public Node chooseNode() {
+        return random.choose(nodes);
     }
 }

@@ -1,5 +1,7 @@
 package com.ltsllc.miranda.properties;
 
+import com.ltsllc.miranda.message.Message;
+
 /**
  * An enum that represents the properties that a class can listen to for changes.
  */
@@ -24,6 +26,7 @@ public enum Properties {
     heartBeat,
     heartBeatTimeout,
     hostName,
+    leaderAckTimeout,
     loggingLevel,
     maxWaitBetweenSends,
     messageLogfile,
@@ -36,5 +39,5 @@ public enum Properties {
     thisPort,
     useHeartbeats,
     waitBetweenSends,
-    uuid
+    uuid;
 }

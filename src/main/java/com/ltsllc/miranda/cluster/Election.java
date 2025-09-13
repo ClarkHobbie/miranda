@@ -70,6 +70,9 @@ public class Election {
         }
     }
 
+    public Election (UUID deadNode) {
+        this.deadNode = deadNode;
+    }
 
     /**
      * Tally up the votes and put the result in result
@@ -77,18 +80,14 @@ public class Election {
     public void countVotes()  {
         result = ElectionResults.UNKNOWN;
         int highest = Integer.MIN_VALUE;
-        if (allVotesIn()) {
-            for (Voter voter : voters) {
-                if (voter.vote > highest) {
-                    highest = voter.vote;
-                    leader = voter;
-                    result = ElectionResults.LEADER_ELECTED;
-                } else if (voter.vote == highest) {
-                    result = ElectionResults.TIE;
-                }
+        for (Voter voter : voters) {
+            if (voter.vote > highest) {
+                highest = voter.vote;
+                leader = voter;
+                result = ElectionResults.LEADER_ELECTED;
+            } else if (voter.vote == highest) {
+                result = ElectionResults.TIE;
             }
-        } else {
-            result = ElectionResults.STILL_TALLYING;
         }
     }
 
@@ -126,13 +125,33 @@ public class Election {
     /**
      * Register a vote in the election
      *
-     * @param uuid The node voting
+     * @param node The node voting
      * @param vote Their vote
      */
-    public void vote (UUID uuid, int vote) {
+    public void vote (Node node, int vote) {
+        boolean notPresent = true;
+
         for (Voter voter:voters) {
-            if (uuid == voter.node.getUuid()) {
+            if (node.getUuid().equals(voter.node.getUuid())) {
                 voter.vote = vote;
+                notPresent = false;
+            }
+        }
+
+        if (notPresent) {
+            Voter voter = new Voter();
+            voter.vote = vote;
+            voter.node = node;
+            voters.add(voter);
+        }
+
+        for (Voter voter : voters) {
+            if (voter.vote == vote && !voter.node.getUuid().equals(node.getUuid())) {
+                Cluster cluster = Cluster.getInstance();
+                for (Voter participant : voters) {
+                    participant.node.sendTie();
+                    participant.node.sendDeadNode(cluster.getDeadNode());
+                }
             }
         }
     }
@@ -151,11 +170,33 @@ public class Election {
         return true;
     }
 
+    public boolean isTie() {
+        for (int i = 0; i < voters.size(); i++) {
+            Voter voter1 = voters.get(i);
+            for (int j = i; j < voters.size(); j++) {
+                Voter voter2 = voters.get(j);
 
-    public class Voter {
+                if (voter1.vote == voter2.vote) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public void addVoter(Voter voter) {
+        voters.add(voter);
+    }
+
+
+    public static class Voter {
         public int vote = Integer.MIN_VALUE;
 
         protected Node node;
+
+        public Voter() {
+        }
 
         public Node getNode() {
             return node;

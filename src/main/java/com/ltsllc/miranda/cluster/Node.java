@@ -44,10 +44,12 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      */
     public static final String DEAD_NODE = "DEAD NODE";
     public static final String DEAD_NODE_ACK = "DEAD NODE ACKNOWLEDGE";
+    public static final String DIVIDE_UP_MESSAGES = "DIVIDE UP MESSAGES";
     public static final String ERROR = "ERROR";
     public static final String HEART_BEAT_START = "HEART BEAT START";
     public static final String HEART_BEAT = "HEART BEAT";
     public static final String LEADER = "LEADER";
+    public static final String LEADER_ACK = "LEADER ACKNOWLEDGE";
     public static final String MESSAGE = "MESSAGE";
     public static final String MESSAGES = "MESSAGES";
     public static final String MESSAGES_END = "MESSAGES END";
@@ -65,6 +67,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public static final String START_ACKNOWLEDGED = "START ACKNOWLEDGED";
     public static final String SYNCHRONIZE = "SYNCHRONIZE";
     public static final String SYNCHRONIZE_START = "SYNCHRONIZE START";
+    public static final String TIE = "TIE";
     public static final String TIMEOUT = "TIMEOUT";
 
     protected boolean online;
@@ -302,13 +305,14 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * @param message The message that we delivered.
      */
     public void informOfMessageDelivery(Message message) {
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(Node.MESSAGE_DELIVERED);
-        stringBuffer.append(" ");
-        stringBuffer.append(message.getMessageID());
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Node.MESSAGE_DELIVERED);
+        stringBuilder.append(" ");
+        stringBuilder.append(message.getMessageID());
 
-        channel.write(stringBuffer.toString());
+        channel.write(stringBuilder.toString());
     }
+
 
     /**
      * Process a message
@@ -330,10 +334,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
         MessageType messageType = determineMessageType(s);
         switch (state) {
-            case AWAITING_ACK: {
-                handleStateAwaitingAck(messageType, s);
-                break;
-            }
             case AWAITING_ASSIGNMENTS: {
                 handleStateAwaitingAssignments(messageType, s);
                 break;
@@ -341,11 +341,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
             case GENERAL: {
                 handleStateGeneral(messageType, s);
-                break;
-            }
-
-            case MESSAGE: {
-                handleStateMessage(messageType, s);
                 break;
             }
 
@@ -368,13 +363,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("leaving messageReceived with state = " + state);
     }
 
-    public void handleStateAwaitingAck(MessageType messageType, String s) {
-        switch (messageType) {
-            case DEAD_NODE -> {
-                handleStateAwaitingAckDeadNode(messageType, s, Miranda.getInstance().getMyUuid());
-            }
-        }
-    }
 
     public void handleStateAwaitingAssignments(MessageType messageType, String s) throws IOException, LtsllcException {
         logger.debug("Entering handleStateAwaitingAssignments");
@@ -398,44 +386,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         }
 
         logger.debug("leaving handleStateAwaitingAssignments");
-    }
-
-    public void handleStateMessage(MessageType messageType, String s) throws LtsllcException, IOException {
-        switch (messageType) {
-            case MESSAGE: {
-                handleMessage(s);
-                break;
-            }
-
-            case MESSAGE_NOT_FOUND: {
-                setState(popState());
-                break;
-            }
-
-            case DEAD_NODE: {
-                handleDeadNode(s);
-                break;
-            }
-
-            case ERROR_START: {
-                handleErrorStart();
-                break;
-            }
-
-            case ERROR: {
-                break;
-            }
-
-            case MESSAGE_DELIVERED: {
-                break;
-            }
-
-            default: {
-                handleError();
-                logger.error("protocol error, returning to START state");
-                break;
-            }
-        }
     }
 
     public void handleStateSynchronizing(MessageType messageType, String s) throws IOException, LtsllcException {
@@ -551,6 +501,11 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                 break;
             }
 
+            case DIVIDE_MESSAGES: {
+                handleDivideMessages();
+                break;
+            }
+
             case MESSAGE_DELIVERED: {
                 handleMessageDelivered(s);
                 break;
@@ -605,29 +560,34 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                 break;
             }
         }
-
     }
+
+    public void handleDivideMessages() {
+    }
+
 
     public void ignoreMessage(MessageType messageType, String s) {
-
     }
 
-    public void sendDeadNode(UUID deadNode, UUID senderID) {
+    public void startDeadNode(UUID deadNode, UUID senderID) {
+        //
         // a dead node message has the form
         // DEAD NODE <uuid of dead node> <uuid of this node> <integer bid>
+        //
         StringBuilder sb = new StringBuilder(DEAD_NODE);
-        sb.append(" ");
-        sb.append(deadNode);
         sb.append(" ");
         sb.append(deadNode.toString());
         sb.append(' ');
         sb.append(senderID.toString());
         sb.append(' ');
-        sb.append(ourRandom.nextInt());
+        int bid = ourRandom.nextInt();
+        sb.append(bid);
 
         channel.writeAndFlush(sb.toString());
 
         timeoutsMet.put(Alarms.DEAD_NODE, false);
+        Cluster cluster = Cluster.getInstance();
+        cluster.startDeadNode(deadNode, this, bid);
     }
 
 
@@ -639,7 +599,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * @param s The string to convert.  This is assumed to be in upper case.
      * @return The MessageType that the string represents or MessageType.UNKNOWN if the method doesn't recognize it.
      */
-    protected MessageType determineMessageType(String s) {
+    MessageType determineMessageType(String s) {
         logger.debug("entering determineMessageType with " + s);
         MessageType messageType = MessageType.UNKNOWN;
 
@@ -689,6 +649,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             messageType = MessageType.SYNCHRONIZE;
         } else if (s.startsWith(TIMEOUT)) {
             messageType = MessageType.TIMEOUT;
+        } else if (s.startsWith(DIVIDE_UP_MESSAGES)) {
+            messageType = MessageType.DIVIDE_MESSAGES;
         }
 
         logger.debug("leaving determineMessageType with messageType = " + messageType);
@@ -1450,15 +1412,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                 break;
             }
 
-            case DEAD_NODE: {
-                if (!timeoutsMet.get(Alarms.DEAD_NODE)) {
-                    deadNodeTimeout();
-                } else {
-                    timeoutsMet.put(Alarms.DEAD_NODE, false);
-                }
-                break;
-            }
-
             default: {
                 logger.error("received an unrecognized alarm:" + alarm);
                 break;
@@ -1483,48 +1436,46 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public void handleDeadNode(String input) throws LtsllcException, IOException {
         logger.debug("entering handleDeadNode");
 
-        pushState(state);
-        logger.debug("Saved state");
-        state = AWAITING_ASSIGNMENTS;
-
-        //
-        // a dead node message has the form: DEAD NODE <UUID of dead node> <random int>
-        //
-        timeoutsMet.put(Alarms.DEAD_NODE, true);
         Scanner scanner = new Scanner(input);
 
         scanner.next(); // DEAD
         scanner.next(); // NODE
         UUID deadNode = UUID.fromString(scanner.next()); // uuid of dead node
-        UUID newLeader = UUID.fromString(scanner.next());
-        int bid = scanner.nextInt();
-
-        Cluster.getInstance().deadNode(deadNode, newLeader, bid);
-        newLeader = Cluster.getInstance().getLeaderUuid();
 
         //
         // send acknowledgment
         //
-        StringBuilder sb = new StringBuilder(DEAD_NODE_ACK);
-        sb.append(" ");
-        sb.append(newLeader.toString());
+        sendDeadNodeAck(deadNode);
 
-        channel.writeAndFlush(sb.toString());
-
-        logger.debug("Sent " + sb.toString());
         logger.debug("leaving handleDeadNode");
     }
 
-    /**
-     * The node has timed out waiting for a reply to a dead node start message
-     */
-    public void deadNodeTimeout() {
-        logger.debug("entering deadNodeTimeout");
+    public void sendDeadNodeAck (UUID deadNode) {
+        logger.debug("entering sendDeadNodeAck with " + deadNode.toString());
 
-        setState(ClusterConnectionStates.START);
-        sendStart(true, false);
+        //
+        // A dead node ack message has the following form
+        // DEAD NODE ACKNOWLEDGE <dead node uuid> <this node uuid> <bid>
+        //
+        StringBuilder sb = new StringBuilder(DEAD_NODE_ACK);
+        sb.append(" ");
+        sb.append(deadNode.toString());
+        sb.append(' ');
+        sb.append(uuid.toString());
+        sb.append(' ');
 
-        logger.debug("leaving deadNodeTimeout");
+        int bid = ourRandom.nextInt();
+        sb.append(bid);
+
+        channel.writeAndFlush(sb.toString());
+
+        try {
+            Cluster.getInstance().vote(this, bid);
+        } catch (LtsllcException e) {
+            throw new RuntimeException(e);
+        }
+
+        logger.debug("leaving sendDeadNodeAck having sent " + sb.toString());
     }
 
     /**
@@ -1568,9 +1519,9 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     /**
      * The end of the messages has been encountered.  This is basically the end of the synchronization process.
      *
-     * <H>
+     * <P>
      * In reply to this event the node goes into the start state and sends a start message.
-     * </H>
+     * </P>
      */
     public void handleMessagesEnd() throws LtsllcException {
         logger.debug("entering handleMessagesEnd");
@@ -1583,25 +1534,28 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     /**
      * Send a synchronization message and start synchronizing with the node.
      *
-     * <H>
+     * <P>
      * A synchronization message consists of more than a request to synchronize it includes the uuid of this node,
      * the host of this node, the port it is listening on and the time when this node started.
-     * </H>
+     * </P>
      */
     public void sendSynchronize() {
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(SYNCHRONIZE);
-        stringBuffer.append(" ");
-        stringBuffer.append(Miranda.getInstance().getMyUuid());
-        stringBuffer.append(" ");
-        stringBuffer.append(Miranda.getInstance().getMyHost());
-        stringBuffer.append(" ");
-        stringBuffer.append(Miranda.getInstance().getMyPort());
-        stringBuffer.append(" ");
-        stringBuffer.append(Miranda.getInstance().getMyStart());
-        channel.writeAndFlush(stringBuffer.toString());
+        logger.debug("entering sendSynchronize");
 
-        logger.debug("wrote " + stringBuffer);
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(SYNCHRONIZE);
+        stringBuilder.append(" ");
+        stringBuilder.append(Miranda.getInstance().getMyUuid());
+        stringBuilder.append(" ");
+        stringBuilder.append(Miranda.getInstance().getMyHost());
+        stringBuilder.append(" ");
+        stringBuilder.append(Miranda.getInstance().getMyPort());
+        stringBuilder.append(" ");
+        stringBuilder.append(Miranda.getInstance().getMyStart());
+        channel.writeAndFlush(stringBuilder.toString());
+
+        logger.debug("wrote " + stringBuilder.toString());
+        logger.debug("leaving sendSynchronize");
     }
 
     /**
@@ -1669,6 +1623,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         timeoutsMet.put(Alarms.START, true);
     }
 
+
     public void handleErrorGeneral() {
         sendStart(true, false);
         setState(ClusterConnectionStates.START);
@@ -1682,7 +1637,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
     public void sendLeader() throws LtsllcException {
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append(LEADER);
+        stringBuilder.append(LEADER_ACK);
         stringBuilder.append(" ");
         stringBuilder.append(Cluster.getInstance().getLeaderUuid());
 
@@ -1693,9 +1648,24 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         Scanner scanner = new Scanner(input);
         scanner.next(); // LEADER
         UUID uuid = UUID.fromString(scanner.next());
+        sendLeaderAck();
         if (uuid.equals(Miranda.getInstance().getMyUuid())) {
             Cluster.getInstance().divideUpMessages();
         }
+    }
+
+    public void sendLeaderAck() {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(LEADER_ACK);
+
+        try {
+            UUID uuid = Cluster.getInstance().getLeaderUuid();
+            stringBuilder.append(uuid.toString());
+        } catch (LtsllcException e) {
+            throw new RuntimeException(e);
+        }
+
+        channel.writeAndFlush(stringBuilder.toString());
     }
 
     /**
@@ -1782,54 +1752,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
     }
 
-    /**
-     * Wait for an acknowledgement of a dead node.
-     *
-     * <p>
-     * Save whatever state we're in and switch to AWAITING_ACK. Call back
-     * if we have received all the acks or we receive an ack of a different
-     * dead node.
-     * </P>
-     */
-    public void awaitAck(UUID deadNode, UUID leader) {
-        pushState(state);
-        state = ClusterConnectionStates.AWAITING_ACK;
-        this.deadNode = deadNode;
-        this.leader = leader;
-    }
-
-    /**
-     * handle a dead node message while waiting for a dead node message
-     *
-     * <p>
-     * Call the cluster if this is the ack we were waiting for or
-     * if this was an ack to a different dead node.
-     * </P>
-     *
-     * <p>
-     * The message is expected to have the form:
-     * <PRE>
-     * DEAD NODE &lt;UUID of dead node&gt; &lt;UUID of leader&gt;
-     * </PRE>
-     * </P>
-     */
-    public void handleStateAwaitingAckDeadNode(MessageType messageType, String message, UUID node) {
-        Scanner scanner = new Scanner(message);
-        scanner.next(); // DEAD
-        scanner.next(); // NODE
-        UUID tempDeadNode = UUID.fromString(scanner.next());
-        UUID tempLeader = UUID.fromString(scanner.next());
-
-        if (!deadNode.equals(tempDeadNode)) {
-            Cluster.getInstance().awaitingDeadNodeWrongNode(uuid, tempDeadNode);
-        } else if (!leader.equals(tempLeader)) {
-            Cluster.getInstance().awaitingDeadNodeWrongLeader(uuid, tempLeader);
-        } else {
-            Cluster.getInstance().awaitingDeadNodeAck(node);
-        }
-
-    }
-
     public boolean isOnline() {
         return uuid != null;
     }
@@ -1847,6 +1769,44 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         stringBuilder.append(newOwner.toString());
 
         channel.writeAndFlush(stringBuilder.toString());
+    }
+
+    public void divideUpMessages(UUID node) {
+        Cluster cluster = Cluster.getInstance();
+        List<UUID> list = MessageLog.getInstance().getAllMessagesOwnedBy(node);
+        for (UUID message : list) {
+            sendNewOwner(message, cluster.chooseNode().getUuid());
+        }
+    }
+
+    public void sendDivideUpMessages(UUID uuid) {
+        StringBuilder stringBuilder = new StringBuilder(DIVIDE_UP_MESSAGES);
+    }
+
+    public void sendTie () {
+        logger.debug("entering sendTie");
+
+        StringBuilder stringBuilder = new StringBuilder();
+
+        stringBuilder.append(TIE);
+
+        channel.writeAndFlush(stringBuilder.toString());
+
+        logger.debug("leaving sendTie after sending " + stringBuilder.toString());
+    }
+
+    public void sendDeadNode(UUID deadNode) {
+        logger.debug("entering sendDeadNode with deadNode = " + deadNode.toString());
+
+        StringBuilder stringBuilder = new StringBuilder();
+
+        stringBuilder.append(DEAD_NODE);
+        stringBuilder.append(' ');
+        stringBuilder.append(deadNode.toString());
+
+        channel.writeAndFlush(stringBuilder.toString());
+
+        logger.debug("leaving sendDeadNode after sending " + stringBuilder.toString());
     }
 }
 
