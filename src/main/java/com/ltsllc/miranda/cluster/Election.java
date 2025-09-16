@@ -99,10 +99,6 @@ public class Election {
      * </H>
      */
     public synchronized void divideUpNodesMessages() throws LtsllcException, IOException {
-        if (result == ElectionResults.TIE) {
-            throw new LtsllcException("tie in divideUpNodesMessages");
-        }
-
         if (null == deadNode) {
             throw new LtsllcException("null deadnode");
         }

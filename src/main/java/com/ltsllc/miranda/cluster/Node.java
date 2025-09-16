@@ -467,6 +467,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             }
 
             case MESSAGE_DELIVERED: {
+                handleMessageDelivered(s);
                 break;
             }
 
@@ -498,11 +499,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         switch (messageType) {
             case DEAD_NODE: {
                 handleDeadNode(s);
-                break;
-            }
-
-            case DIVIDE_MESSAGES: {
-                handleDivideMessages();
                 break;
             }
 
@@ -561,10 +557,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             }
         }
     }
-
-    public void handleDivideMessages() {
-    }
-
 
     public void ignoreMessage(MessageType messageType, String s) {
     }
@@ -1761,21 +1753,23 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      *
      * @param newOwner
      */
-    public void sendNewOwner(UUID message, UUID newOwner) {
+    public void sendNewOwner(UUID messageUuid, UUID newOwner) {
+        logger.debug("entering sendNewOwner");
         StringBuilder stringBuilder = new StringBuilder(OWNER);
         stringBuilder.append(" ");
-        stringBuilder.append(message.toString());
+        stringBuilder.append(messageUuid.toString());
         stringBuilder.append(" ");
         stringBuilder.append(newOwner.toString());
 
         channel.writeAndFlush(stringBuilder.toString());
+        logger.debug("leaving sendNewOwner");
     }
 
     public void divideUpMessages(UUID node) {
         Cluster cluster = Cluster.getInstance();
         List<UUID> list = MessageLog.getInstance().getAllMessagesOwnedBy(node);
-        for (UUID message : list) {
-            sendNewOwner(message, cluster.chooseNode().getUuid());
+        for (UUID messageUuid : list) {
+            sendNewOwner(messageUuid, cluster.chooseNode().getUuid());
         }
     }
 

@@ -831,6 +831,11 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         }
 
         nodes.remove(theNode);
+
+        AlarmClock.getInstance().scheduleOnce(this, Alarms.LEADER,
+                Miranda.getProperties().getLongProperty(Miranda.PROPERTY_LEADER_TIMEOUT));
+
+        election = new Election(theNode.getUuid());
     }
 
     /**

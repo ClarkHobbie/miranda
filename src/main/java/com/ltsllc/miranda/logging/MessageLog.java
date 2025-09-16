@@ -318,15 +318,15 @@ public class MessageLog implements PropertyListener {
     /**
      * Set the owner of a message
      *
-     * @param message The message
-     * @param owner The owner
+     * @param messageUuid The message UUID
+     * @param ownerUuid The owner UUID
      */
-    public synchronized void setOwner(UUID message, UUID owner) {
+    public synchronized void setOwner(UUID messageUuid, UUID ownerUuid) {
         try {
-            uuidToOwner.remove(message);
-            uuidToOwner.add(message, owner);
-        } catch (Throwable e) {
-            e.printStackTrace();
+            uuidToOwner.remove(messageUuid);
+            uuidToOwner.add(messageUuid, ownerUuid);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
