@@ -990,7 +990,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         election.vote(node, vote);
 
         if (election.isTie()) {
-            election = new Election(deadNode);
+            startDeadNode(deadNode);
             sendTie();
             sendDeadNode();
         }
@@ -1008,14 +1008,8 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
     }
 
     public void sendTie() {
-        Miranda miranda = Miranda.getInstance();
-
         for (Node node : nodes) {
-            if (node.getUuid().equals(miranda.getMyUuid())) {
-                node.sendTie();
-                startDeadNode(election.getDeadNode());
-                break;
-            }
+            node.sendTie();
         }
     }
 
