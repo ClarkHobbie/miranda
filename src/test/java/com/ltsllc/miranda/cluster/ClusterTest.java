@@ -315,7 +315,6 @@ class ClusterTest extends TestSuperclass {
     public void alarm () throws Throwable {
         Cluster cluster = buildCluster();
 
-
         EmbeddedChannel channel = new EmbeddedChannel();
         Node deadNode = new Node(UUID.randomUUID(), "10.0.0.236", 2020, channel);
         cluster.addNode(deadNode);
@@ -353,14 +352,19 @@ class ClusterTest extends TestSuperclass {
     @Test
     public void leaderTimeout () throws LtsllcException, IOException {
         Miranda miranda = new Miranda();
-        Cluster cluster = buildCluster();
-        Node deadNode = cluster.getNodes().getLast();
-        cluster.setDeadNode(deadNode.getUuid());
-        cluster.setElection(new Election(deadNode.getUuid()));
-        cluster.removeNode(deadNode);
+        miranda.setMyUuid(UUID.randomUUID());
 
+        Cluster cluster = buildCluster();
         Node node = cluster.getNodes().getLast();
         cluster.removeNode(node);
+
+        node = cluster.getNodes().getLast();
+        cluster.removeNode(node);
+
+        EmbeddedChannel embeddedChannel = new EmbeddedChannel();
+        Node deadNode = new Node (UUID.randomUUID(), "10.0.0.48", 2020, embeddedChannel);
+        cluster.setDeadNode(deadNode.getUuid());
+        cluster.setElection(new Election(deadNode.getUuid()));
 
         Cluster.setInstance(cluster);
 
@@ -370,19 +374,12 @@ class ClusterTest extends TestSuperclass {
         MessageLog.getInstance().add(message, deadNode.getUuid());
 
         ImprovedRandom random = new ImprovedRandom();
-
         cluster.getElection().vote(cluster.getNodes().getFirst(), random.nextInt());
 
-        node = cluster.getNodes().get(0);
-
         assert (cluster.getNodes().size() == 1);
-        assert (node.getUuid().equals(Miranda.getInstance().getMyUuid()));
         assert (cluster.getElection().getLeader() == null);
 
         cluster.leaderTimeout();
-
-        Node leader = cluster.getLeader();
-        leader.sendDeadNode(deadNode.getUuid());
 
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append(Node.OWNER);
@@ -393,7 +390,11 @@ class ClusterTest extends TestSuperclass {
 
         List<UUID> list = MessageLog.getInstance().getAllMessagesOwnedBy(deadNode.getUuid());
 
+        EmbeddedChannel channel = (EmbeddedChannel) cluster.getNodes().getFirst().getChannel();
+        String string = channel.readOutbound();
+
         assert (cluster.getLeader()  != null);
+        assert (string.equalsIgnoreCase(stringBuilder.toString()));
         assert (list.size() == 0);
     }
 

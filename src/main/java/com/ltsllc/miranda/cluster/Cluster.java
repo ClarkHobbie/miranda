@@ -643,6 +643,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
                 }
             }
         }
+
         logger.debug("leaving reconnect with " + returnValue);
         return returnValue;
     }
@@ -762,10 +763,34 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
 
         election.countVotes();
         leader = election.getLeader().getNode();
-        if (Miranda.getInstance().getMyUuid().equals(leader.getUuid())) {
-            leader.divideUpMessages(deadNode);
+        divideUpMessages(deadNode);
+    }
+
+    public void divideUpMessages(UUID node) {
+        Cluster cluster = Cluster.getInstance();
+        List<UUID> list = MessageLog.getInstance().getAllMessagesOwnedBy(node);
+        for (UUID messageUuid : list) {
+            Node node2 = cluster.chooseNode();
+            MessageLog.getInstance().setOwner(messageUuid, node2.getUuid());
+            sendNewOwner(messageUuid, node2.getUuid());
         }
     }
+
+    /**
+     * send a OWNER statement that establishes a new owner
+     *
+     * @param newOwner
+     */
+    public void sendNewOwner(UUID messageUuid, UUID newOwner) {
+        logger.debug("entering sendNewOwner");
+
+        for (Node node : nodes) {
+            node.sendNewOwner(messageUuid, newOwner);
+        }
+
+        logger.debug("leaving sendNewOwner");
+    }
+
 
     /**
      * Are we connected to all nodes in the cluster?
