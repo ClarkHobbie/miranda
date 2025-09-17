@@ -316,9 +316,21 @@ class ClusterTest extends TestSuperclass {
     }
 
     @Test
-    public void alarm () {
+    public void alarm () throws Throwable {
         Cluster cluster = buildCluster();
 
+
+        EmbeddedChannel channel = new EmbeddedChannel();
+        Node deadNode = new Node(UUID.randomUUID(), "10.0.0.236", 2020, channel);
+        cluster.addNode(deadNode);
+        cluster.setDeadNode(deadNode.getUuid());
+        Cluster.setInstance(cluster);
+
+        assert (cluster.getNodes().contains(deadNode));
+
+        cluster.alarm(Alarms.DEAD_NODE);
+
+        assert (!cluster.getNodes().contains(deadNode));
     }
 
     @Test
