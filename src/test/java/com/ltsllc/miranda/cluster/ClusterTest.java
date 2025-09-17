@@ -98,28 +98,29 @@ class ClusterTest extends TestSuperclass {
         miranda.loadProperties();
         miranda.setMyUuid(UUID.randomUUID());
 
-        Cluster.defineStatics();
+        Cluster cluster = buildCluster();
+        Node node = cluster.getNodes().getLast();
+        cluster.removeNode(node);
 
-        Node node1 = new Node(UUID.randomUUID(),"71.237.68.250", 2021, null);
-        Node node2 = new Node(UUID.randomUUID(), "127.0.0.1", 2021, null);
-        // node2.setIoSession(mockIoSession2);
+        node = cluster.getNodes().getLast();
+        cluster.removeNode(node);
 
-
-        List<Node> list = new ArrayList<>();
-        list.add(node1);
-        list.add(node2);
-        Cluster.getInstance().setNodes(list);
+        Cluster.setInstance(cluster);
 
         UUID messageUuid = UUID.randomUUID();
         Message message = createTestMessage(messageUuid);
 
         Cluster.getInstance().informOfDelivery(message);
 
-        StringBuffer IODMessage = new StringBuffer();
+        StringBuilder IODMessage = new StringBuilder();
         IODMessage.append(Node.MESSAGE_DELIVERED);
         IODMessage.append(" ");
         IODMessage.append(messageUuid);
 
+        EmbeddedChannel channel = (EmbeddedChannel) Cluster.getInstance().getNodes().getFirst().getChannel();
+        String string = channel.readOutbound();
+
+        assert (string.equalsIgnoreCase(IODMessage.toString()));
     }
 
     @Test
