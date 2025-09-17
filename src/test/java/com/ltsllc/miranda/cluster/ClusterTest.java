@@ -348,7 +348,9 @@ class ClusterTest extends TestSuperclass {
         Cluster cluster = buildCluster();
         Node deadNode = cluster.getNodes().getLast();
         cluster.setDeadNode(deadNode.getUuid());
+        cluster.setElection(new Election(deadNode.getUuid()));
         cluster.removeNode(deadNode);
+
         Node node = cluster.getNodes().getLast();
         cluster.removeNode(node);
 
@@ -360,7 +362,6 @@ class ClusterTest extends TestSuperclass {
         MessageLog.getInstance().add(message, deadNode.getUuid());
 
         ImprovedRandom random = new ImprovedRandom();
-        cluster.startElection(deadNode.getUuid());
 
         cluster.getElection().vote(cluster.getNodes().getFirst(), random.nextInt());
 
@@ -449,5 +450,20 @@ class ClusterTest extends TestSuperclass {
         Cluster.getInstance().addNode(node2);
 
         assert (!Cluster.getInstance().isAlone(node.getUuid()));
+    }
+
+    @Test
+    public void startDeadNode () {
+        Cluster.defineStatics();
+        Cluster cluster = Cluster.getInstance();
+        UUID deadNdeUuid = UUID.randomUUID();
+
+        assert (cluster.getDeadNode() == null);
+        assert (cluster.getElection() == null);
+
+        cluster.startDeadNode(deadNdeUuid);
+
+        assert (cluster.getDeadNode().equals(deadNdeUuid));
+        assert (cluster.getElection() != null);
     }
 }

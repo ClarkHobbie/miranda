@@ -801,13 +801,13 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
     /**
      * A node has been declared dead --- create a new election and vote
      *
-     * @param deadNode The uuid of the node being declared dead.
+     * @param deadNodeUuid The uuid of the node being declared dead.
      * @throws IOException If there is a problem transferring ownership.
      */
-    public synchronized void startDeadNode(UUID deadNode) {
-        this.deadNode = deadNode;
+    public synchronized void startDeadNode(UUID deadNodeUuid) {
+        deadNode = deadNodeUuid;
 
-        election = new Election(deadNode);
+        election = new Election(deadNodeUuid);
         AlarmClock.getInstance().scheduleOnce(this, Alarms.DEAD_NODE,
                 Miranda.getProperties().getLongProperty(Miranda.PROPERTY_DEAD_NODE_TIMEOUT));
     }
@@ -830,7 +830,6 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         }
 
         nodes.remove(theNode);
-        startElection(deadNode);
 
         AlarmClock.getInstance().scheduleOnce(this, Alarms.LEADER,
                 Miranda.getProperties().getLongProperty(Miranda.PROPERTY_LEADER_TIMEOUT));
@@ -926,21 +925,6 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         return nodes.contains(node);
     }
 
-    /**
-     * Assign a message to a node.
-     *
-     * @param receiverUuid The assignee of the message
-     * @param messageUuid  The message to be assigned
-     * @throws LtsllcException If there is a problem finding the assignee
-     */
-    /*
-    public void assignMessageTo(UUID receiverUuid, UUID messageUuid) throws LtsllcException, IOException {
-        Node node = findNode(receiverUuid);
-        node.assignMessage(messageUuid);
-    }
-
-
-     */
     /**
      * Find a node amongst all the nodes in the cluster
      *
@@ -1118,9 +1102,5 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
 
     public Node chooseNode() {
         return random.choose(nodes);
-    }
-
-    public void startElection(UUID deadNodeUuid) {
-        election = new Election(deadNodeUuid);
     }
 }
