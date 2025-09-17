@@ -81,7 +81,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
         if (channel != null && this.uuid.equals(Miranda.getInstance().getMyUuid())) {
             ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
-            if (channelHandler == null || !(channelHandler instanceof HeartBeatHandler)) {
+            if (!(channelHandler instanceof HeartBeatHandler)) {
                 throw new RuntimeException("couldn't find HeartBeatHandler");
             } else {
                 HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;

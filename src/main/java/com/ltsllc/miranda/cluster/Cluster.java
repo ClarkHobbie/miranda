@@ -987,6 +987,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         for (Node node : nodes) {
             if (node.getUuid().equals(miranda.getMyUuid())) {
                 node.sendTie();
+                startDeadNode(election.getDeadNode());
                 break;
             }
         }

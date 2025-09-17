@@ -473,4 +473,37 @@ class ClusterTest extends TestSuperclass {
         assert (cluster.getDeadNode().equals(deadNdeUuid));
         assert (cluster.getElection() != null);
     }
+
+    @Test
+    public void notifyOfDelivery () {
+        Miranda miranda = new Miranda();
+        miranda.setMyUuid(UUID.randomUUID());
+
+        EmbeddedChannel channel = null;
+
+        Cluster cluster = buildCluster();
+        Cluster.setInstance(cluster);
+        Message msg = createTestMessage(UUID.randomUUID());
+
+        cluster.notifyOfDelivery(msg);
+
+        channel = (EmbeddedChannel) cluster.getNodes().get(0).getChannel();
+        String message = channel.readOutbound();
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Node.MESSAGE_DELIVERED);
+        stringBuilder.append(' ');
+        stringBuilder.append(msg.getMessageID().toString());
+
+        assert (message.equalsIgnoreCase(stringBuilder.toString()));
+
+        channel = (EmbeddedChannel) cluster.getNodes().get(1).getChannel();
+        message = channel.readOutbound();
+
+        assert (message.equalsIgnoreCase(stringBuilder.toString()));
+
+        channel = (EmbeddedChannel) cluster.getNodes().get(2).getChannel();
+        message = channel.readOutbound();
+
+        assert (message.equalsIgnoreCase(stringBuilder.toString()));
+    }
 }
