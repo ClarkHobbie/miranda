@@ -39,7 +39,7 @@ class ClusterTest extends TestSuperclass {
     }
 
 
-    public void connect() throws LtsllcException, CloneNotSupportedException {
+    public void connect() throws LtsllcException, CloneNotSupportedException, BindException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
@@ -47,16 +47,11 @@ class ClusterTest extends TestSuperclass {
         ImprovedRandom improvedRandom = new ImprovedRandom();
         Cluster.setRandom(improvedRandom);
 
-        InetSocketAddress inetSocketAddress = new InetSocketAddress("192.168.0.12", 2020);
-
         closePorts();
 
         miranda.parseNodes();
-        try {
-            Cluster.getInstance().start(miranda.getSpecNodes());
-        } catch (BindException e) {
-            throw new RuntimeException(e);
-        }
+
+        Cluster.getInstance().start(miranda.getSpecNodes());
     }
 
     /*
