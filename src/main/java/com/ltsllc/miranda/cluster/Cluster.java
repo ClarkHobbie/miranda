@@ -802,13 +802,12 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
      * A node has been declared dead --- create a new election and vote
      *
      * @param deadNode The uuid of the node being declared dead.
-     * @param proposedLeader The proposed new leader
-     * @param bid The bid of the proposed leader
      * @throws IOException If there is a problem transferring ownership.
      */
-    public synchronized void startDeadNode(UUID deadNode, Node proposedLeader, int bid) {
+    public synchronized void startDeadNode(UUID deadNode) {
+        this.deadNode = deadNode;
+
         election = new Election(deadNode);
-        election.vote(proposedLeader, bid);
         AlarmClock.getInstance().scheduleOnce(this, Alarms.DEAD_NODE,
                 Miranda.getProperties().getLongProperty(Miranda.PROPERTY_DEAD_NODE_TIMEOUT));
     }
@@ -831,11 +830,10 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         }
 
         nodes.remove(theNode);
+        startElection(deadNode);
 
         AlarmClock.getInstance().scheduleOnce(this, Alarms.LEADER,
                 Miranda.getProperties().getLongProperty(Miranda.PROPERTY_LEADER_TIMEOUT));
-
-        election = new Election(theNode.getUuid());
     }
 
     /**
@@ -845,28 +843,6 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         for (Node node: nodes) {
             node.sendError();
             node.setState(ClusterConnectionStates.START);
-        }
-    }
-
-
-    public void sendNewOwners () {
-        Bag<Node> survivingNodes = new Bag<>();
-
-        for (Node node: nodes) {
-            if (node.getUuid().equals(deadNode)) {
-                continue;
-            } else {
-                survivingNodes.add(node);
-            }
-        }
-        Bag<Node> tempSurvivors = new Bag<Node>();
-        tempSurvivors.addAll(survivingNodes);
-
-        for (UUID messageUuid: MessageLog.getInstance().getAllMessagesOwnedBy(deadNode)) {
-            UUID newOwner = tempSurvivors.get().getUuid();
-            for (Node node : survivingNodes) {
-                node.sendNewOwner(messageUuid, newOwner);
-            }
         }
     }
 
@@ -1082,7 +1058,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
 
     public boolean isAlone(UUID localID) {
         for (Node node : nodes) {
-            if (node.isOnline() && node.getUuid() !=localID) {
+            if (node.isOnline() && !node.getUuid().equals(localID)) {
                 return false;
             }
         }
@@ -1142,5 +1118,9 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
 
     public Node chooseNode() {
         return random.choose(nodes);
+    }
+
+    public void startElection(UUID deadNodeUuid) {
+        election = new Election(deadNodeUuid);
     }
 }

@@ -202,6 +202,102 @@ public class NodeTest extends TestSuperclass
 
         assert (message.startsWith(stringBuilder.toString()));
     }
+
+    @Test
+    public void sendDeadNode () {
+        Cluster.defineStatics();
+        UUID nodeUuid = UUID.randomUUID();
+        EmbeddedChannel channel = new EmbeddedChannel();
+        Node node = new Node(nodeUuid, "10.0.0.236", 2020, channel);
+
+        UUID deadNodeUuid = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+        assert (Cluster.getInstance().getDeadNode() == null);
+        assert (Cluster.getInstance().getElection() == null);
+
+        node.sendDeadNode(deadNodeUuid);
+
+        assert (Cluster.getInstance().getDeadNode().equals(deadNodeUuid));
+        assert (Cluster.getInstance().getElection() != null);
+
+        StringBuilder stringBuilder = new StringBuilder();
+
+        stringBuilder.append(Node.DEAD_NODE);
+        stringBuilder.append(' ');
+        stringBuilder.append(deadNodeUuid.toString());
+
+        String message = channel.readOutbound();
+
+        assert (message.equalsIgnoreCase(stringBuilder.toString()));
+    }
+
+    @Test
+    public void divideUpMessages () throws LtsllcException, IOException {
+        MessageLog.defineStatics();
+        Cluster.defineStatics();
+
+        EmbeddedChannel channel = new EmbeddedChannel();
+        UUID nodeUuid = UUID.fromString("0000000-0000-0000-0000-000000000001");
+        Node node = new Node(nodeUuid, "10.0.0.236", 2020, channel);
+        Cluster.getInstance().addNode(node);
+
+        UUID deadNodeUuid = UUID.fromString("0000000-0000-0000-0000-000000000002");
+
+        UUID firstMessageUuid = UUID.fromString("0000000-0000-0000-0000-000000000003");
+        Message firstMessage = createTestMessage(firstMessageUuid, deadNodeUuid);
+
+        EmbeddedChannel channel2 = new EmbeddedChannel();
+
+        Node deadNode = new Node(deadNodeUuid, "10.0.0.1", 2020, channel2);
+        MessageLog.getInstance().add(firstMessage, deadNodeUuid);
+
+        node.divideUpMessages(deadNodeUuid);
+
+        StringBuilder stringBuilder =  new StringBuilder();
+        stringBuilder.append(Node.OWNER);
+        stringBuilder.append(' ');
+        stringBuilder.append(firstMessageUuid.toString());
+        stringBuilder.append(' ');
+        stringBuilder.append(node.getUuid().toString());
+
+        String message = channel.readOutbound();
+
+        int index = differ(message, stringBuilder.toString());
+        assert (message.equalsIgnoreCase(stringBuilder.toString()));
+    }
+
+    public int differ(String string1, String string2) {
+        int index = -1;
+
+        if (string1.length() != string2.length()) {
+            return -2;
+        }
+
+        for (int i = 0; i < string1.length(); i++) {
+            char c = string1.charAt(i);
+            if (c != string2.charAt(i)) {
+                return i;
+            }
+        }
+
+        return index;
+    }
+
+    @Test
+    public void sendTie () {
+        EmbeddedChannel channel =  new EmbeddedChannel();
+        Node node = new Node(UUID.randomUUID(), "10.0.0.236", 2020, channel);
+
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Node.TIE);
+
+        node.sendTie();
+
+        String message = channel.readOutbound();
+
+        assert (stringBuilder.toString().equalsIgnoreCase(message));
+    }
+
     @Test
     public void testGeneralMessageDelivered () throws LtsllcException, IOException, CloneNotSupportedException {
         Cluster.defineStatics();

@@ -17,6 +17,7 @@ import com.ltsllc.miranda.properties.PropertyListener;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
+import io.netty.channel.embedded.EmbeddedChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -107,20 +108,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      */
     protected HashMap<Alarms, Boolean> timeoutsMet = new HashMap<>();
 
-    public HashMap<Alarms, Boolean> getTimeoutsMet() {
-        return timeoutsMet;
-    }
-
     protected Map<Channel, Boolean> channelToSentStart = new HashMap<>();
 
-
-    public Map<Channel, Boolean> getChannelToSentStart() {
-        return channelToSentStart;
-    }
-
-    public void setChannelToSentStart(Map<Channel, Boolean> channelToSentStart) {
-        this.channelToSentStart = channelToSentStart;
-    }
 
     /**
      * The IoSession that we talk to our partner with or null if we are not currently connected
@@ -561,28 +550,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public void ignoreMessage(MessageType messageType, String s) {
     }
 
-    public void startDeadNode(UUID deadNode, UUID senderID) {
-        //
-        // a dead node message has the form
-        // DEAD NODE <uuid of dead node> <uuid of this node> <integer bid>
-        //
-        StringBuilder sb = new StringBuilder(DEAD_NODE);
-        sb.append(" ");
-        sb.append(deadNode.toString());
-        sb.append(' ');
-        sb.append(senderID.toString());
-        sb.append(' ');
-        int bid = ourRandom.nextInt();
-        sb.append(bid);
-
-        channel.writeAndFlush(sb.toString());
-
-        timeoutsMet.put(Alarms.DEAD_NODE, false);
-        Cluster cluster = Cluster.getInstance();
-        cluster.startDeadNode(deadNode, this, bid);
-    }
-
-
     /**
      * Convert a string to a MessageType
      * <p>
@@ -648,28 +615,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("leaving determineMessageType with messageType = " + messageType);
 
         return messageType;
-    }
-
-    public boolean isDeadNodeAcknowledge(String input) {
-        Scanner scanner = new Scanner(input);
-
-        //
-        // This message has the form: DEAD NODE <UUID of dead node> <UUID of leader>
-        //
-        scanner.next(); // DEAD
-        scanner.next(); // NODE
-
-        UUID deadNodeID = UUID.fromString(scanner.next());
-        if (!deadNodeID.equals(deadNode)) {
-            return false;
-        }
-
-        UUID leaderID = UUID.fromString(scanner.next());
-        if (!leaderID.equals(Miranda.getInstance().getMyUuid())) {
-            return false;
-        }
-
-        return true;
     }
 
     /**
@@ -1762,6 +1707,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         stringBuilder.append(newOwner.toString());
 
         channel.writeAndFlush(stringBuilder.toString());
+
         logger.debug("leaving sendNewOwner");
     }
 
@@ -1769,12 +1715,10 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         Cluster cluster = Cluster.getInstance();
         List<UUID> list = MessageLog.getInstance().getAllMessagesOwnedBy(node);
         for (UUID messageUuid : list) {
-            sendNewOwner(messageUuid, cluster.chooseNode().getUuid());
+            Node node2 = cluster.chooseNode();
+            MessageLog.getInstance().setOwner(messageUuid, node2.getUuid());
+            sendNewOwner(messageUuid, node2.getUuid());
         }
-    }
-
-    public void sendDivideUpMessages(UUID uuid) {
-        StringBuilder stringBuilder = new StringBuilder(DIVIDE_UP_MESSAGES);
     }
 
     public void sendTie () {
@@ -1799,6 +1743,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         stringBuilder.append(deadNode.toString());
 
         channel.writeAndFlush(stringBuilder.toString());
+
+        Cluster.getInstance().startDeadNode(deadNode);
 
         logger.debug("leaving sendDeadNode after sending " + stringBuilder.toString());
     }

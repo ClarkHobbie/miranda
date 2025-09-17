@@ -72,6 +72,7 @@ public class Election {
 
     public Election (UUID deadNode) {
         this.deadNode = deadNode;
+        voters = new ArrayList<>();
     }
 
     /**
@@ -127,7 +128,7 @@ public class Election {
     public void vote (Node node, int vote) {
         boolean notPresent = true;
 
-        for (Voter voter:voters) {
+        for (Voter voter : voters) {
             if (node.getUuid().equals(voter.node.getUuid())) {
                 voter.vote = vote;
                 notPresent = false;

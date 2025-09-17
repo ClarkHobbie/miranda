@@ -322,7 +322,7 @@ class ClusterTest extends TestSuperclass {
     }
 
     @Test
-    public void deadNodeTimeout () {
+    public void deadNodeTimeout () throws InterruptedException {
         Cluster cluster = buildCluster();
         Cluster.setInstance(cluster);
         UUID deadNodeUuid = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -334,43 +334,58 @@ class ClusterTest extends TestSuperclass {
             }
         }
 
-        cluster.setDeadNode(deadNodeUuid);
-
         assert (cluster.getNodes().contains(deadNode));
 
-        AlarmClock.getInstance().scheduleOnce(cluster, Alarms.DEAD_NODE, 100);
-
-        synchronized (this) {
-            try {
-                wait(400);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        }
+        cluster.startDeadNode(deadNodeUuid);
+        pause(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_DEAD_NODE_TIMEOUT) * 2);
 
         assert (!cluster.getNodes().contains(deadNode));
     }
 
     @Test
-    public void leaderTimeout () {
+    public void leaderTimeout () throws LtsllcException, IOException {
+        Miranda miranda = new Miranda();
         Cluster cluster = buildCluster();
+        Node deadNode = cluster.getNodes().getLast();
+        cluster.setDeadNode(deadNode.getUuid());
+        cluster.removeNode(deadNode);
+        Node node = cluster.getNodes().getLast();
+        cluster.removeNode(node);
+
         Cluster.setInstance(cluster);
 
-        Election election = buildElection();
-        cluster.setElection(election);
+        MessageLog.defineStatics();
 
-        AlarmClock.getInstance().scheduleOnce(cluster, Alarms.LEADER, 100);
+        Message message = createTestMessage(UUID.randomUUID());
+        MessageLog.getInstance().add(message, deadNode.getUuid());
 
-        synchronized (this) {
-            try {
-                wait(200);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        }
+        ImprovedRandom random = new ImprovedRandom();
+        cluster.startElection(deadNode.getUuid());
 
-        UUID leaderUuid = UUID.fromString("00000000-0000-0000-0000-000000000000");
-        assert (election.getLeader().getNode().getUuid().equals(leaderUuid));
+        cluster.getElection().vote(cluster.getNodes().getFirst(), random.nextInt());
+
+        node = cluster.getNodes().get(0);
+
+        assert (cluster.getNodes().size() == 1);
+        assert (node.getUuid().equals(Miranda.getInstance().getMyUuid()));
+        assert (cluster.getElection().getLeader() == null);
+
+        cluster.leaderTimeout();
+
+        Node leader = cluster.getLeader();
+        leader.sendDeadNode(deadNode.getUuid());
+
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Node.OWNER);
+        stringBuilder.append(' ');
+        stringBuilder.append(message.getMessageID().toString());
+        stringBuilder.append(' ');
+        stringBuilder.append(cluster.getNodes().getLast().getUuid().toString());
+
+        List<UUID> list = MessageLog.getInstance().getAllMessagesOwnedBy(deadNode.getUuid());
+
+        assert (cluster.getLeader()  != null);
+        assert (list.size() == 0);
     }
 
     public Election buildElection() {
@@ -406,5 +421,33 @@ class ClusterTest extends TestSuperclass {
         election.addVoter(voter);
 
         return election;
+    }
+
+    @Test
+    public void chooseNode () {
+        Cluster.defineStatics();
+        EmbeddedChannel channel = new EmbeddedChannel();
+        Node node = new Node(UUID.randomUUID(), "10.0.0.236", 2020, channel);
+        Cluster.getInstance().addNode(node);
+
+        Node node2 = Cluster.getInstance().chooseNode();
+
+        assert (node2.equals(node));
+    }
+
+    @Test
+    public void isAlone () {
+        Cluster.defineStatics();
+        EmbeddedChannel channel = new EmbeddedChannel();
+        Node node = new Node(UUID.randomUUID(), "10.0.0.236", 2020, channel);
+        Cluster.getInstance().addNode(node);
+
+        assert (Cluster.getInstance().isAlone(node.getUuid()));
+
+        channel = new EmbeddedChannel();
+        Node node2 = new Node(UUID.randomUUID(), "10.0.0.1", 2029, channel);
+        Cluster.getInstance().addNode(node2);
+
+        assert (!Cluster.getInstance().isAlone(node.getUuid()));
     }
 }
