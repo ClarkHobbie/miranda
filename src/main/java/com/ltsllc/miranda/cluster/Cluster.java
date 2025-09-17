@@ -990,6 +990,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         election.vote(node, vote);
 
         if (election.isTie()) {
+            election = new Election(deadNode);
             sendTie();
             sendDeadNode();
         }
