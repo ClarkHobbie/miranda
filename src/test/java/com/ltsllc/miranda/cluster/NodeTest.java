@@ -960,4 +960,29 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
         assert (node1.getTimeOfLastActivity() == timeOfLastActivity);
         assert (node2.getChannel() == null);
     }
+
+    @Test
+    public void sendSynchronizationStart () throws IOException {
+        Miranda miranda = new Miranda();
+
+        Node node = buildNode(UUID.randomUUID());
+        EmbeddedChannel channel = (EmbeddedChannel) node.getChannel();
+
+        node.sendSynchronizationStart();
+
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Node.SYNCHRONIZE_START);
+        stringBuilder.append(' ');
+        stringBuilder.append(miranda.getMyUuid().toString());
+        stringBuilder.append(' ');
+        stringBuilder.append(miranda.getMyHost());
+        stringBuilder.append(' ');
+        stringBuilder.append(miranda.getMyPort());
+        stringBuilder.append(' ');
+        stringBuilder.append(miranda.getMyStart());
+
+        String message = channel.readOutbound();
+
+        assert (message.equalsIgnoreCase(stringBuilder.toString()));
+    }
  }
