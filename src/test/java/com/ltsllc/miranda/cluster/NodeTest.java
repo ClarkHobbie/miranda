@@ -175,7 +175,7 @@ public class NodeTest extends TestSuperclass
     }
 
     @Test
-    public void deadNodeAck () {
+    public void sendDeadNodeAck () {
         Cluster.defineStatics();
 
         UUID uuid = UUID.fromString("123E4567-E89B-42D3-A456-556642440000");
@@ -914,5 +914,36 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
         String message = channel.readOutbound();
 
         assert (message.equalsIgnoreCase(stringBuilder.toString()));
+    }
+
+    @Test
+    public void handleDeadNode () throws LtsllcException, IOException {
+        Cluster.defineStatics();
+        Cluster cluster = Cluster.getInstance();
+
+        Node node = buildNode(UUID.randomUUID());
+        EmbeddedChannel channel = (EmbeddedChannel) node.getChannel();
+
+        UUID deadNodeUuid = UUID.randomUUID();
+        cluster.setDeadNode(deadNodeUuid);
+        cluster.setElection(new Election(deadNodeUuid));
+
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Node.DEAD_NODE);
+        stringBuilder.append(' ');
+        stringBuilder.append(deadNodeUuid.toString());
+
+        node.handleDeadNode(stringBuilder.toString());
+
+        String message = channel.readOutbound();
+
+        stringBuilder = new StringBuilder();
+        stringBuilder.append(Node.DEAD_NODE_ACK);
+        stringBuilder.append(' ');
+        stringBuilder.append(deadNodeUuid.toString());
+        stringBuilder.append(' ');
+        stringBuilder.append(node.getUuid().toString());
+
+        assert (message.startsWith(stringBuilder.toString()));
     }
  }
