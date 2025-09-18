@@ -854,4 +854,25 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
 
         assert (string.equalsIgnoreCase(stringBuilder.toString()));
     }
+
+    @Test
+    public void sendNewOwner () {
+        Node node = buildNode(UUID.randomUUID());
+        EmbeddedChannel channel = (EmbeddedChannel) node.getChannel();
+
+        UUID messageUuuid = UUID.randomUUID();
+        UUID ownerUuid = UUID.randomUUID();
+        node.sendNewOwner(messageUuuid, ownerUuid);
+
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Node.OWNER);
+        stringBuilder.append(' ');
+        stringBuilder.append(messageUuuid.toString());
+        stringBuilder.append(' ');
+        stringBuilder.append(ownerUuid.toString());
+
+        String message = channel.readOutbound();
+
+        assert (message.equalsIgnoreCase(stringBuilder.toString()));
+    }
  }
