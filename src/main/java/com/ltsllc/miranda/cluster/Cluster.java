@@ -1013,14 +1013,6 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         }
     }
 
-    public synchronized void sendLeader () throws LtsllcException {
-        for (Node node : nodes) {
-            if (node.getChannel() != null) {
-                node.sendLeader();
-            }
-        }
-    }
-
     public UUID getLeaderUuid() throws LtsllcException {
         return leader.getUuid();
     }

@@ -1572,39 +1572,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         heartBeatHandler.setUuid(uuid);
     }
 
-    public void sendLeader() throws LtsllcException {
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append(LEADER_ACK);
-        stringBuilder.append(" ");
-        stringBuilder.append(Cluster.getInstance().getLeaderUuid());
-
-        channel.writeAndFlush(stringBuilder);
-    }
-
-    public void handleLeader(String input) throws LtsllcException, IOException {
-        Scanner scanner = new Scanner(input);
-        scanner.next(); // LEADER
-        UUID uuid = UUID.fromString(scanner.next());
-        sendLeaderAck();
-        if (uuid.equals(Miranda.getInstance().getMyUuid())) {
-            Cluster.getInstance().divideUpMessages();
-        }
-    }
-
-    public void sendLeaderAck() {
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append(LEADER_ACK);
-
-        try {
-            UUID uuid = Cluster.getInstance().getLeaderUuid();
-            stringBuilder.append(uuid.toString());
-        } catch (LtsllcException e) {
-            throw new RuntimeException(e);
-        }
-
-        channel.writeAndFlush(stringBuilder.toString());
-    }
-
     /**
      * handle the end of owners message
      *
