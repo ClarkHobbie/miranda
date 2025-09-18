@@ -946,4 +946,18 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
 
         assert (message.startsWith(stringBuilder.toString()));
     }
+
+    @Test
+    public void merge () throws LtsllcException {
+        Node node1 = buildNode(UUID.randomUUID());
+        Node node2 = buildNode(node1.getUuid());
+
+        long timeOfLastActivity = node1.getTimeOfLastActivity() + 1;
+        node2.setTimeOfLastActivity(timeOfLastActivity);
+
+        node1.merge(node2);
+
+        assert (node1.getTimeOfLastActivity() == timeOfLastActivity);
+        assert (node2.getChannel() == null);
+    }
  }
