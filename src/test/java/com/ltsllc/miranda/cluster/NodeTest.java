@@ -285,8 +285,8 @@ public class NodeTest extends TestSuperclass
 
     @Test
     public void sendTie () {
-        EmbeddedChannel channel =  new EmbeddedChannel();
-        Node node = new Node(UUID.randomUUID(), "10.0.0.236", 2020, channel);
+        Node node = buildNode(UUID.randomUUID());
+        EmbeddedChannel channel = (EmbeddedChannel) node.getChannel();
 
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append(Node.TIE);
@@ -854,4 +854,4 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
 
         assert (string.equalsIgnoreCase(stringBuilder.toString()));
     }
-}
+ }
