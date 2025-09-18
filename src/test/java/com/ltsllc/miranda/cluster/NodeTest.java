@@ -828,4 +828,30 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
         }
     }
 
+    public Node buildNode (UUID uuid) {
+        EmbeddedChannel channel = new EmbeddedChannel();
+        HeartBeatHandler heartBeatHandler = new HeartBeatHandler(channel);
+        channel.pipeline().addLast("HEARTBEAT",heartBeatHandler);
+
+        Node node = new Node(uuid, "10.0.0.235", 2020, channel);
+        return node;
+    }
+
+    @Test
+    public void notifyOfDelivery () {
+        Node node = buildNode(UUID.randomUUID());
+        Message message = createTestMessage(UUID.randomUUID());
+
+        node.notifyOfDelivery(message);
+
+        EmbeddedChannel channel = (EmbeddedChannel) node.getChannel();
+        String string = channel.readOutbound();
+
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Node.MESSAGE_DELIVERED);
+        stringBuilder.append(' ');
+        stringBuilder.append(message.getMessageID().toString());
+
+        assert (string.equalsIgnoreCase(stringBuilder.toString()));
+    }
 }
