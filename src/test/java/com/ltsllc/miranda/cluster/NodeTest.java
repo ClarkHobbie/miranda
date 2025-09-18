@@ -875,4 +875,19 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
 
         assert (message.equalsIgnoreCase(stringBuilder.toString()));
     }
+
+    @Test
+    public void sendError () {
+        Node node = buildNode(UUID.randomUUID());
+        EmbeddedChannel channel = (EmbeddedChannel) node.getChannel();
+
+        node.sendError();
+
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Node.ERROR);
+
+        String message = channel.readOutbound();
+
+        assert (message.equalsIgnoreCase(stringBuilder.toString()));
+    }
  }

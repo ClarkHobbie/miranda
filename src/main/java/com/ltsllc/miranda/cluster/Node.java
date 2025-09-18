@@ -357,10 +357,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("Entering handleStateAwaitingAssignments");
 
         switch (messageType) {
-            case DEAD_NODE -> {
-                handleStateAwaitingOrdersDeadNode(s);
-            }
-
             case OWNER -> {
                 handleOwner(s);
             }
@@ -371,6 +367,10 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
             case NEW_MESSAGE -> {
                 handleStateAwaitingAssignmentsNewMessage(messageType, s);
+            }
+
+            default -> {
+                sendError();
             }
         }
 
@@ -1624,7 +1624,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public void sendError() {
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append(ERROR);
-        stringBuilder.append(' ');
         channel.write(stringBuilder.toString());
         sendStart(true, isLoopback);
     }
@@ -1668,25 +1667,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      */
     public void handleOwnerEnd(String s) throws IOException, LtsllcException {
         state = popState();
-    }
-
-
-    /**
-     * Handle the situation where we get another dead node while we are already
-     * processing a dead node.
-     *
-     * <p>
-     * Basically, the method does nothing.
-     * </P>
-     * <p>
-     * The message is expected to have the form
-     * <PRE>
-     * DEAD NODE &lt;UUID of dead node&gt; &lt;UUID of leader node&gt;
-     * </PRE>
-     * </P>
-     */
-    public void handleStateAwaitingOrdersDeadNode(String s) {
-
     }
 
     public boolean isOnline() {
