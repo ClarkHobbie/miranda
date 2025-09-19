@@ -1056,4 +1056,29 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
 
         assert (timeoutsMet.get(Alarms.START) == false);
     }
+
+    @Test
+    public void handleOwner () throws LtsllcException, IOException {
+        MessageLog.defineStatics();
+
+        UUID messageUid = UUID.randomUUID();
+        UUID ownerUuid = UUID.randomUUID();
+        Message message = createTestMessage(messageUid);
+        MessageLog.getInstance().add(message, ownerUuid);
+
+        assert (MessageLog.getInstance().getOwnerOf(messageUid).equals(ownerUuid));
+
+        Node node =  buildNode(UUID.randomUUID());
+
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Node.OWNER);
+        stringBuilder.append(' ');
+        stringBuilder.append(messageUid.toString());
+        stringBuilder.append(' ');
+        stringBuilder.append(node.getUuid());
+
+        node.handleOwner(stringBuilder.toString());
+
+        assert (MessageLog.getInstance().getOwnerOf(messageUid).equals(node.getUuid()));
+    }
 }
