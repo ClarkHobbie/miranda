@@ -106,7 +106,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     /**
      * Has a timeout been met?
      */
-    protected HashMap<Alarms, Boolean> timeoutsMet = new HashMap<>();
+    protected Map<Alarms, Boolean> timeoutsMet = new HashMap<>();
 
     protected Map<Channel, Boolean> channelToSentStart = new HashMap<>();
 
@@ -205,6 +205,14 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      * When the last time we sent anything or received anything
      */
     protected Long timeOfLastActivity = System.currentTimeMillis();
+
+    public Map<Alarms, Boolean> getTimeoutsMet() {
+        return timeoutsMet;
+    }
+
+    public void setTimeoutsMet(Map<Alarms, Boolean> timeoutsMet) {
+        this.timeoutsMet = timeoutsMet;
+    }
 
     public Long getTimeOfLastActivity() {
         return timeOfLastActivity;

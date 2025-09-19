@@ -4,6 +4,7 @@ import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.TestSuperclass;
+import com.ltsllc.miranda.alarm.Alarms;
 import com.ltsllc.miranda.logging.LoggingCache;
 import com.ltsllc.miranda.logging.MessageEventLogger;
 import com.ltsllc.miranda.message.Message;
@@ -29,9 +30,7 @@ import org.mockito.quality.Strictness;
 
 import java.io.IOException;
 import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import static org.mockito.Mockito.*;
 
@@ -1029,4 +1028,32 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
 
         assert (node.getIsLoopback() == true);
     }
- }
+
+    @Test
+    public void alarmNotMet () {
+        Node node = buildNode(UUID.randomUUID());
+
+        Map<Alarms, Boolean> timeoutsMet = new HashMap<>();
+        timeoutsMet.put(Alarms.START, false);
+        node.setTimeoutsMet(timeoutsMet);
+
+        node.alarm(Alarms.START);
+
+        assert (node.getState() == ClusterConnectionStates.START);
+    }
+
+    @Test
+    public void alarmMet () {
+        Node node = buildNode(UUID.randomUUID());
+
+        Map<Alarms, Boolean> timeoutsMet = new HashMap<>();
+        timeoutsMet.put(Alarms.START, true);
+        node.setTimeoutsMet(timeoutsMet);
+
+        node.alarm(Alarms.START);
+
+        timeoutsMet = node.getTimeoutsMet();
+
+        assert (timeoutsMet.get(Alarms.START) == false);
+    }
+}
