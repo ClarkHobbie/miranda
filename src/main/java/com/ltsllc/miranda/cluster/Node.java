@@ -1154,7 +1154,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         int port = scanner.nextInt();
         long start = scanner.nextLong();
 
-
         this.uuid = uuid;
         this.host = host;
         this.port = port;
@@ -1168,9 +1167,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                 heartBeatHandler.setLoopback(true);
             }
         }
-
     }
-
 
     /**
      * Send a synchronization start message, that includes the UUID of this node, the host its on and the port where

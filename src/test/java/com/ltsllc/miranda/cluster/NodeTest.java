@@ -985,4 +985,29 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
 
         assert (message.equalsIgnoreCase(stringBuilder.toString()));
     }
+
+    @Test
+    public void handleSynchronize () {
+        Miranda miranda = new Miranda();
+
+        Node node = buildNode(miranda.getMyUuid());
+
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Node.SYNCHRONIZE);
+        stringBuilder.append(' ');
+        stringBuilder.append(miranda.getMyUuid().toString());
+        stringBuilder.append(' ');
+        stringBuilder.append(miranda.getMyHost());
+        stringBuilder.append(' ');
+        stringBuilder.append(miranda.getMyPort());
+        stringBuilder.append(' ');
+        stringBuilder.append(miranda.getMyStart());
+
+        node.handleSynchronize(stringBuilder.toString());
+
+        assert (node.getUuid().equals(miranda.getMyUuid()));
+        assert (node.getHost().equalsIgnoreCase(miranda.getMyHost()));
+        assert (node.getPort() == miranda.getMyPort());
+        assert (node.getNodeStart() == miranda.getMyStart());
+    }
  }
