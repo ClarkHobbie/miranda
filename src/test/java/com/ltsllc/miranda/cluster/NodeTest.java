@@ -523,7 +523,6 @@ public class NodeTest extends TestSuperclass
         assert(node.getState() == ClusterConnectionStates.START);
     }
 
-
     @Test
     public void popState () throws LtsllcException {
         Cluster.defineStatics();

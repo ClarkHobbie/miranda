@@ -269,9 +269,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         try {
             boolean isLoopback = this.getUuid() == Miranda.getInstance().getMyUuid();
             result = Cluster.getInstance().connectToNode(this, isLoopback);
-        } catch (LtsllcException e) {
-            throw new RuntimeException(e);
-        } catch (CloneNotSupportedException e) {
+        } catch (LtsllcException | CloneNotSupportedException e) {
             throw new RuntimeException(e);
         }
 
