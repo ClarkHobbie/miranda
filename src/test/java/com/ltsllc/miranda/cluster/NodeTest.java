@@ -1075,7 +1075,7 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
         stringBuilder.append(' ');
         stringBuilder.append(messageUid.toString());
         stringBuilder.append(' ');
-        stringBuilder.append(node.getUuid());
+        stringBuilder.append(node.getUuid().toString());
 
         node.handleOwner(stringBuilder.toString());
 
