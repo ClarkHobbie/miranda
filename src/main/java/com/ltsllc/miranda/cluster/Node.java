@@ -646,6 +646,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("entering handleStartStart");
         Scanner scanner = new Scanner(input);
         scanner.next(); // START
+        scanner.next(); // START
 
         uuid = UUID.fromString(scanner.next());
         registerUuid(uuid);
@@ -662,7 +663,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             isLoopback = true;
 
             ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
-            if (channelHandler == null || !(channelHandler instanceof HeartBeatHandler)) {
+            if (!(channelHandler instanceof HeartBeatHandler)) {
                 throw new RuntimeException("couldn't find HeartBeatHandler");
             } else {
                 HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
@@ -761,57 +762,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             timeoutsMet.put(Alarms.START, false);
         }
         logger.debug("leaving sendStart");
-    }
-
-    /**
-     * Handle a synchronization start message
-     *
-     * <p>
-     * This consists of reading the uuid, host and port from the message sending a synchronize message of out own,
-     * with our own uuid, host and port and switching to state.
-     * </P>
-     *
-     * @param input The synchronization start message
-     */
-    public void handleSynchronizeStartInStart(String input) throws LtsllcException, IOException {
-        logger.debug("entering handleSynchronizeStart with input = " + input);
-
-        pushState(state);
-        setState(SYNCHRONIZING);
-
-        Scanner scanner = new Scanner(input);
-        scanner.next();
-        scanner.next(); // SYNCHRONIZE START
-        UUID uuid = UUID.fromString(scanner.next());
-        registerUuid(uuid);
-        String host = scanner.next();
-        int port = scanner.nextInt();
-        long start = scanner.nextLong();
-
-        this.uuid = uuid;
-        this.host = host;
-        this.port = port;
-        this.nodeStart = start;
-
-        ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
-        if (channelHandler == null || !(channelHandler instanceof HeartBeatHandler)) {
-            throw new RuntimeException("couldn't find HeartBeatHandler");
-        } else {
-            HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
-            heartBeatHandler.setLoopback(true);
-        }
-
-        // sendSynchronize();
-
-        sendAllMessages();
-        sendAllOwners();
-
-        setState(popState());
-        if (state == ClusterConnectionStates.START) {
-            sendStart(false, false);
-        }
-
-        logger.debug("leaving handleSynchronizeStart");
     }
 
     /**
@@ -950,36 +900,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         MessageLog.getInstance().add(message, partnerUuid);
 
         logger.debug("leaving handleNewMessage");
-    }
-
-
-    /**
-     * Send all the owner information in the system
-     * <p>
-     * This information is written as OWNER &lt;message UUID&gt; &lt;owner UUID&gt; to the ioChannel.
-     * </P>
-     */
-    public void handleSendOwners() {
-        logger.debug("entering handleSendOwners");
-        channel.writeAndFlush("OWNERS");
-        Collection<UUID> ownerKeys = MessageLog.getInstance().getAllOwnerKeys();
-        Iterator<UUID> iterator = ownerKeys.iterator();
-        while (iterator.hasNext()) {
-            UUID message = iterator.next();
-            UUID owner = MessageLog.getInstance().getOwnerOf(message);
-
-            StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.append(OWNER);
-            stringBuilder.append(" ");
-            stringBuilder.append(message);
-            stringBuilder.append(" ");
-            stringBuilder.append(owner);
-            stringBuilder.append(" ");
-
-            channel.writeAndFlush(stringBuilder.toString());
-        }
-        channel.writeAndFlush(OWNERS_END);
-        logger.debug("leaving handleSendOwners");
     }
 
     /**

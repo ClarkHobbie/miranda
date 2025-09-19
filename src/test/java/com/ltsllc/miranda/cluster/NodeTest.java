@@ -411,58 +411,6 @@ public class NodeTest extends TestSuperclass
         assert (nodeList.size() < 1);
     }
 
-    /*
-    @Test
-    public void exceptionCaught () throws LtsllcException {
-        EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(UUID.randomUUID(), "71.237.68.250",2020, channel);
-
-        ImprovedFile messagesLog = new ImprovedFile("messages.log");
-        LoggingCache cache = new LoggingCache(messagesLog,104857600);
-
-        node.exceptionCaught(new Exception("Exception"));
-
-        assert (node.getState() == ClusterConnectionStates.START);
-    }
-
-
-     */
-    /*
-    @Test
-    public void handleGetMessage () throws IOException, LtsllcException {
-        MessageLog.defineStatics();
-        UUID messageUuid = UUID.randomUUID();
-        String strMessage = Node.GET_MESSAGE;
-        strMessage += " ";
-        strMessage += messageUuid;
-
-        Message testMessage = createTestMessage(messageUuid);
-
-        LoggingCache mockMessageCache = mock(LoggingCache.class);
-        when(mockMessageCache.contains(messageUuid)).thenReturn(true);
-        when(mockMessageCache.get(messageUuid)).thenReturn(testMessage);
-
-        EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(UUID.randomUUID(),"71.237.68.250",2020, channel);
-        channel.pipeline().addLast("HEARTBEAT", new HeartBeatHandler(channel));
-
-        ImprovedFile messages = new ImprovedFile("messages.log");
-        LoggingCache cache = new LoggingCache(messages,104857600);
-
-        node.handleGetMessage(strMessage);
-
-        when(mockMessageCache.contains(messageUuid)).thenReturn(false);
-
-        strMessage = Node.GET_MESSAGE;
-        strMessage += " ";
-        strMessage += messageUuid;
-
-        String replyMessage = Node.MESSAGE_NOT_FOUND;
-
-        node.handleGetMessage(strMessage);
-    }
-    */
-
     @Test
     public void handleMessage () throws LtsllcException, IOException {
         ImprovedFile improvedFile = new ImprovedFile("messages.log");
@@ -570,7 +518,7 @@ public class NodeTest extends TestSuperclass
         reply.append(" ");
         reply.append(Miranda.getInstance().getMyStart());
 
-        node.handleStateStart(MessageType.START_START, stringBuffer.toString().toUpperCase());
+        node.handleStateStart(MessageType.START, stringBuffer.toString());
 
         assert(node.getState() == ClusterConnectionStates.START);
     }
@@ -641,45 +589,6 @@ public class NodeTest extends TestSuperclass
         node.handleError();
 
         assert(node.getState() == ClusterConnectionStates.START);
-    }
-
-    @Test
-    public void handleSendOwners () throws LtsllcException, IOException {
-        ImprovedFile messages = new ImprovedFile("messages.log");
-        ImprovedFile owners = new ImprovedFile("owners.log");
-
-        try {
-            Miranda miranda = new Miranda();
-            miranda.loadProperties();
-            miranda.setMyHost("71.237.68.250");
-            miranda.setMyPort(2021);
-
-            MessageLog.defineStatics();
-
-            String strUuid1 = "00000000-0000-0000-0000-000000000001";
-            String strUuid2 = "00000000-0000-0000-0000-000000000002";
-            String strUuid3 = "00000000-0000-0000-0000-000000000003";
-            UUID message1 = UUID.fromString(strUuid1);
-            UUID message2 = UUID.fromString(strUuid2);
-            UUID owner1 = UUID.fromString(strUuid3);
-            MessageLog.getInstance().setOwner(message1, owner1);
-            MessageLog.getInstance().setOwner(message2, owner1);
-
-            EmbeddedChannel channel = new EmbeddedChannel();
-            Node node = new Node(UUID.randomUUID(),"localhost", 2020, channel);
-
-            node.handleSendOwners();
-            String s = channel.readOutbound();
-            assert(s.equalsIgnoreCase("owners"));
-        } finally {
-            if (messages.exists()) {
-                messages.delete();
-            }
-
-            if (owners.exists()) {
-                owners.delete();
-            }
-        }
     }
 
     @Test
@@ -1080,5 +989,64 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
         node.handleOwner(stringBuilder.toString());
 
         assert (MessageLog.getInstance().getOwnerOf(messageUid).equals(node.getUuid()));
+    }
+
+    @Test
+    public void sendStart () {
+        Miranda miranda = new Miranda();
+
+        Node node = buildNode(UUID.randomUUID());
+        EmbeddedChannel channel = (EmbeddedChannel) node.getChannel();
+
+        node.sendStart(true, false);
+
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Node.START_START);
+        stringBuilder.append(" ");
+        stringBuilder.append(miranda.getMyUuid());
+        stringBuilder.append(" ");
+        stringBuilder.append(miranda.getMyHost());
+        stringBuilder.append(" ");
+        stringBuilder.append(miranda.getMyPort());
+        stringBuilder.append(" ");
+        stringBuilder.append(miranda.getMyStart());
+
+        String message = channel.readOutbound();
+
+        assert (message.equalsIgnoreCase(stringBuilder.toString()));
+    }
+
+    @Test
+    public void handleStartStart () throws IOException {
+        Miranda miranda = new Miranda();
+
+        Node node = buildNode(UUID.randomUUID());
+        EmbeddedChannel channel = (EmbeddedChannel) node.getChannel();
+
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Node.START_START);
+        stringBuilder.append(' ');
+        stringBuilder.append(UUID.randomUUID());
+        stringBuilder.append(' ');
+        stringBuilder.append(miranda.getMyHost());
+        stringBuilder.append(' ');
+        stringBuilder.append(2020);
+        stringBuilder.append(' ');
+        stringBuilder.append(miranda.getMyStart());
+
+        node.handleStartStart(stringBuilder.toString());
+
+        stringBuilder = new StringBuilder();
+        stringBuilder.append(Node.START_ACKNOWLEDGED);
+        stringBuilder.append(' ');
+        stringBuilder.append(miranda.getMyUuid());
+        stringBuilder.append(' ');
+        stringBuilder.append(node.getHost());
+        stringBuilder.append(' ');
+        stringBuilder.append(2020);
+
+        String message = channel.readOutbound();
+
+        assert (message.equalsIgnoreCase(stringBuilder.toString()));
     }
 }

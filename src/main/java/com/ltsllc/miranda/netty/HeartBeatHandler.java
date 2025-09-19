@@ -100,7 +100,7 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
                 } else if (s.equals(Node.HEART_BEAT_START)) {
                     channelHandlerContext.writeAndFlush(Node.HEART_BEAT);
                 } else {
-                    list.add(s);
+                    list.add(byteBuf);
                 }
             }
         }
