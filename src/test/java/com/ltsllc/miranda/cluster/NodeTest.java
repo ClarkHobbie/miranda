@@ -1010,4 +1010,23 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
         assert (node.getPort() == miranda.getMyPort());
         assert (node.getNodeStart() == miranda.getMyStart());
     }
+
+    @Test
+    public void handleStartAcknowledged () {
+        Miranda miranda = new Miranda();
+        Node node = buildNode(miranda.getMyUuid());
+
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Node.START_ACKNOWLEDGED);
+        stringBuilder.append(' ');
+        stringBuilder.append(node.getUuid());
+        stringBuilder.append(' ');
+        stringBuilder.append(node.getHost());
+        stringBuilder.append(' ');
+        stringBuilder.append(node.getPort());
+
+        node.handleStartAcknowledged(stringBuilder.toString());
+
+        assert (node.getIsLoopback() == true);
+    }
  }
