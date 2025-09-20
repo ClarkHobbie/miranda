@@ -508,4 +508,26 @@ class ClusterTest extends TestSuperclass {
 
         assert (message.equalsIgnoreCase(stringBuilder.toString()));
     }
+
+    @Test
+    public void isOnlineNoHeartbeat () {
+        Cluster cluster = buildCluster();
+
+        Node node = cluster.getNodes().getLast();
+        cluster.removeNode(node);
+
+        node = cluster.getNodes().getLast();
+        cluster.removeNode(node);
+
+        node = cluster.getNodes().getLast();
+        cluster.removeNode(node);
+
+        EmbeddedChannel channel = new EmbeddedChannel();
+        node = new Node(UUID.randomUUID(), "10.0.0.236", 2020, channel);
+        cluster.addNode(node);
+
+        boolean isOnline = cluster.isOnline();
+
+        assert (isOnline == false);
+    }
 }
