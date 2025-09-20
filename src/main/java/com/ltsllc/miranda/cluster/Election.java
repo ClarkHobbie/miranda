@@ -144,11 +144,7 @@ public class Election {
 
         for (Voter voter : voters) {
             if (voter.vote == vote && !voter.node.getUuid().equals(node.getUuid())) {
-                Cluster cluster = Cluster.getInstance();
-                for (Voter participant : voters) {
-                    participant.node.sendTie();
-                    participant.node.sendDeadNode(cluster.getDeadNode());
-                }
+                result = ElectionResults.TIE;
             }
         }
     }
@@ -168,18 +164,7 @@ public class Election {
     }
 
     public boolean isTie() {
-        for (int i = 0; i < voters.size(); i++) {
-            Voter voter1 = voters.get(i);
-            for (int j = i; j < voters.size(); j++) {
-                Voter voter2 = voters.get(j);
-
-                if (voter1.vote == voter2.vote) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return result == ElectionResults.TIE;
     }
 
     public void addVoter(Voter voter) {

@@ -530,4 +530,30 @@ class ClusterTest extends TestSuperclass {
 
         assert (isOnline == false);
     }
+
+    @Test
+    public void vote () throws LtsllcException {
+        Cluster cluster = buildCluster();
+        Cluster.setInstance(cluster);
+
+        Node node = buildNode(UUID.randomUUID());
+        cluster.addNode(node);
+
+        cluster.setElection(new Election(UUID.randomUUID()));
+        cluster.setDeadNode(node.getUuid());
+
+        node = cluster.getNodes().get(0);
+        cluster.vote(node, 0);
+
+        node = cluster.getNodes().get(1);
+        cluster.vote(node, 0);
+
+        node = cluster.getNodes().get(2);
+        cluster.vote(node, 1);
+
+        cluster.countVotes();
+
+        assert (cluster.getElection().getResult() == ElectionResults.LEADER_ELECTED);
+        assert (cluster.getElection().getLeader().getNode() == node);
+    }
 }
