@@ -556,4 +556,27 @@ class ClusterTest extends TestSuperclass {
         assert (cluster.getElection().getResult() == ElectionResults.LEADER_ELECTED);
         assert (cluster.getElection().getLeader().getNode() == node);
     }
+
+    @Test
+    public void voteTie () throws LtsllcException {
+        Cluster cluster = buildCluster();
+        Cluster.setInstance(cluster);
+
+        Node deadNode = buildNode(UUID.randomUUID());
+        cluster.addNode(deadNode);
+        cluster.setDeadNode(deadNode.getUuid());
+
+        Election election = new Election(deadNode.getUuid());
+        cluster.setElection(election);
+
+        Node node = cluster.getNodes().get(0);
+        cluster.vote(node, 0);
+
+        node = cluster.getNodes().get(1);
+        cluster.vote(node, 0);
+
+        cluster.countVotes();
+
+        assert (cluster.getElection().getResult() == ElectionResults.TIE);
+    }
 }

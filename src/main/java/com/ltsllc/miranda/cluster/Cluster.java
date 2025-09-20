@@ -989,11 +989,11 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
 
         election.vote(node, vote);
 
-        if (election.isTie()) {
-            startDeadNode(deadNode);
-            sendTie();
-            sendDeadNode();
-        }
+//        if (election.isTie()) {
+//            startDeadNode(deadNode);
+//            sendTie();
+//            sendDeadNode();
+//        }
     }
 
     public void sendDeadNode() {
