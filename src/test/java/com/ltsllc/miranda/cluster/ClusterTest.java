@@ -3,6 +3,7 @@ package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
+import com.ltsllc.commons.util.ImprovedProperties;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.TestSuperclass;
@@ -11,6 +12,8 @@ import com.ltsllc.miranda.alarm.Alarms;
 import com.ltsllc.miranda.message.Message;
 import com.ltsllc.miranda.logging.MessageLog;
 import com.ltsllc.miranda.netty.HeartBeatHandler;
+import com.ltsllc.miranda.properties.Properties;
+import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import io.netty.channel.embedded.EmbeddedChannel;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -199,18 +202,34 @@ class ClusterTest extends TestSuperclass {
     }
 
     @Test
-    public void divideUpMessages () {
-        Miranda miranda = new Miranda();
-        Cluster.defineStatics();
+    public void divideUpMessages () throws LtsllcException, IOException {
+        MessageLog.defineStatics();
+        try {
+            Miranda miranda = new Miranda();
+            Cluster cluster = buildCluster();
+            Cluster.setInstance(cluster);
 
-        List<Node> voterList = new ArrayList<>();
-        EmbeddedChannel channel = new EmbeddedChannel();
-        Node node = new Node(UUID.randomUUID(), "192.168.0.12", 2020, channel);
-        voterList.add(node);
-        node = new Node(UUID.randomUUID(), "192.168.0.6", 2020, channel);
-        voterList.add(node);
+            Node deadNode = buildNode(UUID.randomUUID());
 
-        // Cluster.getInstance().divideUpMessages(voterList, list);
+            Message message = createTestMessage(UUID.randomUUID());
+
+            MessageLog.getInstance().add(message, deadNode.getUuid());
+
+            cluster.divideUpMessages(deadNode.getUuid());
+
+            Node node = cluster.getNodes().getLast();
+            EmbeddedChannel channel = (EmbeddedChannel) node.getChannel();
+            String string = channel.readOutbound();
+
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.append(Node.OWNER);
+            stringBuilder.append(' ');
+            stringBuilder.append(message.getMessageID().toString());
+
+            assert (string.startsWith(stringBuilder.toString()));
+        } finally {
+            MessageLog.getInstance().clear();
+        }
 
     }
 

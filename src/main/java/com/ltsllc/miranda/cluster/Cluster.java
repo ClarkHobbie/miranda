@@ -779,7 +779,8 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
     /**
      * send a OWNER statement that establishes a new owner
      *
-     * @param newOwner
+     * @param messageUuid the message whos ownership is being changed
+     * @param newOwner the owner of the message
      */
     public void sendNewOwner(UUID messageUuid, UUID newOwner) {
         logger.debug("entering sendNewOwner");
@@ -808,31 +809,14 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
     }
 
     /**
-     * Divide the list up into portions
-     *
-     * <p>
-     * As far as this method is concerned all portions except the last one are of equal size. The last portion
-     * contains the regular number plus the modulus of the size of the list modulo the number of portions.
-     * </P>
-     */
-    public void divideUpMessages() throws LtsllcException, IOException {
-        if (null == election) {
-            throw new LtsllcException("null election");
-        }
-
-        election.divideUpNodesMessages();
-    }
-
-    /**
      * A node has been declared dead --- create a new election and vote
      *
      * @param deadNodeUuid The uuid of the node being declared dead.
-     * @throws IOException If there is a problem transferring ownership.
      */
     public synchronized void startDeadNode(UUID deadNodeUuid) {
         deadNode = deadNodeUuid;
-
         election = new Election(deadNodeUuid);
+
         AlarmClock.getInstance().scheduleOnce(this, Alarms.DEAD_NODE,
                 Miranda.getProperties().getLongProperty(Miranda.PROPERTY_DEAD_NODE_TIMEOUT));
     }
