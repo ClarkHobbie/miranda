@@ -598,4 +598,16 @@ class ClusterTest extends TestSuperclass {
 
         assert (cluster.getElection().getResult() == ElectionResults.TIE);
     }
+
+    @Test
+    public void removeNode () {
+        Cluster cluster = buildCluster();
+        Node node = cluster.getNodes().getLast();
+
+        assert (cluster.getNodes().contains(node));
+
+        cluster.removeNode(node);
+
+        assert (!cluster.getNodes().contains(node));
+    }
 }

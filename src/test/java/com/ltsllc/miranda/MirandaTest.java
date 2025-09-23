@@ -214,46 +214,13 @@ class MirandaTest extends TestSuperclass {
 
         Message message = createTestMessage(UUID.randomUUID(), UUID.randomUUID());
         message.setNextSend(System.currentTimeMillis());
-        List<Message> list = new ArrayList<>();
-        list.add(message);
-        MessageLog mockMessageLog = Mockito.mock(MessageLog.class);
-        MessageLog.setInstance(mockMessageLog);
-        LoggingCache.CopyMessagesResult temp = new LoggingCache.CopyMessagesResult();
-        temp.list = list;
-        temp.restartIndex = 2;
-
-        when(mockMessageLog.copyMessages(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT), 0))
-                .thenReturn(temp);
-
+        MessageLog.getInstance().add(message, message.getOwner());
         Miranda.getInstance().setKeepRunning(true);
 
         miranda.mainLoop();
 
         assert (miranda.getInflight().contains(message));
     }
-
-    /*
-    this doesn't correspond to any method
-
-    @Test
-    public void setClusterAlarm () throws LtsllcException, IOException {
-        Miranda miranda = new Miranda();
-        miranda.loadProperties();
-
-        Cluster mockCluster = mock(Cluster.class);
-        Cluster.setInstance(mockCluster);
-
-        List<Message> list = new ArrayList<>();
-
-        MessageLog mockMessageLog = mock(MessageLog.class);
-        MessageLog.setInstance(mockMessageLog);
-        when (mockMessageLog.copyAllMessages()).thenReturn(list);
-
-        miranda.mainLoop();
-
-        verify(mockCluster, atLeastOnce()).reconnect();
-    }
-    */
 
     @Test
     public void deliver () throws LtsllcException, IOException {

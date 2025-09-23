@@ -39,7 +39,7 @@ import java.util.concurrent.TimeUnit;
  * <p>
  * A group of nodes exchanging heart beet messages. A heart beet message consists of:
  * <PRE>
- * HEARTBEET &lt;node UUID&gt;
+ * HEARTBEAT &lt;node UUID&gt;
  * </PRE>
  * A node that doesn't respond back with a heart beet in a configurable period of time is considered
  * dead. A dead node is announced via:

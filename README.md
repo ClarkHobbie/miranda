@@ -196,8 +196,8 @@ MESSAGES <messages> MESSAGES END
 SYNCHRONIZE START <UUID> <host> <port> <time>
 ```
 ## Dead nodes
-Each node in a cluster sends out a heart beet message.  If the heart beet is not responded to in 
-the number of milliseconds specified br Miranda.PROPERTY_HEART_BEAT_INTERVAL then the node is
+Each node in a cluster sends out a heart beat message.  If the heart beat is not responded to in 
+the number of milliseconds specified by Miranda.PROPERTY_HEART_BEAT_INTERVAL then the node is
 assumed to be dead.
 
 The system responds to a dead node by sending out a dead node message and by setting
