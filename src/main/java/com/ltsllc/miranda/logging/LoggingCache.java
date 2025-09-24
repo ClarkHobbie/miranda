@@ -100,7 +100,7 @@ public class LoggingCache implements Alarmable{
             UUID uuid = null;
 
             long location = 0;
-            for (String line = reader.readLine(); line != null && notOverLoadLimit;line = reader.readLine()) {
+            for (String line = reader.readLine(); line != null && notOverLoadLimit && !line.equals("");line = reader.readLine()) {
                 Message newMessage = Message.readLongFormat(line);
                 currentLoad += newMessage.getContents().length;
                 uuidToMessage.put (newMessage.getMessageID(), newMessage);

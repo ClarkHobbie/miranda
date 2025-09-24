@@ -15,6 +15,7 @@ public class MirandaThread extends Thread {
         Miranda miranda = Miranda.getInstance();
         int exceptionCount = 0;
         boolean startupFailed = true;
+        Exception exception = null;
 
         while (exceptionCount < 5 && startupFailed) {
             try {
@@ -23,11 +24,12 @@ public class MirandaThread extends Thread {
             } catch (Exception e) {
                 exceptionCount++;
                 startupFailed = true;
+                exception = e;
             }
         }
 
         if (startupFailed) {
-            throw new RuntimeException("startup failed");
+            throw new RuntimeException("startup failed", exception);
         }
 
         while (miranda.isKeepRunning()) {
