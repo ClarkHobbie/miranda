@@ -1042,7 +1042,7 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
         stringBuilder.append(' ');
         stringBuilder.append(node.getHost());
         stringBuilder.append(' ');
-        stringBuilder.append(2020);
+        stringBuilder.append(node.getPort());
 
         String message = channel.readOutbound();
 

@@ -10,6 +10,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageCodec;
+import io.netty.util.CharsetUtil;
 import io.netty.util.ReferenceCountUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -40,12 +41,28 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
 
     protected long timeOfLastActivity = -1;
 
+    public long getTimeOfLastActivity() {
+        return timeOfLastActivity;
+    }
+
+    public void setTimeOfLastActivity(long timeOfLastActivity) {
+        this.timeOfLastActivity = timeOfLastActivity;
+    }
+
     protected UUID uuid = null;
 
     protected boolean online;
 
     public boolean isOnline() {
         return online;
+    }
+
+    public boolean isMetTimeout() {
+        return metTimeout;
+    }
+
+    public void setMetTimeout(boolean metTimeout) {
+        this.metTimeout = metTimeout;
     }
 
     public void setOnline(boolean online) {
@@ -92,7 +109,7 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
     protected void decode(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf, List<Object> list) {
         try {
             if (!isLoopback) {
-                String s = byteBuf.toString();
+                String s = byteBuf.toString(CharsetUtil.UTF_8);
                 timeOfLastActivity = System.currentTimeMillis();
                 if (s.equals(Node.HEART_BEAT)) {
                     metTimeout = true;
@@ -162,8 +179,8 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
                 if (System.currentTimeMillis() >
                         timeOfLastActivity + Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL)) {
                     channel.writeAndFlush(Node.HEART_BEAT_START);
-                    AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT,
-                            Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_TIMEOUT));
+                    long delay = Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_TIMEOUT);
+                    AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT_TIMEOUT, delay);
                }
             }
         }

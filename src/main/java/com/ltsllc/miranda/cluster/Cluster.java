@@ -2,7 +2,6 @@ package com.ltsllc.miranda.cluster;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.UncheckedLtsllcException;
-import com.ltsllc.commons.util.Bag;
 import com.ltsllc.commons.util.ImprovedRandom;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.alarm.AlarmClock;
@@ -26,7 +25,6 @@ import io.netty.handler.codec.string.StringEncoder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.IOException;
 import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -535,6 +533,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
             logger.error("connectToNode called with null host or -1 port, returning");
             return false;
         }
+
 
         InetSocketAddress addrRemote = new InetSocketAddress(node.getHost(), node.getPort());
         bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
@@ -1099,5 +1098,9 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
 
     public Node chooseNode() {
         return random.choose(nodes);
+    }
+
+    public void messageReceived (String message) {
+
     }
 }

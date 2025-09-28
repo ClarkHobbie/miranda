@@ -172,6 +172,7 @@ public class Miranda implements PropertyListener {
      */
     public static final String PROPERTY_THIS_PORT = com.ltsllc.miranda.properties.Properties.thisPort.toString();
 
+    public static final String PROPERTY_DEFAULT_THIS_PORT  = "2020";
     /**
      * The name of the property to look at to decide if clustering is on or off.  If the user doesn't supply an
      * alternative value then the system assumes that clustering is off.
@@ -232,7 +233,7 @@ public class Miranda implements PropertyListener {
     /**
      * The amount of time to wait in between heart beat start messages
      */
-    public static final String PROPERTY_HEART_BEAT_INTERVAL = com.ltsllc.miranda.properties.Properties.heartBeatTimeout.toString();
+    public static final String PROPERTY_HEART_BEAT_INTERVAL = com.ltsllc.miranda.properties.Properties.heartBeat.toString();
 
     /**
      * The default period to wait between heart beat start messages is 5 sec
@@ -252,7 +253,7 @@ public class Miranda implements PropertyListener {
     /**
      * The default timeout for a heart beat (1/2 a second)
      */
-    public static final String PROPERTY_DEFAULT_HEART_BEAT_TIMEOUT = "5000";
+    public static final String PROPERTY_DEFAULT_HEART_BEAT_TIMEOUT = "1000";
 
     /**
      * The timeout for responding to a DEAD NODE START message.

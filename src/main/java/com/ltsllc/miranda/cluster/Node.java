@@ -983,7 +983,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         stringBuffer.append(" ");
         stringBuffer.append(Miranda.getInstance().getMyHost());
         stringBuffer.append(" ");
-        stringBuffer.append(Miranda.getInstance().getMyPort());
+        stringBuffer.append(getPort());
     }
 
     /**
