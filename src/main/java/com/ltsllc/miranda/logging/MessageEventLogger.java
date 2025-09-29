@@ -53,6 +53,14 @@ public class MessageEventLogger {
         this.map = map;
     }
 
+    public ImprovedFile getFile() {
+        return file;
+    }
+
+    public void setFile(ImprovedFile file) {
+        this.file = file;
+    }
+
     public synchronized void store () {
         try {
             ImprovedFile backUp = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_EVENTS_FILE)

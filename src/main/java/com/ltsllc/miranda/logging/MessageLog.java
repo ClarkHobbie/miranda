@@ -610,4 +610,12 @@ public class MessageLog implements PropertyListener {
             uuidToOwner.add(m.getMessageID(), owner);
         }
     }
+
+    public ImprovedFile getOwnersFile() {
+        return uuidToOwner.getFile();
+    }
+
+    public ImprovedFile getEventsFile () {
+        return messageEventLogger.getFile();
+    }
 }
