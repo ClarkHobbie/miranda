@@ -177,7 +177,7 @@ public class MessageLog implements PropertyListener {
      */
     public static MessageLog recover(ImprovedFile logfile, int loadLimit, ImprovedFile ownersFile,
                                      UUID owner, ImprovedFile events) throws IOException, LtsllcException {
-        return getInstance().performRecover(logfile, loadLimit, ownersFile, owner, events);
+        return getInstance().performRecover(logfile, loadLimit, ownersFile, events);
     }
 
     /**
@@ -200,7 +200,7 @@ public class MessageLog implements PropertyListener {
      * @throws LtsllcException If backup files already exist.
      */
     public MessageLog performRecover(ImprovedFile logfile, int loadLimit, ImprovedFile ownersFile,
-                                     UUID owner, ImprovedFile eventsFile) throws IOException, LtsllcException {
+                                     ImprovedFile eventsFile) throws IOException, LtsllcException {
         ImprovedFile messageBackup = new ImprovedFile(logfile.getName() + ".backup");
         ImprovedFile ownersBackup = new ImprovedFile(ownersFile.getName() + ".backup");
         ImprovedFile eventsBackup = new ImprovedFile(eventsFile.getName() + ".backup");
@@ -617,5 +617,9 @@ public class MessageLog implements PropertyListener {
 
     public ImprovedFile getEventsFile () {
         return messageEventLogger.getFile();
+    }
+
+    public ImprovedFile getLogfile() {
+        return cache.getFile();
     }
 }

@@ -2,6 +2,7 @@ package com.ltsllc.miranda.logging;
 
 import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
+import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.TestSuperclass;
 import com.ltsllc.miranda.message.Message;
 import org.junit.jupiter.api.Test;
@@ -40,15 +41,25 @@ class MessageLogTest extends TestSuperclass {
     }
 
     @Test
-    void deliveryAttempted() {
-    }
+    void performRecover() throws LtsllcException, IOException {
+        ImprovedFile logfile = null;
+        try {
+            MessageLog.defineStatics();
+            Miranda miranda = new Miranda();
+            logfile = MessageLog.getInstance().getLogfile();
+            Message message = createTestMessage(UUID.randomUUID());
 
-    @Test
-    void recover() {
-    }
+            MessageLog.getInstance().add(message, UUID.randomUUID());
 
-    @Test
-    void performRecover() {
+            assert (MessageLog.getInstance().contains(message.getMessageID()));
+
+            MessageLog.getInstance().performRecover(logfile, Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT),
+                    MessageLog.getInstance().getOwnersFile(), MessageLog.getInstance().getEventsFile());
+
+            assert (MessageLog.getInstance().contains(message.getMessageID()));
+        } finally {
+            logfile.delete();
+        }
     }
 
     @Test
