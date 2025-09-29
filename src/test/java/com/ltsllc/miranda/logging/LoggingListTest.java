@@ -47,7 +47,26 @@ class LoggingListTest extends TestSuperclass {
     }
 
     @Test
-    void shouldRecover() {
+    void shouldRecoverFalse() throws IOException {
+        ImprovedFile file = ImprovedFile.createImprovedTempFile("abc");
+        file.delete();
+
+        boolean result = LoggingList.shouldRecover(file);
+
+        assert (!result);
+    }
+
+    @Test
+    public void shouldRecoverTrue () throws IOException {
+        ImprovedFile file = ImprovedFile.createImprovedTempFile("abc");
+
+        try {
+            boolean result = LoggingList.shouldRecover(file);
+
+            assert (result);
+        } finally {
+            file.delete();
+        }
     }
 
     @Test
