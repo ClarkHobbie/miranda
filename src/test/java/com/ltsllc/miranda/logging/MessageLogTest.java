@@ -63,23 +63,16 @@ class MessageLogTest extends TestSuperclass {
     }
 
     @Test
-    void restoreOwnersFile() {
-    }
+    void remove() throws LtsllcException, IOException {
+        MessageLog.defineStatics();
+        Message message = createTestMessage(UUID.randomUUID());
+        MessageLog.getInstance().add(message, UUID.randomUUID());
 
-    @Test
-    void restoreMessages() {
-    }
+        assert (MessageLog.getInstance().contains(message.getMessageID()));
 
-    @Test
-    void removeOwnerOf() {
-    }
+        MessageLog.getInstance().remove(message.getMessageID());
 
-    @Test
-    void outOfBounds() {
-    }
-
-    @Test
-    void remove() {
+        assert (!MessageLog.getInstance().contains(message.getMessageID()));
     }
 
     @Test
