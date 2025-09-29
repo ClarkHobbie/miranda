@@ -106,8 +106,4 @@ class MessageLogTest extends TestSuperclass {
 
         assert (MessageLog.getInstance().getLogfile().getName().equalsIgnoreCase("whatever"));
     }
-
-    @Test
-    void contains() {
-    }
 }
