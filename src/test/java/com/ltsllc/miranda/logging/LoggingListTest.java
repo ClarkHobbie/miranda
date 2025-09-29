@@ -28,7 +28,22 @@ class LoggingListTest extends TestSuperclass {
     }
 
     @Test
-    void remove() {
+    void remove() throws IOException {
+        ImprovedFile file = ImprovedFile.createImprovedTempFile("abc");
+        Message message = createTestMessage(UUID.randomUUID());
+
+        try {
+            LoggingList list = new LoggingList(file);
+            list.add(message);
+
+            assert (list.getList().contains(message));
+
+            list.remove(message);
+
+            assert (!list.getList().contains(message));
+        } finally {
+            file.delete();
+        }
     }
 
     @Test
