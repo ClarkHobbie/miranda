@@ -1,5 +1,6 @@
 package com.ltsllc.miranda.logging;
 
+import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.TestSuperclass;
 import org.junit.jupiter.api.Test;
@@ -70,6 +71,20 @@ class LoggingListTest extends TestSuperclass {
     }
 
     @Test
-    void recover() {
+    void recover() throws IOException, LtsllcException {
+        ImprovedFile file = ImprovedFile.createImprovedTempFile("abc");
+
+        try {
+            LoggingList list = new LoggingList(file);
+            Message message = createTestMessage(UUID.randomUUID());
+
+            list.add(message);
+
+            list = LoggingList.recover(file);
+
+            assert (list.getList().contains(message));
+        } finally {
+            file.delete();
+        }
     }
 }
