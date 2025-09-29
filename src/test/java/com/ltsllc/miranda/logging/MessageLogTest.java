@@ -8,6 +8,7 @@ import com.ltsllc.miranda.message.Message;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -76,15 +77,21 @@ class MessageLogTest extends TestSuperclass {
     }
 
     @Test
-    void getOwnerOf() {
-    }
+    void getAllMessagesOwnedBy() throws LtsllcException, IOException {
+        MessageLog.defineStatics();
+        Message one = createTestMessage(UUID.randomUUID());
+        Message two = createTestMessage(UUID.randomUUID());
+        Message three = createTestMessage(UUID.randomUUID());
+        UUID ownerOne = UUID.randomUUID();
+        UUID ownerTwo = UUID.randomUUID();
 
-    @Test
-    void compact() {
-    }
+        MessageLog.getInstance().add(one, ownerOne);
+        MessageLog.getInstance().add(two, ownerTwo);
+        MessageLog.getInstance().add(three, ownerOne);
 
-    @Test
-    void getAllMessagesOwnedBy() {
+        List<UUID> list = MessageLog.getInstance().getAllMessagesOwnedBy(ownerOne);
+
+        assert (list.size() == 2);
     }
 
     @Test
