@@ -37,12 +37,13 @@ public class PropertiesHolder extends Properties  {
             com.ltsllc.miranda.properties.Properties property = stringToProperty(propertyName);
             List<PropertyListener> l = this.listeners.get(property);
             if (null != l) {
-                for (PropertyListener listener : l) {
+                ArrayList<PropertyListener> list = new ArrayList<>(l);
+                for (PropertyListener listener : list) {
                     firePropertyChanged(listener, property);
                 }
             }
         } catch (Throwable t) {
-            throw new UncheckedLtsllcException("exception trying to set property", t);
+            throw new UncheckedLtsllcException("exception in propertyChanged", t);
         }
         return value;
     }

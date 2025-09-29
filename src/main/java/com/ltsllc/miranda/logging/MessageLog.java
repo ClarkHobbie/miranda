@@ -82,6 +82,10 @@ public class MessageLog implements PropertyListener {
         cache = new LoggingCache(logfile, loadLimit);
         uuidToOwner = new LoggingMap(ownersFile);
         messageEventLogger = new MessageEventLogger();
+
+        Miranda.getProperties().listen(this, com.ltsllc.miranda.properties.Properties.messageLogfile);
+        Miranda.getProperties().listen(this, com.ltsllc.miranda.properties.Properties.cacheLoadLimit);
+        Miranda.getProperties().listen(this, com.ltsllc.miranda.properties.Properties.ownerFile);
     }
 
     protected MessageLog() {
@@ -92,6 +96,10 @@ public class MessageLog implements PropertyListener {
         ImprovedFile ownerLog = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_OWNER_FILE));
         uuidToOwner = new LoggingMap(ownerLog);
         messageEventLogger = new MessageEventLogger();
+
+        Miranda.getProperties().listen(this, com.ltsllc.miranda.properties.Properties.messageLogfile);
+        Miranda.getProperties().listen(this, com.ltsllc.miranda.properties.Properties.cacheLoadLimit);
+        Miranda.getProperties().listen(this, com.ltsllc.miranda.properties.Properties.ownerFile);
     }
 
     public static MessageLog getInstance() {
@@ -100,6 +108,9 @@ public class MessageLog implements PropertyListener {
 
     public static void setInstance(MessageLog instance) {
         MessageLog.instance = instance;
+        Miranda.getProperties().listen(MessageLog.instance, com.ltsllc.miranda.properties.Properties.messageLogfile);
+        Miranda.getProperties().listen(MessageLog.instance, com.ltsllc.miranda.properties.Properties.cacheLoadLimit);
+        Miranda.getProperties().listen(MessageLog.instance, com.ltsllc.miranda.properties.Properties.ownerFile);
     }
 
     /**

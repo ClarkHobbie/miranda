@@ -5,12 +5,15 @@ import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.TestSuperclass;
 import com.ltsllc.miranda.message.Message;
+import com.ltsllc.miranda.properties.PropertiesHolder;
+import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
+import static com.ltsllc.miranda.properties.Properties.messageLogfile;
 import static org.junit.jupiter.api.Assertions.*;
 
 class MessageLogTest extends TestSuperclass {
@@ -95,7 +98,13 @@ class MessageLogTest extends TestSuperclass {
     }
 
     @Test
-    void propertyChanged() {
+    void propertyChanged() throws LtsllcException {
+        Miranda miranda = new Miranda();
+        MessageLog.defineStatics();
+
+        Miranda.getProperties().setProperty(messageLogfile.toString(), "whatever");
+
+        assert (MessageLog.getInstance().getLogfile().getName().equalsIgnoreCase("whatever"));
     }
 
     @Test
