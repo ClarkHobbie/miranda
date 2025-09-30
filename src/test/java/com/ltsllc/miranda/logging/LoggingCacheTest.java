@@ -242,7 +242,22 @@ class LoggingCacheTest extends TestSuperclass {
     }
 
     @Test
-    void remove() {
+    void remove() throws IOException {
+        ImprovedFile improvedFile = ImprovedFile.createImprovedTempFile("abc");
+
+        try {
+            LoggingCache cache = new LoggingCache(improvedFile, 1024);
+            Message message = createMessage();
+            cache.add(message);
+
+            assert (cache.contains(message.getMessageID()));
+
+            cache.remove(message.getMessageID());
+
+            assert (!cache.contains(message.getMessageID()));
+        } finally {
+            improvedFile.delete();
+        }
     }
 
     @Test
