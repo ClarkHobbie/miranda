@@ -628,11 +628,9 @@ public class LoggingCache implements Alarmable{
             try {
                 fileReader = new FileReader(file);
                 bufferedReader = new BufferedReader(fileReader);
-                String line = bufferedReader.readLine();
-                while (line != null) {
+                for (String line = bufferedReader.readLine(); line != null; line = bufferedReader.readLine()) {
                     Message message = Message.readLongFormat(line);
                     list.add(message);
-                    line = bufferedReader.readLine();
                 }
             } finally {
                 if (bufferedReader != null) {

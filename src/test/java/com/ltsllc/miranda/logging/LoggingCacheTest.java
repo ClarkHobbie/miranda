@@ -306,7 +306,19 @@ class LoggingCacheTest extends TestSuperclass {
     }
 
     @Test
-    void copyAllMessages() {
+    void copyAllMessages() throws IOException {
+        ImprovedFile improvedFile = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_MESSAGE_LOG));
+        try {
+            LoggingCache cache = new LoggingCache(improvedFile, 1024);
+            Message one = createMessage();
+            cache.add(one);
+
+            List<Message> list = cache.copyAllMessages();
+
+            assert (list.contains(one));
+        } finally {
+            improvedFile.delete();
+        }
     }
 
     @Test
