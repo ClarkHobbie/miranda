@@ -229,7 +229,11 @@ public class LoggingCache implements Alarmable{
         // if we will take too much space then migrate some messages to disk
         //
         if (currentLoad + message.getContents().length > loadLimit) {
-            migrateLeastReferencedMessagesToDisk(loadLimit - message.getContents().length);
+            int desiredLoad = loadLimit - message.getContents().length;
+            if (desiredLoad < 0) {
+                desiredLoad = loadLimit;
+            }
+            migrateLeastReferencedMessagesToDisk(desiredLoad);
         }
 
         //

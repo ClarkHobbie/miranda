@@ -221,7 +221,24 @@ class LoggingCacheTest extends TestSuperclass {
     }
 
     @Test
-    void loadMessage() {
+    void loadMessage() throws IOException, LtsllcException {
+        ImprovedFile improvedFile = ImprovedFile.createImprovedTempFile("abc");
+
+        try {
+            LoggingCache cache = new LoggingCache(improvedFile, 1);
+            Message one = createMessage();
+            Message two = createMessage();
+            cache.add(one);
+            cache.add(two);
+
+            assert (cache.isInMemory(one.getMessageID()) == false);
+
+            cache.loadMessage(one.getMessageID());
+
+            assert (cache.isInMemory(one.getMessageID()) == true);
+        } finally {
+            improvedFile.delete();
+        }
     }
 
     @Test
