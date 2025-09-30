@@ -99,8 +99,4 @@ class MessageTest extends TestSuperclass {
 
         assert (string.equalsIgnoreCase(builder.toString()));
     }
-
-    @Test
-    void convertToUpperCase() {
-    }
 }
