@@ -345,6 +345,27 @@ class LoggingCacheTest extends TestSuperclass {
     }
 
     @Test
-    void loadMessageAndRebalance() {
+    void loadMessageAndRebalance() throws IOException {
+        ImprovedFile improvedFile = ImprovedFile.createImprovedTempFile("abc");
+
+        try {
+            LoggingCache cache = new LoggingCache(improvedFile, 2);
+            Message one = createMessage();
+            cache.add(one);
+            Message two = createMessage();
+            cache.add(two);
+            Message three = createMessage();
+            cache.add(three);
+
+            assert (cache.contains(two.getMessageID()));
+
+            cache.getUuidToLocation().remove(three.getMessageID());
+            cache.loadMessageAndRebalance(two);
+
+            assert (cache.contains(two.getMessageID()));
+            assert (!cache.contains(three.getMessageID()));
+        } finally {
+            improvedFile.delete();
+        }
     }
 }
