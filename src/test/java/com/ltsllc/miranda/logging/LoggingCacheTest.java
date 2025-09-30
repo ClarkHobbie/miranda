@@ -163,6 +163,21 @@ class LoggingCacheTest extends TestSuperclass {
     }
 
     @Test
+    public void getPresent () throws IOException, LtsllcException {
+        ImprovedFile improvedFile = ImprovedFile.createImprovedTempFile("abc");
+        try {
+            MessageCache cache = new MessageCache(improvedFile, 1024);
+            Message message = createMessage();
+            cache.add(message);
+            Message temp = cache.get(message.getMessageID());
+
+            assert (temp == message);
+        } finally {
+            improvedFile.delete();
+        }
+    }
+
+    @Test
     void clear() {
     }
 
