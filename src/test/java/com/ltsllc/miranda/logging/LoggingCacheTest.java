@@ -5,6 +5,7 @@ import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.TestSuperclass;
+import com.ltsllc.miranda.cluster.MessageCache;
 import com.ltsllc.miranda.message.Message;
 import org.junit.jupiter.api.Test;
 
@@ -149,7 +150,16 @@ class LoggingCacheTest extends TestSuperclass {
     }
 
     @Test
-    void get() {
+    void getNotPresent() throws IOException, LtsllcException {
+        ImprovedFile improvedFile = ImprovedFile.createImprovedTempFile("abc");
+        MessageCache cache = new MessageCache(improvedFile, 1024);
+        try {
+            Message message = cache.get(UUID.randomUUID());
+
+            assert (message == null);
+        } finally {
+            improvedFile.delete();
+        }
     }
 
     @Test

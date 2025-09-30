@@ -143,7 +143,9 @@ public class MessageCache {
      * @return Whether the message is online, or false if we don't know
      */
     public boolean isOnline(UUID uuid) {
-        if (uuidToOnline.get(uuid) == true) {
+        if (uuidToOnline.get(uuid) == null) {
+            return false;
+        } else if (uuidToOnline.get(uuid) == true) {
             return true;
         }
 
@@ -168,7 +170,9 @@ public class MessageCache {
             return null;
         }
 
-        if (isOnline(uuid)) {
+        if (notPresent(uuid)) {
+            return null;
+        } else if (isOnline(uuid)) {
             returnValue = uuidToMessage.get(uuid);
             Integer numberOfTimesReffernced = uuidToNumberOfTimesReferenced.get(uuid);
             numberOfTimesReffernced++;
@@ -203,6 +207,10 @@ public class MessageCache {
         }
 
         return returnValue;
+    }
+
+    public boolean notPresent(UUID uuid) {
+        return (uuidToOnline.get(uuid) == null);
     }
 
     /**
