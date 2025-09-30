@@ -491,8 +491,7 @@ public class LoggingCache implements Alarmable{
             fileWriter = new FileWriter(outputFile);
             bufferedWriter = new BufferedWriter(fileWriter);
 
-            String line = bufferedReader.readLine();
-            while (line != null) {
+            for (java.lang.String line = bufferedReader.readLine(); line != null; line = bufferedReader.readLine()) {
                 Message message = Message.readLongFormat(line);
                 if (null != uuidToLocation.get(message.getMessageID())) {
                     long location = file.length();
@@ -500,8 +499,6 @@ public class LoggingCache implements Alarmable{
                     bufferedWriter.write(line);
                     bufferedWriter.newLine();
                 }
-
-                line = bufferedReader.readLine();
             }
         } finally {
             if (bufferedReader != null) {

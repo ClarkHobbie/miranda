@@ -261,7 +261,25 @@ class LoggingCacheTest extends TestSuperclass {
     }
 
     @Test
-    void compact() {
+    void compact() throws IOException {
+        ImprovedFile improvedFile = ImprovedFile.createImprovedTempFile("abc");
+
+        try {
+            LoggingCache cache = new LoggingCache(improvedFile, 1024);
+            Message one = createMessage();
+            cache.add(one);
+            Message two = createMessage();
+            cache.add(two);
+
+            assert (cache.contains(two.getMessageID()));
+
+            cache.getUuidToLocation().remove(two.getMessageID());
+            cache.compact();
+
+            assert (!cache.contains(two.getMessageID()));
+        } finally {
+            improvedFile.delete();
+        }
     }
 
     @Test
