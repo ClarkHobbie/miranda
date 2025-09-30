@@ -140,7 +140,7 @@ class LoggingCacheTest extends TestSuperclass {
             cache.add(one);
             cache.add(two);
 
-            cache.recover();
+            cache.loadMessages();
 
             assert(cache.getAllMessages().contains(one) && cache.getAllMessages().contains(two));
         } finally {
