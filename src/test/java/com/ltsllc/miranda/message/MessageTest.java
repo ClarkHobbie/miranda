@@ -101,10 +101,6 @@ class MessageTest extends TestSuperclass {
     }
 
     @Test
-    void compareTo() {
-    }
-
-    @Test
     void convertToUpperCase() {
     }
 }
