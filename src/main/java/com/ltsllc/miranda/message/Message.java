@@ -265,7 +265,7 @@ public class Message implements Comparable<Message> {
     }
 
     public static Message readLongFormat (Scanner scanner) {
-        /*
+        /**
          * Long format has the form:
          * MESSAGE ID: <UUID> OWNER: <UUID> PARAMS: <name> = <value> STATUS: <URL> DELIVERY: <URL> NUMBER_OF_SENDS:
          * <number of sends> LAST_SEND: <time> NEXT_SEND: <time> CONTENTS: <hex encoded string>
