@@ -129,4 +129,82 @@ class LoggingCacheTest extends TestSuperclass {
 
         assert (2 == lc.getUuidToMessage().size());
     }
+
+    @Test
+    void loadMessages() throws IOException, LtsllcException {
+        ImprovedFile improvedFile = ImprovedFile.createImprovedTempFile("abc");
+        try {
+            LoggingCache cache = new LoggingCache(improvedFile, 1024);
+            Message one = createMessage();
+            Message two = createMessage();
+            cache.add(one);
+            cache.add(two);
+
+            cache.recover();
+
+            assert(cache.getAllMessages().contains(one) && cache.getAllMessages().contains(two));
+        } finally {
+            improvedFile.delete();
+        }
+    }
+
+    @Test
+    void get() {
+    }
+
+    @Test
+    void clear() {
+    }
+
+    @Test
+    void copyMessages() {
+    }
+
+    @Test
+    void migrateLeastReferencedMessagesToDisk() {
+    }
+
+    @Test
+    void moveMessageToDisk() {
+    }
+
+    @Test
+    void loadMessage() {
+    }
+
+    @Test
+    void remove() {
+    }
+
+    @Test
+    void compact() {
+    }
+
+    @Test
+    void shouldRecover() {
+    }
+
+    @Test
+    void recover() {
+    }
+
+    @Test
+    void copyAllMessages() {
+    }
+
+    @Test
+    void getLocationFor() {
+    }
+
+    @Test
+    void getAllMessages() {
+    }
+
+    @Test
+    void alarm() {
+    }
+
+    @Test
+    void loadMessageAndRebalance() {
+    }
 }
