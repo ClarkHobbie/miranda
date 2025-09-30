@@ -5,6 +5,7 @@ import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.commons.io.ImprovedFile;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.TestSuperclass;
+import com.ltsllc.miranda.alarm.Alarms;
 import com.ltsllc.miranda.cluster.MessageCache;
 import com.ltsllc.miranda.message.Message;
 import org.junit.jupiter.api.Test;
@@ -322,15 +323,25 @@ class LoggingCacheTest extends TestSuperclass {
     }
 
     @Test
-    void getLocationFor() {
-    }
+    void alarm() throws IOException {
+        ImprovedFile improvedFile = ImprovedFile.createImprovedTempFile("abc");
 
-    @Test
-    void getAllMessages() {
-    }
+        try {
+            LoggingCache cache = new LoggingCache(improvedFile, 1024);
+            Message one = createMessage();
+            cache.add(one);
+            Message two = createMessage();
+            cache.add(two);
 
-    @Test
-    void alarm() {
+            assert (cache.contains(two.getMessageID()));
+
+            cache.getUuidToLocation().remove(two.getMessageID());
+            cache.alarm(Alarms.COMPACTION);
+
+            assert (!cache.contains(two.getMessageID()));
+        } finally {
+            improvedFile.delete();
+        }
     }
 
     @Test
