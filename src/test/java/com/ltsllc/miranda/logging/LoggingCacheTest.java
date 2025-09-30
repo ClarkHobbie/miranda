@@ -283,11 +283,26 @@ class LoggingCacheTest extends TestSuperclass {
     }
 
     @Test
-    void shouldRecover() {
-    }
+    void recover() throws IOException, LtsllcException {
+        Miranda miranda = new Miranda();
 
-    @Test
-    void recover() {
+        ImprovedFile improvedFile = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_MESSAGE_LOG));
+        ImprovedFile file = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_MESSAGE_LOG));
+        try {
+            LoggingCache cache = new LoggingCache(improvedFile, 1024);
+            Message one = createMessage();
+            cache.add(one);
+            Message two = createMessage();
+            cache.add(two);
+
+            cache = new LoggingCache(file, 1024);
+            cache.recover();
+
+            assert (cache.contains(two.getMessageID()));
+        } finally {
+            improvedFile.delete();
+            file.delete();
+        }
     }
 
     @Test

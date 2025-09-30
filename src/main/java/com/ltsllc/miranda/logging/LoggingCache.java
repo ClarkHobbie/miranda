@@ -541,11 +541,14 @@ public class LoggingCache implements Alarmable{
      * <P>
      * This method reads in the logfile and then deletes it.
      * <P>
-     * A recover should immediately followed by a compaction.
+     * A recover should immediately be followed by a compaction.
      * <P>
      * This method depends on the ability to get a location in
      * the file where an entry takes place.  Unfortunately, Java doesn't provide that capability in a BufferedReader or
      * a FileReader, but it sort of does in an InputStream.  Hence, the use of FileInputStream and InputStreamReader.
+     * <p>
+     *     This method works by
+     * </p>
      */
     public synchronized void recover () throws IOException, LtsllcException {
 
@@ -567,8 +570,7 @@ public class LoggingCache implements Alarmable{
             long location = 0; // the location within the file of the current entry
             long lastLocation = 0; // the location within the file of the previous entry
 
-            String line = bufferedReader.readLine();
-            while (null != null) {
+            for (String line = bufferedReader.readLine(); line != null; line = bufferedReader.readLine()) {
                 Message message = Message.readLongFormat(line);
                 location = lastLocation;
                 lastLocation = fis.getChannel().position();
