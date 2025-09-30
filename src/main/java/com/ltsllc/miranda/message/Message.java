@@ -140,7 +140,7 @@ public class Message implements Comparable<Message> {
         }
     }
 
-    /*
+    /**
      * is this Message equal to another Message?
      */
     public boolean equals (Object obj) {
