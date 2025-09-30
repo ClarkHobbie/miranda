@@ -10,6 +10,7 @@ import com.ltsllc.miranda.message.Message;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 import static com.ltsllc.miranda.logging.MessageLog.getInstance;
@@ -152,8 +153,8 @@ class LoggingCacheTest extends TestSuperclass {
     @Test
     void getNotPresent() throws IOException, LtsllcException {
         ImprovedFile improvedFile = ImprovedFile.createImprovedTempFile("abc");
-        MessageCache cache = new MessageCache(improvedFile, 1024);
         try {
+            LoggingCache cache = new LoggingCache(improvedFile, 1024);
             Message message = cache.get(UUID.randomUUID());
 
             assert (message == null);
@@ -166,7 +167,7 @@ class LoggingCacheTest extends TestSuperclass {
     public void getPresent () throws IOException, LtsllcException {
         ImprovedFile improvedFile = ImprovedFile.createImprovedTempFile("abc");
         try {
-            MessageCache cache = new MessageCache(improvedFile, 1024);
+            LoggingCache cache = new LoggingCache(improvedFile, 1024);
             Message message = createMessage();
             cache.add(message);
             Message temp = cache.get(message.getMessageID());
@@ -181,7 +182,7 @@ class LoggingCacheTest extends TestSuperclass {
     void clear() throws IOException, LtsllcException {
         ImprovedFile improvedFile = ImprovedFile.createImprovedTempFile("abc");
         try {
-            MessageCache cache = new MessageCache(improvedFile, 1024);
+            LoggingCache cache = new LoggingCache(improvedFile, 1024);
             Message message = createMessage();
             cache.add(message);
 
@@ -196,7 +197,19 @@ class LoggingCacheTest extends TestSuperclass {
     }
 
     @Test
-    void copyMessages() {
+    void copyMessages() throws IOException {
+        ImprovedFile improvedFile = ImprovedFile.createImprovedTempFile("abc");
+        try {
+            LoggingCache cache = new LoggingCache(improvedFile, 1024);
+            Message message = createMessage();
+            cache.add(message);
+
+            com.ltsllc.miranda.logging.LoggingCache.CopyMessagesResult result = cache.copyMessages(1000, 0);
+
+            assert (result.list.contains(message));
+        } finally {
+            improvedFile.delete();
+        }
     }
 
     @Test
