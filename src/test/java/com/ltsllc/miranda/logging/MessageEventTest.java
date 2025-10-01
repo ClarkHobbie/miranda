@@ -1,6 +1,7 @@
 package com.ltsllc.miranda.logging;
 
 import com.ltsllc.commons.io.ScannerWithUnget;
+import com.ltsllc.miranda.TestSuperclass;
 import org.junit.jupiter.api.Test;
 
 import java.util.Scanner;
@@ -8,7 +9,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class MessageEventTest {
+class MessageEventTest extends TestSuperclass {
 
     @Test
     void toStorageString() {
