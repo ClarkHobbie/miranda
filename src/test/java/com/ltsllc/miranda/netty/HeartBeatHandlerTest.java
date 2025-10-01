@@ -19,7 +19,7 @@ class HeartBeatHandlerTest {
     @BeforeEach
     public void beforeEach () {
         EmbeddedChannel channel = new EmbeddedChannel();
-        handler = new HeartBeatHandler(channel);
+        handler = new HeartBeatHandler(channel, null);
     }
 
     @Test

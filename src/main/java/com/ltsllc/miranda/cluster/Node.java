@@ -717,8 +717,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             return;
         }
 
-        if (channel == null) {
-            logger.warn("channel is null in sendStart");
+        if (channel == null || !channel.isOpen()) {
+            logger.warn("channel is null or closed in sendStart");
             return;
         }
 

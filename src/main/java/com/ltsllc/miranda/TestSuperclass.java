@@ -46,10 +46,11 @@ public class TestSuperclass {
 
     public Node buildNode (UUID uuid) {
         EmbeddedChannel channel = new EmbeddedChannel();
-        HeartBeatHandler handler = new HeartBeatHandler(channel);
+        HeartBeatHandler handler = new HeartBeatHandler(channel, null);
         channel.pipeline().addLast(Node.HEART_BEAT, handler);
 
         Node node = new Node(uuid, "10.0.0.236", 2020, channel);
+        handler.setNode(node);
 
         return node;
     }

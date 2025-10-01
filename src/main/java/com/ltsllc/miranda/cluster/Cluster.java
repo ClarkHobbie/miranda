@@ -269,7 +269,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
                 cp.addLast(STRING_ENCODER, new StringEncoder());
                 //cp.addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0,4,0,4));
                 cp.addLast(DECODER, new ClientChannelToNodeDecoder());
-                cp.addLast(HEART_BEAT, new HeartBeatHandler(c));
+                cp.addLast(HEART_BEAT, new HeartBeatHandler(c, null));
                 ChannelInboundMonitor in = new ChannelInboundMonitor();
                 cp.addFirst("whateverInbound", in);
                 ChannelOutboundMonitor out = new ChannelOutboundMonitor();
@@ -289,7 +289,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
                         cp.addLast(STRING_ENCODER, new StringEncoder());
                         //cp.addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
                         cp.addLast(DECODER, new ServerChannelToNodeDecoder("#" + nodeCount++));
-                        cp.addLast(HEART_BEAT, new HeartBeatHandler(c));
+                        cp.addLast(HEART_BEAT, new HeartBeatHandler(c, null));
                         ChannelInboundMonitor in = new ChannelInboundMonitor();
                         cp.addFirst("whateverInbound", in);
                         ChannelOutboundMonitor out = new ChannelOutboundMonitor();
@@ -544,7 +544,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
                 ch.pipeline().addLast(STRING_ENCODER, new io.netty.handler.codec.string.StringEncoder());
                 ch.pipeline().addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
                 ch.pipeline().addLast(DECODER, new ServerChannelToNodeDecoder("#" + nodeCount++));
-                ch.pipeline().addLast(HEART_BEAT, new HeartBeatHandler(ch));
+                ch.pipeline().addLast(HEART_BEAT, new HeartBeatHandler(ch, node));
                 ChannelInboundMonitor in = new ChannelInboundMonitor();
                 ch.pipeline().addFirst("whateverInbound", in);
                 ChannelOutboundMonitor out = new ChannelOutboundMonitor();
@@ -597,8 +597,8 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
             events.info("Connected to " + node.getHost() + ":" + node.getPort());
             for (Node n: Cluster.getInstance().getNodes()) {
                 if (n.getChannel() != null) {
-                    boolean loopback = n.getHost() == Miranda.getInstance().getMyHost() &&
-                            n.getPort() == Miranda.getInstance().getMyPort();
+                    boolean loopback = (n.getHost() == Miranda.getInstance().getMyHost() &&
+                            n.getPort() == Miranda.getInstance().getMyPort());
                     n.sendStart(true, loopback);
                 }
             }
@@ -1057,7 +1057,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
                 ch.pipeline().addLast(STRING_ENCODER,new StringEncoder());
                 //ch.pipeline().addLast(LENGTH,new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE,0,4,0,4));
                 ch.pipeline().addLast(DECODER,new ServerChannelToNodeDecoder("#" + nodeCount++));
-                ch.pipeline().addLast(HEART_BEAT,new HeartBeatHandler(ch));
+                ch.pipeline().addLast(HEART_BEAT,new HeartBeatHandler(ch, null));
                 ch.pipeline().addFirst("whateverInbound",new ChannelInboundMonitor());
                 ch.pipeline().addLast("whateverOutbound", new ChannelOutboundMonitor());
             }

@@ -554,8 +554,6 @@ public class Miranda implements PropertyListener {
         }
         rld = ResourceLeakDetectorFactory.instance().newResourceLeakDetector(ByteBuf.class);
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID);
-
-
     }
 
     /**
@@ -576,7 +574,7 @@ public class Miranda implements PropertyListener {
                 ch.pipeline().addLast(Cluster.STRING_ENCODER, new StringEncoder());
                         //new LengthFieldBasedFrameDecoder(2048, 0, 4, 0, 4),
                 ch.pipeline().addLast(Cluster.DECODER, new ServerChannelToNodeDecoder("spam"));
-                ch.pipeline().addLast(Cluster.HEART_BEAT, new HeartBeatHandler(ch));
+                ch.pipeline().addLast(Cluster.HEART_BEAT, new HeartBeatHandler(ch, null));
                 ch.pipeline().addFirst("whatever", new ChannelMonitor());
             }
         });
@@ -1396,7 +1394,7 @@ public class Miranda implements PropertyListener {
     public void startIdentityNode() throws LtsllcException, CloneNotSupportedException {
         Node node = new Node(myUuid, myHost, myPort, null);
         Cluster.getInstance().connectToNode(node, true);
-        node.sendStart(true, false);
+        node.sendStart(true, node.getHost().equalsIgnoreCase(Miranda.getInstance().getMyHost()));
     }
 
     public UUID newMessage (Message message) {

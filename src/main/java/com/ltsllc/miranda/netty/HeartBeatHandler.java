@@ -25,6 +25,7 @@ import java.util.UUID;
 public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> implements Alarmable {
     protected static final Logger logger = LogManager.getLogger(HeartBeatHandler.class);
 
+    protected Node node = null;
     protected Channel channel;
     protected long iterations = 0;;
     protected boolean metTimeout = false;
@@ -77,9 +78,17 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
         this.uuid = uuid;
     }
 
+    public Node getNode() {
+        return node;
+    }
 
-    public HeartBeatHandler (Channel channel) {
+    public void setNode(Node node) {
+        this.node = node;
+    }
+
+    public HeartBeatHandler (Channel channel, Node node) {
         this.channel = channel;
+        this.node = node;
         AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT,
                 Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL));
     }
@@ -153,6 +162,7 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
             if (!metTimeout) {
                 logger.error("Node has gone offline.");
                 channel.close();
+
             } else {
                 metTimeout = false;
             }

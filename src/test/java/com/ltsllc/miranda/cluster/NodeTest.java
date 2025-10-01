@@ -302,9 +302,10 @@ public class NodeTest extends TestSuperclass
         Cluster.defineStatics();
         MessageLog.defineStatics();
         EmbeddedChannel channel = new EmbeddedChannel();
-        HeartBeatHandler heartBeatHandler = new HeartBeatHandler(channel);
+        HeartBeatHandler heartBeatHandler = new HeartBeatHandler(channel, null);
         channel.pipeline().addLast("HEARTBEAT",heartBeatHandler);
         Node node = new Node(UUID.randomUUID(),"71.237.68.250",2020, channel);
+        heartBeatHandler.setNode(node);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         node.setState(ClusterConnectionStates.GENERAL);
@@ -324,7 +325,7 @@ public class NodeTest extends TestSuperclass
         strMessage += " ";
         strMessage += uuid;
         EmbeddedChannel embeddedChannel = new EmbeddedChannel();
-        embeddedChannel.pipeline().addLast(new HeartBeatHandler(embeddedChannel));
+        embeddedChannel.pipeline().addLast(new HeartBeatHandler(embeddedChannel, node));
 
         node.messageReceived(strMessage);
 
@@ -437,8 +438,10 @@ public class NodeTest extends TestSuperclass
         miranda.loadProperties();
 
         EmbeddedChannel channel = new EmbeddedChannel();
-        channel.pipeline().addLast("HEARTBEAT", new HeartBeatHandler(channel));
+        HeartBeatHandler handler = new HeartBeatHandler(channel, null);
+        channel.pipeline().addLast("HEARTBEAT", handler);
         Node node = new Node(UUID.randomUUID(),"71.237.68.250",2021, channel);
+        handler.setNode(node);
         node.setUuid(UUID.randomUUID());
 
         MessageLog.defineStatics();
@@ -484,14 +487,15 @@ public class NodeTest extends TestSuperclass
     }
 
     @Test
-    public void handleStart () throws LtsllcException, CloneNotSupportedException, IOException {
+    public void handleStart () throws LtsllcException, IOException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
         Cluster.defineStatics();
         EmbeddedChannel channel = new EmbeddedChannel();
-        HeartBeatHandler heartBeatHandler = new HeartBeatHandler(channel);
+        HeartBeatHandler heartBeatHandler = new HeartBeatHandler(channel, null);
         channel.pipeline().addLast("HEARTBEAT", heartBeatHandler);
         Node node = new Node(UUID.randomUUID(),"71.237.68.250",2021, channel);
+        heartBeatHandler.setNode(node);
 
         ImprovedFile messages = new ImprovedFile("messages.log");
         node.setUuid(UUID.randomUUID());
@@ -717,7 +721,8 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
         stringBuffer.append(" 192.164.0.12 2020");
 
         EmbeddedChannel embeddedChannel = new EmbeddedChannel();
-        embeddedChannel.pipeline().addLast("HEARTBEAT", new HeartBeatHandler(embeddedChannel));
+        HeartBeatHandler handler = new HeartBeatHandler(embeddedChannel, node);
+        embeddedChannel.pipeline().addLast("HEARTBEAT", handler);
 
         node.setChannel(embeddedChannel);
 
@@ -737,10 +742,11 @@ System.out.println(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_STAR
 
     public Node buildNode (UUID uuid) {
         EmbeddedChannel channel = new EmbeddedChannel();
-        HeartBeatHandler heartBeatHandler = new HeartBeatHandler(channel);
+        HeartBeatHandler heartBeatHandler = new HeartBeatHandler(channel, null);
         channel.pipeline().addLast("HEARTBEAT",heartBeatHandler);
 
         Node node = new Node(uuid, "10.0.0.235", 2020, channel);
+        heartBeatHandler.setNode(node);
         return node;
     }
 

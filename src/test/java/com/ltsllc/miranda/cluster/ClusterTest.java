@@ -252,18 +252,24 @@ class ClusterTest extends TestSuperclass {
         Cluster cluster = new Cluster();
 
         EmbeddedChannel embeddedChannel = new EmbeddedChannel();
-        embeddedChannel.pipeline().addLast(Cluster.HEART_BEAT, new HeartBeatHandler(embeddedChannel));
+        HeartBeatHandler handler = new HeartBeatHandler(embeddedChannel, null);
+        embeddedChannel.pipeline().addLast(Cluster.HEART_BEAT, handler);
         Node node = new Node(UUID.fromString("00000000-0000-0000-0000-000000000000"), "10.0.0.236", 2020, embeddedChannel);
+        handler.setNode(node);
         cluster.addNode(node);
 
         embeddedChannel = new EmbeddedChannel();
-        embeddedChannel.pipeline().addLast(Cluster.HEART_BEAT, new HeartBeatHandler(embeddedChannel));
+        handler = new HeartBeatHandler(embeddedChannel, null);
+        embeddedChannel.pipeline().addLast(Cluster.HEART_BEAT, handler);
         node = new Node(UUID.fromString("00000000-0000-0000-0000-000000000001"), "10.0.0.237", 2020, embeddedChannel);
+        handler.setNode(node);
         cluster.addNode(node);
 
         embeddedChannel = new EmbeddedChannel();
-        embeddedChannel.pipeline().addLast(Cluster.HEART_BEAT, new HeartBeatHandler(embeddedChannel));
+        handler = new HeartBeatHandler(embeddedChannel, null);
+        embeddedChannel.pipeline().addLast(Cluster.HEART_BEAT, handler);
         node = new Node(UUID.fromString("00000000-0000-0000-0000-000000000002"), "10.0.0..238", 2020, embeddedChannel);
+        handler.setNode(node);
         cluster.addNode(node);
 
         return cluster;
@@ -299,10 +305,11 @@ class ClusterTest extends TestSuperclass {
         Cluster cluster = buildCluster();
         EmbeddedChannel embeddedChannel = new EmbeddedChannel();
 
-        HeartBeatHandler heartBeatHandler = new HeartBeatHandler(embeddedChannel);
+        HeartBeatHandler heartBeatHandler = new HeartBeatHandler(embeddedChannel, null);
         embeddedChannel.pipeline().addLast(Cluster.HEART_BEAT, heartBeatHandler);
 
         Node node = new Node(Miranda.getInstance().getMyUuid(), "71.237.68.250", 2020, embeddedChannel);
+        heartBeatHandler.setNode(node);
         cluster.addNode(node);
 
         assert (node.getIsLoopback());
