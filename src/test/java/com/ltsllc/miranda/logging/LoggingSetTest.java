@@ -46,4 +46,15 @@ public class LoggingSetTest extends TestSuperclass {
 
         assert (!set.contains(message));
     }
+
+    @Test
+    public void recover () throws IOException {
+        Message message = createTestMessage();
+        set.add(message);
+
+        set.recover(set.getFile());
+
+        assert (set.contains(message));
+
+    }
 }
