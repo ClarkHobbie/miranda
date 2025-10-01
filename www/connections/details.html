@@ -9,7 +9,6 @@
 <TABLE id="table" border="1" >
     <TR>
         <TH>Connections</TH>
-        <TH>channel</TH>
         <TH>hostname</TH>
         <TH>uuid</TH>
         <TH>State</TH>
@@ -29,7 +28,7 @@ function loadTable() {
             for (var rowCount = 0; rowCount < table.length; rowCount++) {
                 var msg = '<TR><TD>' + table[rowCount][0] + '</TD><TD>' + table[rowCount][1] + "</TD><TD>"
                     + table[rowCount][2] + "</TD><TD>" + table[rowCount][3] + "</TD>"
-                    + "<TD>" + table[rowCount][4] + "</TD></TR>";
+                    + "</TD></TR>";
                 tableElement.innerHTML += msg;
             }
 

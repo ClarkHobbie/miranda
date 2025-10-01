@@ -171,6 +171,11 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
             System.gc();
         }
 
+        if (channel == null || !channel.isOpen()) {
+            logger.error("null or closed channel");
+            return;
+        }
+
         if (!isLoopback) {
             AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT,
                     Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL));

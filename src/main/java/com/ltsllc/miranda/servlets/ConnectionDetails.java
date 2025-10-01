@@ -29,13 +29,16 @@ public class ConnectionDetails implements Servlet {
         String[][] table = new String[data.size()][];
         for (int i = 0; i < data.size(); i++) {
             Node node = data.get(i);
-            table[i] = new String[5];
+            table[i] = new String[4];
             String[] row = table[i];
             row[0] = "" + i;
-            row[1] = node.getChannel().toString();
-            row[2] = node.getHost();
-            row[3] = node.getUuid().toString();
-            row[4] = node.getState().toString();
+            row[1] = node.getHost();
+            if (node.getUuid() == null) {
+                row[2] = "unknown";
+            } else {
+                row[2] = node.getUuid().toString();
+            }
+            row[3] = node.getState().toString();
         }
 
         GsonBuilder gsonBuilder = new GsonBuilder();
