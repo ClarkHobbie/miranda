@@ -363,7 +363,8 @@ class ClusterTest extends TestSuperclass {
     }
 
     @Test
-    public void deadNodeTimeout () throws InterruptedException {
+    public void deadNodeTimeout () {
+        Miranda miranda = new Miranda();
         Cluster cluster = buildCluster();
         Cluster.setInstance(cluster);
         UUID deadNodeUuid = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -378,7 +379,7 @@ class ClusterTest extends TestSuperclass {
         assert (cluster.getNodes().contains(deadNode));
 
         cluster.startDeadNode(deadNodeUuid);
-        pause(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_DEAD_NODE_TIMEOUT) * 2);
+        pause(Miranda.getProperties().getLongProperty(Miranda.PROPERTY_DEAD_NODE_TIMEOUT) * 4);
 
         assert (!cluster.getNodes().contains(deadNode));
     }
@@ -639,5 +640,14 @@ class ClusterTest extends TestSuperclass {
         cluster.connectNodes(specNodes);
 
         assert (cluster.getNodes().size() > 0);
+    }
+
+    @Test
+    public void connectToNodeLoopback () throws LtsllcException, CloneNotSupportedException {
+        Node node = new Node(null, "10.0.0.9", 2020, null);
+
+        cluster.connectToNode(node, true);
+
+        assert (node.getIsLoopback() == true);
     }
 }

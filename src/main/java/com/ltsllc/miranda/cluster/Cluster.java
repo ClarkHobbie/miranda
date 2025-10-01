@@ -534,6 +534,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
             return false;
         }
 
+        node.setIsLoopback(isLoopback);
 
         InetSocketAddress addrRemote = new InetSocketAddress(node.getHost(), node.getPort());
         bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
