@@ -24,6 +24,10 @@ import java.util.UUID;
 public class TestSuperclass {
     public static Logger logger = LogManager.getLogger(TestSuperclass.class);
 
+    public Message createTestMessage () {
+        return createTestMessage(UUID.randomUUID(), UUID.randomUUID());
+    }
+
     public Message createTestMessage(UUID uuid) {
         return createTestMessage(uuid, UUID.randomUUID());
     }
