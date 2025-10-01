@@ -496,8 +496,8 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
 
         for (SpecNode specNode : list) {
             Node node = new Node(null, specNode.getHost(), specNode.getPort(), null);
+            nodes.add(node);
             if (node.connect()) {
-                nodes.add(node);
                 allNodesFailed = false;
             }
         }

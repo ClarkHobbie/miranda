@@ -21,6 +21,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -31,9 +32,18 @@ import java.util.*;
 class ClusterTest extends TestSuperclass {
     public static Logger logger = LogManager.getLogger(ClusterTest.class);
 
+    public Cluster cluster = null;
+    public EmbeddedChannel channel = null;
+
     @BeforeAll
     public static void setup() {
         Configurator.setRootLevel(Level.DEBUG);
+    }
+
+    @BeforeEach
+    public void setupEach () {
+        cluster = new Cluster();
+        channel = new EmbeddedChannel();
     }
 
     @AfterEach
@@ -141,16 +151,11 @@ class ClusterTest extends TestSuperclass {
         Miranda miranda = new Miranda();
         miranda.loadProperties();
 
-        Cluster.getInstance().setNodes(new ArrayList<>());
+        cluster.setNodes(new ArrayList<>());
 
-        Message message = new Message();
-        message.setStatusURL("http://goggle.com");
-        UUID uuid = UUID.randomUUID();
-        message.setMessageID(uuid);
-        byte[] contents = {1, 2, 3};
-        message.setContents(contents);
+        Message message = createTestMessage();
 
-        Cluster.getInstance().informOfNewMessage(message);
+        cluster.informOfNewMessage(message);
     }
 
     @Test
@@ -619,5 +624,20 @@ class ClusterTest extends TestSuperclass {
         cluster.removeNode(node);
 
         assert (!cluster.getNodes().contains(node));
+    }
+
+    @Test
+    public void connectNodes () throws LtsllcException, CloneNotSupportedException {
+        SpecNode nodeOne = new SpecNode();
+        nodeOne.host = "10.0.0.49";
+        nodeOne.port = 2020;
+        List<SpecNode> specNodes = new ArrayList<>();
+        specNodes.add(nodeOne);
+
+        Cluster.defineStatics();
+
+        cluster.connectNodes(specNodes);
+
+        assert (cluster.getNodes().size() > 0);
     }
 }
