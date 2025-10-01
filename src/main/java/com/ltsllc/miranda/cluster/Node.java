@@ -551,9 +551,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         }
     }
 
-    public void ignoreMessage(MessageType messageType, String s) {
-    }
-
     /**
      * Convert a string to a MessageType
      * <p>
