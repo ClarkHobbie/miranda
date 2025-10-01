@@ -354,10 +354,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             }
         }
 
-
         logger.debug("leaving messageReceived with state = " + state);
     }
-
 
     public void handleStateAwaitingAssignments(MessageType messageType, String s) throws IOException, LtsllcException {
         logger.debug("Entering handleStateAwaitingAssignments");
