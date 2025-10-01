@@ -34,4 +34,16 @@ public class LoggingSetTest extends TestSuperclass {
         assert (set.getFile().exists());
         assert (set.contains(message));
     }
+
+    @Test
+    public void remove () throws IOException {
+        Message message = createTestMessage();
+        set.add(message);
+
+        assert (set.contains(message));
+
+        set.remove(message);
+
+        assert (!set.contains(message));
+    }
 }
