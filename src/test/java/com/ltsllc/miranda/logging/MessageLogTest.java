@@ -67,6 +67,17 @@ class MessageLogTest extends TestSuperclass {
     }
 
     @Test
+    public void add () throws LtsllcException, IOException {
+        Message message = createTestMessage();
+        UUID owner = UUID.randomUUID();
+
+        MessageLog.defineStatics();
+        MessageLog.getInstance().add(message, owner);
+
+        assert (MessageLog.getInstance().contains(message.getMessageID()));
+    }
+
+    @Test
     void remove() throws LtsllcException, IOException {
         MessageLog.defineStatics();
         Message message = createTestMessage(UUID.randomUUID());
