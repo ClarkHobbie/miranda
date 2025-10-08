@@ -15,6 +15,7 @@ import java.nio.charset.Charset;
 public class ChannelInboundMonitor extends ChannelInboundHandlerAdapter {
 
     private static Logger logger = LogManager.getLogger(ChannelInboundMonitor.class);
+
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         try {
             if (msg instanceof ByteBuf) {

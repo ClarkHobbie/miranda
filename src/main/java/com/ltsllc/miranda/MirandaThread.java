@@ -22,6 +22,7 @@ public class MirandaThread extends Thread {
                 miranda.startUp(new String[0]);
                 startupFailed = false;
             } catch (Exception e) {
+                e.printStackTrace();
                 exceptionCount++;
                 startupFailed = true;
                 exception = e;

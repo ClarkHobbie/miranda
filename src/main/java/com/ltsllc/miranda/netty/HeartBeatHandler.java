@@ -7,7 +7,9 @@ import com.ltsllc.miranda.alarm.Alarmable;
 import com.ltsllc.miranda.alarm.Alarms;
 import com.ltsllc.miranda.cluster.Node;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageCodec;
 import io.netty.util.CharsetUtil;
@@ -89,6 +91,9 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
     public HeartBeatHandler (Channel channel, Node node) {
         this.channel = channel;
         this.node = node;
+        if (this.node != null) {
+            uuid = this.node.getUuid();
+        }
         AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT,
                 Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL));
     }
@@ -160,8 +165,8 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
     public void heartBeatTimeout() throws IOException, LtsllcException {
         if (!isLoopback) {
             if (!metTimeout) {
-                logger.error("Node has gone offline.");
-                channel.close();
+                //logger.error("Node has gone offline.");
+                //channel.close();
 
             } else {
                 metTimeout = false;
@@ -177,6 +182,7 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
      */
     public void sendHeartBeat() {
         iterations++;
+
         if (iterations % 100 == 0) {
             System.gc();
         }
@@ -193,10 +199,41 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
             if (Miranda.getProperties().getBooleanProperty(Miranda.PROPERTY_USE_HEARTBEATS)) {
                 if (System.currentTimeMillis() >
                         timeOfLastActivity + Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL)) {
-                    channel.writeAndFlush(Node.HEART_BEAT_START);
+                    String message = Node.HEART_BEAT_START;
+                    ByteBuf byteBuf = Unpooled.copiedBuffer(message.getBytes());
+                    ChannelFuture future = channel.writeAndFlush(byteBuf);
                     long delay = Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_TIMEOUT);
                     AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT_TIMEOUT, delay);
-               }
+                    /*
+                    Throwable t = future.exceptionNow();
+                    if (t  != null) {
+                        t.printStackTrace();
+                    }
+                    */
+
+                    /*
+                    try {
+                        future.await();
+                        Throwable t = future.exceptionNow();
+
+                        if (t != null) {
+                            t.printStackTrace();
+                        }
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+
+
+                    if (!future.isSuccess()) {
+                        Miranda.out.println("Heartbeat failed");
+                        throw new RuntimeException(future.exceptionNow());
+                    }
+
+
+                     */
+
+
+                }
             }
         }
     }
@@ -214,5 +251,8 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
             ctx.close();
         }
     }
+
+
+
 
 }

@@ -16,15 +16,21 @@ import java.nio.charset.Charset;
 public class ChannelOutboundMonitor extends ChannelOutboundHandlerAdapter {
     private Logger logger = LogManager.getLogger(ChannelOutboundMonitor.class);
 
+    public ChannelOutboundMonitor() {
+        logger = logger;
+    }
     public void write (ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
         try {
             if (msg instanceof ByteBuf) {
                 ByteBuf byteBuf = (ByteBuf) msg;
                 String s = byteBuf.toString(Charset.defaultCharset());
                 logger.debug(s);
+            } else if (msg instanceof String) {
+                logger.debug(msg);
             }
+            ctx.write(msg, promise);
         } finally {
-            ReferenceCountUtil.release(msg);
+            //ReferenceCountUtil.release(msg);
         }
     }
 }

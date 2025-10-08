@@ -33,6 +33,7 @@ public class ServerChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
         this.node = node;
     }
 
+
     public ServerChannelToNodeDecoder (String newName) {
         setName(newName);
     }

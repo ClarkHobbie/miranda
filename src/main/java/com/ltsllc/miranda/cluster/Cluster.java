@@ -15,6 +15,8 @@ import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import com.ltsllc.miranda.properties.PropertyListener;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -25,6 +27,9 @@ import io.netty.handler.codec.string.StringEncoder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -256,19 +261,18 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
     }
 
 
-    public void initialize() {
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
-        bootstrap = new Bootstrap();
-        bootstrap.group(workerGroup);
-        bootstrap.channel(NioSocketChannel.class);
-        bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
-        bootstrap.option(ChannelOption.SO_REUSEADDR, true);
-        bootstrap.handler(new ChannelInitializer<Channel>() {
-            public void initChannel (Channel c) {
+    public ServerBootstrap createServerBootstrap() {
+        ServerBootstrap boot = new ServerBootstrap();
+        boot.group(new NioEventLoopGroup(), new NioEventLoopGroup());
+        boot.channel(NioServerSocketChannel.class);
+        boot.option(ChannelOption.SO_BACKLOG, 128);
+        boot.option(ChannelOption.SO_REUSEADDR, true);
+        boot.option(ChannelOption.SO_KEEPALIVE, true);
+        boot.childHandler(new ChannelInitializer<Channel>() {
+            public void initChannel(Channel c) {
                 ChannelPipeline cp = c.pipeline();
                 cp.addLast(STRING_ENCODER, new StringEncoder());
-                //cp.addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0,4,0,4));
-                cp.addLast(DECODER, new ClientChannelToNodeDecoder());
+                cp.addLast(DECODER, new ServerChannelToNodeDecoder("#" + nodeCount++));
                 cp.addLast(HEART_BEAT, new HeartBeatHandler(c, null));
                 ChannelInboundMonitor in = new ChannelInboundMonitor();
                 cp.addFirst("whateverInbound", in);
@@ -276,27 +280,13 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
                 cp.addLast("whateverOutbound", out);
             }
         });
-        EventLoopGroup bossGroup = new NioEventLoopGroup();
-        workerGroup = new NioEventLoopGroup();
 
-        serverBootstrap = new ServerBootstrap();
-        serverBootstrap.group(bossGroup, workerGroup)
-                .channel(NioServerSocketChannel.class)
-                .option(ChannelOption.SO_BACKLOG, 128)
-                .childHandler(new ChannelInitializer<Channel>() {
-                    public void initChannel (Channel c) {
-                        ChannelPipeline cp = c.pipeline();
-                        cp.addLast(STRING_ENCODER, new StringEncoder());
-                        //cp.addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
-                        cp.addLast(DECODER, new ServerChannelToNodeDecoder("#" + nodeCount++));
-                        cp.addLast(HEART_BEAT, new HeartBeatHandler(c, null));
-                        ChannelInboundMonitor in = new ChannelInboundMonitor();
-                        cp.addFirst("whateverInbound", in);
-                        ChannelOutboundMonitor out = new ChannelOutboundMonitor();
-                        cp.addLast("whateverOutbound", out);
-                    }
-                })
-                .childOption(ChannelOption.SO_REUSEADDR, true);
+        return boot;
+    }
+
+    public void initialize() {
+        bootstrap = createBootstrap();
+        serverBootstrap = createServerBootstrap();
     }
 
     /**
@@ -423,6 +413,19 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         int port = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT);
         listen(port);
         connectNodes(list);
+        //listenForEcho();
+
+        /*
+        try {
+            doEcho("10.0.0.49", 4040);
+        } catch (Exception e) {
+            // swallow it
+        }
+
+         */
+
+
+
     }
 
     /**
@@ -537,30 +540,54 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         node.setIsLoopback(isLoopback);
 
         InetSocketAddress addrRemote = new InetSocketAddress(node.getHost(), node.getPort());
-        bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
-        bootstrap.option(ChannelOption.SO_REUSEADDR, true);
+        Bootstrap boot = createBootstrap();
+        ChannelFuture future = boot.connect(addrRemote);
+        /*
         bootstrap.handler(new ChannelInitializer<SocketChannel>() {
-            public void initChannel(SocketChannel ch) throws Exception {
+            public void initChannel(SocketChannel ch)  {
+                ChannelPipeline cp = ch.pipeline();
                 ch.pipeline().addLast(STRING_ENCODER, new io.netty.handler.codec.string.StringEncoder());
                 ch.pipeline().addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
+
                 ch.pipeline().addLast(DECODER, new ServerChannelToNodeDecoder("#" + nodeCount++));
+
                 ch.pipeline().addLast(HEART_BEAT, new HeartBeatHandler(ch, node));
                 ChannelInboundMonitor in = new ChannelInboundMonitor();
                 ch.pipeline().addFirst("whateverInbound", in);
                 ChannelOutboundMonitor out = new ChannelOutboundMonitor();
                 ch.pipeline().addLast("whateverOutbound", out);
+
+
             }
         });
-
-        ChannelFuture channelFuture = bootstrap
-                .option(ChannelOption.SO_REUSEADDR,true)
-                .connect(addrRemote);
+*/
+        // ChannelFuture channelFuture = bootstrap.connect(addrRemote);
         try {
-            channelFuture.await();
-            if (channelFuture.isSuccess()) {
-                node.setChannel(channelFuture.channel());
-                Channel channel = channelFuture.channel();
+            future.await();
+            if (future.isSuccess()) {
+                /*
+                String message = "hi there";;
+                ByteBuf byteBuf = Unpooled.copiedBuffer(message.getBytes());
+
+
+                synchronized (this) {
+                    wait(10);
+                }
+
+
+                ChannelFuture future = channel.writeAndFlush(byteBuf);
+                future.await();
+
+                if (!future.isSuccess()) {
+                    future.exceptionNow().printStackTrace();
+                    throw new RuntimeException(future.exceptionNow());
+                }
+                */
+
+                node.setChannel(future.channel());
+                Channel channel = future.channel();
                 ChannelPipeline pipeline = channel.pipeline();
+                /*
                 ChannelHandler channelHandler = pipeline.get(Cluster.DECODER);
                 if (channelHandler instanceof ClientChannelToNodeDecoder) {
                     ClientChannelToNodeDecoder decoder = (ClientChannelToNodeDecoder) channelHandler;
@@ -574,11 +601,8 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
                     }
                     throw new LtsllcException("unrecognized decoder");
                 }
-                channelHandler = pipeline.get(Cluster.HEART_BEAT);
-                if (channelHandler instanceof HeartBeatHandler) {
-                    HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
-                    heartBeatHandler.setUuid(node.getUuid());
-                }
+
+                 */
 
                 logger.info("connected to " +  node.getHost() + ":" + node.getPort());
 
@@ -607,8 +631,113 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
             logger.error("Could not connect to " + node.getHost() + ":" + node.getPort());
         }
 
+
         logger.debug("leaving connectToNode with " + returnValue);
         return returnValue;
+    }
+
+    public Bootstrap createBootstrap () {
+        Bootstrap boot = new Bootstrap();
+        boot.group(new NioEventLoopGroup());
+        boot.option(ChannelOption.SO_REUSEADDR, true);
+        boot.channel(NioSocketChannel.class);
+        boot.handler(new ChannelInitializer<SocketChannel>() {
+            public void initChannel (SocketChannel ch) {
+                ChannelPipeline cp = ch.pipeline();
+/*
+                ChannelPipeline cp = c.pipeline();
+                cp.addLast(STRING_ENCODER, new StringEncoder());
+                //cp.addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0,4,0,4));
+                cp.addLast(DECODER, new ClientChannelToNodeDecoder());
+                cp.addLast(HEART_BEAT, new HeartBeatHandler(c, null));
+                ChannelInboundMonitor in = new ChannelInboundMonitor();
+                cp.addFirst("whateverInbound", in);
+                ChannelOutboundMonitor out = new ChannelOutboundMonitor();
+                cp.addLast("whateverOutbound", out);
+
+ */
+
+                ChannelOutboundMonitor out = new ChannelOutboundMonitor();
+                cp.addLast("whateverOutbound", out);
+                cp = cp;
+            }
+        });
+
+        return boot;
+    }
+
+
+    public void doEcho (String host, int port) throws IOException {
+        Bootstrap boot = new Bootstrap();
+        boot.group(new NioEventLoopGroup());
+        boot.channel(NioSocketChannel.class);
+        boot.option(ChannelOption.SO_REUSEADDR, true);
+        boot.handler(new ChannelInitializer<SocketChannel>() {
+                         public void initChannel(SocketChannel ch) {
+                             ch.pipeline().addLast(new EchoClientHandler());
+                         }
+                     });
+
+        InputStreamReader inputStreamReader = null;
+        BufferedReader reader = null;
+        try {
+            Echo echo = new Echo(host, port);
+
+            if (!echo.connect(boot)) {
+                throw new RuntimeException("Could not connect to echo server");
+            }
+
+            inputStreamReader = new InputStreamReader(Miranda.in);
+            reader = new BufferedReader(inputStreamReader);
+            echo.send("hi there");
+            /*
+            synchronized (this) {
+                try {
+                    wait(1);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+             */
+            echo.send("low there");
+            String line = reader.readLine();
+            while (line != null) {
+                echo.send (line);
+                line = reader.readLine();
+            }
+        } finally {
+            if (reader != null) {
+                reader.close();
+            }
+        }
+    }
+
+    public void listenForEcho () {
+        try {
+            ServerBootstrap bootstrap = new ServerBootstrap();
+            SocketAddress address = new InetSocketAddress(Miranda.getInstance().getMyHost(), 4040);
+            bootstrap.localAddress(address);
+            bootstrap.group(new NioEventLoopGroup());
+            bootstrap.channel(NioServerSocketChannel.class);
+            bootstrap.option(ChannelOption.SO_REUSEADDR, true);
+            bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
+            bootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
+                public void initChannel(SocketChannel ch) throws Exception {
+                    ChannelPipeline cp = ch.pipeline();
+                    cp.addLast(new EchoServerHandler());
+                }
+            });
+
+            ChannelFuture future = bootstrap.bind();
+            future.await();
+            if (!future.isSuccess()) {
+                Miranda.out.println(future.exceptionNow());
+                throw new RuntimeException(future.exceptionNow());
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -1062,6 +1191,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
                 ch.pipeline().addLast("whateverOutbound", new ChannelOutboundMonitor());
             }
         });
+
         serverBootstrap.validate();
         ChannelFuture channelFuture = serverBootstrap.bind(port);
         try {
