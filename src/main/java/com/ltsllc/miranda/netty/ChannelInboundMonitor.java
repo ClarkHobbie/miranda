@@ -10,7 +10,7 @@ import org.apache.logging.log4j.Logger;
 import java.nio.charset.Charset;
 
 /**
- * A {@link ChannelInboundHandlerAdapter} that logs its messages and converts them to strings.
+ * A {@link ChannelInboundHandlerAdapter} that logs its messages.
  */
 public class ChannelInboundMonitor extends ChannelInboundHandlerAdapter {
 
@@ -23,6 +23,7 @@ public class ChannelInboundMonitor extends ChannelInboundHandlerAdapter {
                 String s = byteBuf.toString(Charset.defaultCharset());
                 logger.debug(s);
             }
+            ctx.fireChannelRead(msg);
         } finally {
             ReferenceCountUtil.release(msg);
         }

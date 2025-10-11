@@ -79,7 +79,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         this.host = host;
         this.port = port;
 
-        if (channel != null && this.uuid.equals(Miranda.getInstance().getMyUuid())) {
+        if (channel != null && this.uuid != null && this.uuid.equals(Miranda.getInstance().getMyUuid())) {
             ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
             if (!(channelHandler instanceof HeartBeatHandler)) {
                 throw new RuntimeException("couldn't find HeartBeatHandler");
@@ -134,7 +134,20 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     }
 
     public void setUuid(UUID uuid) {
+        boolean wasNull = (this.uuid == null);
         this.uuid = uuid;
+
+        if (wasNull && this.uuid != null) {
+            if (channel != null && this.uuid.equals(Miranda.getInstance().getMyUuid())) {
+                ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
+                if (!(channelHandler instanceof HeartBeatHandler)) {
+                    throw new RuntimeException("couldn't find HeartBeatHandler");
+                } else {
+                    HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
+                    heartBeatHandler.setLoopback(true);
+                }
+            }
+        }
     }
 
 
@@ -198,7 +211,11 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     }
 
     public void setIsLoopback(boolean value) {
+        boolean wasFalse = (!isLoopback);
         isLoopback = value;
+        if (wasFalse && isLoopback) {
+            Cluster.getInstance().removeNode(this);
+        }
     }
 
     /**

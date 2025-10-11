@@ -37,6 +37,21 @@ public class ServerChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
     public ServerChannelToNodeDecoder (String newName) {
         setName(newName);
     }
+
+    public void channelActive(ChannelHandlerContext context) {
+        if (node == null) {
+            node = new Node(null,null, -1, context.channel());
+            Cluster.getInstance().addNode(node);
+        }
+
+        //
+        // if this is a loopback then remove it
+        //
+        if (node.getIsLoopback()) {
+            Cluster.getInstance().removeNode(node);
+        }
+    }
+
     /**
      * This method handles the situation where another node connects to us
      * @param ctx The context in which this took place.
@@ -45,24 +60,11 @@ public class ServerChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
      * @throws IOException This exception is thrown by the node when the message is delivered.
      */
     public void channelRead(ChannelHandlerContext ctx, Object message) throws LtsllcException, IOException {
-        String s = ((ByteBuf) message).toString(Charset.defaultCharset());
-        ((ByteBuf)message).release();
+        if (message instanceof ByteBuf) {
+            String s = ((ByteBuf) message).toString(Charset.defaultCharset());
+            ((ByteBuf) message).release();
 
-        //
-        // if this is a new connection then make a new node for it
-        //
-        if (node == null) {
-            node = new Node(null,null, -1, ctx.channel());
-            Cluster.getInstance().addNode(node);
-        }
-
-        node.messageReceived(s);
-
-        //
-        // if this is a loopback then remove it
-        //
-        if (node.getIsLoopback()) {
-            Cluster.getInstance().removeNode(node);
+            node.messageReceived(s);
         }
     }
 }

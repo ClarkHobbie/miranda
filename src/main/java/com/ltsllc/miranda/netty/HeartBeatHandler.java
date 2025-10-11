@@ -128,7 +128,7 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
                 if (s.equals(Node.HEART_BEAT)) {
                     metTimeout = true;
                     online = true;
-                } else if (s.equals(Node.HEART_BEAT_START)) {
+                } else if (s.startsWith(Node.HEART_BEAT_START)) {
                     channelHandlerContext.writeAndFlush(Node.HEART_BEAT);
                 } else {
                     list.add(byteBuf);
@@ -204,6 +204,11 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
                     ChannelFuture future = channel.writeAndFlush(byteBuf);
                     long delay = Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_TIMEOUT);
                     AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT_TIMEOUT, delay);
+                    try {
+                        future.await();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
                     /*
                     Throwable t = future.exceptionNow();
                     if (t  != null) {

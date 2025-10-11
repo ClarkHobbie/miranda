@@ -5,6 +5,7 @@ import com.ltsllc.miranda.cluster.Node;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelPipeline;
 import io.netty.util.ReferenceCountUtil;
 
 import java.io.IOException;
@@ -14,6 +15,12 @@ import java.io.IOException;
  */
 public class ClientChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
     protected Node node;
+    protected ChannelPipeline  pipeline;
+
+    public ClientChannelToNodeDecoder (ChannelPipeline pipeline) {
+        this.pipeline =  pipeline;
+        node = node;
+    }
 
     public Node getNode() {
         return node;
@@ -28,20 +35,26 @@ public class ClientChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
      * @param ctx The context in which it was received
      * @param message The message
      */
-    public void channelRead (ChannelHandlerContext ctx, Object message) throws LtsllcException, IOException, CloneNotSupportedException {
+    public void channelRead (ChannelHandlerContext ctx, ByteBuf message) throws LtsllcException, IOException, CloneNotSupportedException {
         try {
             if (node.getChannel() == null) {
                 node.setChannel(ctx.channel());
             }
 
             String s = null;
+            /*
             if (message instanceof ByteBuf) {
                 ByteBuf byteBuf = (ByteBuf) message;
-                s = byteBuf.toString();
+
+             */
+                s = message.toString();
+            /*
             } else {
                 s = (String) message;
             }
 
+
+             */
             node.messageReceived(s);
         } finally {
             if (message instanceof ByteBuf) {
