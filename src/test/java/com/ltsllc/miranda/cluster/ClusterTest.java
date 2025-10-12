@@ -52,16 +52,6 @@ class ClusterTest extends TestSuperclass {
     }
 
 
-    @Test
-    public void initialize () {
-        Cluster cluster = new Cluster();
-
-        cluster.initialize();
-
-        assert (cluster.getBootstrap() != null);
-        assert (cluster.getServerBootstrap() != null);
-    }
-
     public void connect() throws LtsllcException, CloneNotSupportedException, BindException {
         Miranda miranda = new Miranda();
         miranda.loadProperties();

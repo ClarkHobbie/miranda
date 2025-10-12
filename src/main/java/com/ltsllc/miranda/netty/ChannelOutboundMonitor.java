@@ -21,14 +21,14 @@ public class ChannelOutboundMonitor extends ChannelOutboundHandlerAdapter {
     }
     public void write (ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
         try {
+            String s = null;
             if (msg instanceof ByteBuf) {
                 ByteBuf byteBuf = (ByteBuf) msg;
-                String s = byteBuf.toString(Charset.defaultCharset());
-                logger.debug(s);
+                s = byteBuf.toString(Charset.defaultCharset());
             } else if (msg instanceof String) {
-                logger.debug(msg);
+                s = (String) msg;
             }
-            ctx.write(msg, promise);
+            logger.debug(s);
         } finally {
             //ReferenceCountUtil.release(msg);
         }
