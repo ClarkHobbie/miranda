@@ -18,14 +18,26 @@ public class ChannelInboundMonitor extends ChannelInboundHandlerAdapter {
 
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         try {
+            String s = null;
             if (msg instanceof ByteBuf) {
                 ByteBuf byteBuf = (ByteBuf) msg;
-                String s = byteBuf.toString(Charset.defaultCharset());
-                logger.debug(s);
+                s = byteBuf.toString(Charset.defaultCharset());
             }
+            else if (msg instanceof String){
+                String temp = (String) msg;
+                s = temp;
+            } else {
+                logger.error("unknown message: " + msg.hashCode());
+                return;
+            }
+            logger.debug(s);
             ctx.fireChannelRead(msg);
         } finally {
-            ReferenceCountUtil.release(msg);
+            //ReferenceCountUtil.release(msg);
         }
+    }
+
+    public void exceptionCaught (ChannelHandlerContext ctx, Throwable cause) {
+        logger.error (cause);
     }
 }

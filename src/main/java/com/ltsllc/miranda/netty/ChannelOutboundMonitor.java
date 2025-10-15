@@ -1,6 +1,8 @@
 package com.ltsllc.miranda.netty;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.buffer.UnpooledByteBufAllocator;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
@@ -19,6 +21,7 @@ public class ChannelOutboundMonitor extends ChannelOutboundHandlerAdapter {
     public ChannelOutboundMonitor() {
         logger = logger;
     }
+
     public void write (ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
         try {
             String s = null;
@@ -29,8 +32,14 @@ public class ChannelOutboundMonitor extends ChannelOutboundHandlerAdapter {
                 s = (String) msg;
             }
             logger.debug(s);
+            // ctx.fireChannelWritabilityChanged();
         } finally {
             //ReferenceCountUtil.release(msg);
         }
     }
+
+    public void exceptionCaught (ChannelHandlerContext ctx, Throwable cause) {
+        logger.error (cause);
+    }
+
 }

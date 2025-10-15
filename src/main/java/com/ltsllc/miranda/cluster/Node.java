@@ -14,6 +14,8 @@ import com.ltsllc.miranda.message.MessageType;
 import com.ltsllc.miranda.netty.HeartBeatHandler;
 import com.ltsllc.miranda.properties.PropertyChangedEvent;
 import com.ltsllc.miranda.properties.PropertyListener;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
@@ -754,8 +756,9 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
 
         // ChannelOutputShutdownEvent
+        ByteBuf buf = Unpooled.copiedBuffer(stringBuilder.toString().getBytes());
 
-        ChannelFuture future = channel.writeAndFlush(stringBuilder.toString());
+        ChannelFuture future = channel.writeAndFlush(buf);
 
         if (uuid != null && uuid.equals(Miranda.getInstance().getMyUuid())) {
             isLoopback = true;

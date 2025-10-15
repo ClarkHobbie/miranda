@@ -7,6 +7,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelPipeline;
 import io.netty.util.ReferenceCountUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 
@@ -14,6 +16,7 @@ import java.io.IOException;
  * A ChannelInboundHandlerAdapter that translates ByteBufs to Strings
  */
 public class ClientChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
+    public static Logger logger = LogManager.getLogger(ClientChannelToNodeDecoder.class);
     protected Node node;
     protected ChannelPipeline  pipeline;
 
@@ -37,6 +40,7 @@ public class ClientChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
      */
     public void channelRead (ChannelHandlerContext ctx, ByteBuf message) throws LtsllcException, IOException, CloneNotSupportedException {
         try {
+            logger.debug("entering channelRead");
             if (node.getChannel() == null) {
                 node.setChannel(ctx.channel());
             }
@@ -64,5 +68,7 @@ public class ClientChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
         }
     }
 
-
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        logger.error(cause);
+    }
 }
