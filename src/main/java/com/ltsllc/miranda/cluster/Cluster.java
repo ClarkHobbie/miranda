@@ -254,9 +254,9 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         boot.childHandler(new ChannelInitializer<Channel>() {
             public void initChannel(Channel c) {
                 ChannelPipeline cp = c.pipeline();
-                cp.addLast(STRING_ENCODER, new StringEncoder());
+                //cp.addLast(STRING_ENCODER, new StringEncoder());
                 cp.addLast(DECODER, new ServerChannelToNodeDecoder("#" + nodeCount++));
-                cp.addLast(HEART_BEAT, new HeartBeatHandler(c, null));
+                //cp.addLast(HEART_BEAT, new HeartBeatHandler(c, null));
                 ChannelInboundMonitor in = new ChannelInboundMonitor();
                 cp.addFirst("whateverInbound", in);
                 ChannelOutboundMonitor out = new ChannelOutboundMonitor();
@@ -264,7 +264,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
             }
         });
 
-        boot.childOption(ChannelOption.AUTO_READ, false);
+        //boot.childOption(ChannelOption.AUTO_READ, false);
 
         return boot;
     }
@@ -394,19 +394,14 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         listen(port);
         connectNodes(list);
         // listenForEcho();
-/*
 
+/*
         try {
             doEcho("10.0.0.49", 4040);
         } catch (Exception e) {
             // swallow it
         }
-
- */
-
-
-
-
+*/
 
     }
 
@@ -572,7 +567,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
                 ChannelPipeline cp = ch.pipeline();
 
                 cp.addLast(STRING_ENCODER, new StringEncoder());
-                //cp.addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0,4,0,4));
+                cp.addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0,4,0,4));
                 cp.addLast(DECODER, new ClientChannelToNodeDecoder(cp));
                 cp.addLast(HEART_BEAT, new HeartBeatHandler(ch, null));
                 ChannelInboundMonitor in = new ChannelInboundMonitor();

@@ -32,7 +32,8 @@ public class ChannelOutboundMonitor extends ChannelOutboundHandlerAdapter {
                 s = (String) msg;
             }
             logger.debug(s);
-            // ctx.fireChannelWritabilityChanged();
+            ctx.write(msg);
+            //ctx.fireChannelRead(msg);
         } finally {
             //ReferenceCountUtil.release(msg);
         }

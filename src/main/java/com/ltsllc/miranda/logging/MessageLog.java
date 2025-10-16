@@ -92,7 +92,6 @@ public class MessageLog implements PropertyListener {
         ImprovedFile messageLog = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_MESSAGE_LOG));
         int loadLimit = Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CACHE_LOAD_LIMIT);
         cache = new LoggingCache(messageLog, loadLimit);
-        cache.setupCompaction();
         ImprovedFile ownerLog = new ImprovedFile(Miranda.getProperties().getProperty(Miranda.PROPERTY_OWNER_FILE));
         uuidToOwner = new LoggingMap(ownerLog);
         messageEventLogger = new MessageEventLogger();

@@ -74,6 +74,7 @@ public class LoggingCache implements Alarmable{
     public LoggingCache (ImprovedFile logfile, int loadLimit) {
         file = logfile;
         this.loadLimit = loadLimit;
+        setupCompaction();
 
         try {
             loadMessages();
