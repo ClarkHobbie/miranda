@@ -6,6 +6,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
 
+import java.nio.charset.Charset;
+
 /**
  * Add a null byte to the end of outgoing messages.
  */
@@ -15,7 +17,7 @@ public class NullTerminatedOutboundFrame extends ChannelOutboundHandlerAdapter {
 
         if (msg instanceof ByteBuf) {
             ByteBuf byteBuf = (ByteBuf) msg;
-            s = byteBuf.toString();
+            s = byteBuf.toString(Charset.defaultCharset());
         } else if (msg instanceof String) {
             s = (String) msg;
         }
