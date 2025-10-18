@@ -60,6 +60,7 @@ public class ClientChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
 
              */
             node.messageReceived(s);
+            ctx.fireChannelRead(message);
         } finally {
             if (message instanceof ByteBuf) {
                 ByteBuf byteBuf = (ByteBuf) message;
