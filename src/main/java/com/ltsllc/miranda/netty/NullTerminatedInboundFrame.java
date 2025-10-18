@@ -24,7 +24,7 @@ public class NullTerminatedInboundFrame extends ChannelInboundHandlerAdapter {
 
         int index = s.indexOf('\u0000');
         while (index != -1) {
-            String frame = s.substring(0, index - 1);
+            String frame = s.substring(0, index);
             ctx.fireChannelRead(frame);
             s = s.substring(index + 1, s.length());
             index = s.indexOf('\u0000');
