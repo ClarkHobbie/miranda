@@ -6,6 +6,8 @@ import com.ltsllc.miranda.cluster.Node;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -14,6 +16,8 @@ import java.nio.charset.Charset;
  * This class takes care of a node connecting to us
  */
 public class ServerChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
+    public static Logger logger = LogManager.getLogger(ServerChannelToNodeDecoder.class);
+
     protected Node node;
     protected String name;
 
@@ -60,11 +64,21 @@ public class ServerChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
      * @throws IOException This exception is thrown by the node when the message is delivered.
      */
     public void channelRead(ChannelHandlerContext ctx, Object message) throws LtsllcException, IOException {
+        String s = null;
         if (message instanceof ByteBuf) {
-            String s = ((ByteBuf) message).toString(Charset.defaultCharset());
+            s = ((ByteBuf) message).toString(Charset.defaultCharset());
             ((ByteBuf) message).release();
-
-            node.messageReceived(s);
+        } else if (message instanceof String) {
+            s = ((String) message);
+        } else {
+            logger.error("unknown message type: " + message.getClass());
+            s = "unknown";
         }
+
+        if (node == null) {
+            logger.error ("null node");
+        }
+
+        node.messageReceived(s);
     }
 }
