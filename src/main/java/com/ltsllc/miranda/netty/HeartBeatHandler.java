@@ -11,6 +11,7 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.ByteToMessageCodec;
 import io.netty.handler.codec.MessageToMessageCodec;
 import io.netty.util.CharsetUtil;
 import io.netty.util.ReferenceCountUtil;
@@ -18,13 +19,14 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.List;
 import java.util.UUID;
 
 /**
  * A class that enforces the heart beat protocol
  */
-public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> implements Alarmable {
+public class HeartBeatHandler extends ByteToMessageCodec<ByteBuf> implements Alarmable {
     protected static final Logger logger = LogManager.getLogger(HeartBeatHandler.class);
 
     protected Node node = null;
@@ -98,14 +100,32 @@ public class HeartBeatHandler extends MessageToMessageCodec<ByteBuf, String> imp
                 Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL));
     }
 
-
+/*
     @Override
     protected void encode(ChannelHandlerContext channelHandlerContext, String s, List<Object> list) {
+
+
         if (!isLoopback) {
             timeOfLastActivity = System.currentTimeMillis();
             list.add(s);
         }
+
+
    }
+*/
+
+    @Override
+    protected void encode(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf, ByteBuf byteBuf2) throws Exception {
+        if (!isLoopback) {
+            timeOfLastActivity = System.currentTimeMillis();
+        }
+        String s = byteBuf.toString(Charset.defaultCharset());
+        if (s.startsWith(Node.HEART_BEAT_START)) {
+            sendHeartBeat();
+        } else {
+            byteBuf2 = byteBuf;
+        }
+    }
 
     /**
      * Decode a heart beat message.

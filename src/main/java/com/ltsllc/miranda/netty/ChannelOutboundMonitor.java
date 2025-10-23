@@ -33,9 +33,11 @@ public class ChannelOutboundMonitor extends ChannelOutboundHandlerAdapter {
             }
             logger.debug(s);
             ctx.write(msg);
-            //ctx.fireChannelRead(msg);
         } finally {
-            //ReferenceCountUtil.release(msg);
+            if (msg instanceof ByteBuf) {
+                ByteBuf byteBuf = (ByteBuf) msg;
+                byteBuf.release();
+            }
         }
     }
 

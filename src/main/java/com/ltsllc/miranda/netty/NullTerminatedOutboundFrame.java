@@ -18,6 +18,7 @@ public class NullTerminatedOutboundFrame extends ChannelOutboundHandlerAdapter {
         if (msg instanceof ByteBuf) {
             ByteBuf byteBuf = (ByteBuf) msg;
             s = byteBuf.toString(Charset.defaultCharset());
+            byteBuf.release();
         } else if (msg instanceof String) {
             s = (String) msg;
         }
@@ -27,6 +28,5 @@ public class NullTerminatedOutboundFrame extends ChannelOutboundHandlerAdapter {
         stringBuilder.append('\u0000');
         msg = Unpooled.copiedBuffer(stringBuilder.toString().getBytes());
         ctx.write(msg, promise);
-        ((ByteBuf) msg).release();
     }
 }

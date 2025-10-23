@@ -256,9 +256,9 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         boot.childHandler(new ChannelInitializer<Channel>() {
             public void initChannel(Channel c) {
                 ChannelPipeline cp = c.pipeline();
-                cp.addLast(STRING_ENCODER, new StringEncoder());
-                cp.addLast(DECODER, new ServerChannelToNodeDecoder("#" + nodeCount++));
+                //cp.addLast(STRING_ENCODER, new StringEncoder());
                 cp.addLast(HEART_BEAT, new HeartBeatHandler(c, null));
+                cp.addLast(DECODER, new ServerChannelToNodeDecoder("#" + nodeCount++));
                 ChannelInboundMonitor in = new ChannelInboundMonitor();
                 cp.addFirst("whateverInbound", in);
                 NullTerminatedInboundFrame ntif = new NullTerminatedInboundFrame();
@@ -572,10 +572,11 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
             public void initChannel (SocketChannel ch) {
                 ChannelPipeline cp = ch.pipeline();
 
-                cp.addLast(STRING_ENCODER, new StringEncoder());
-                cp.addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0,4,0,4));
-                cp.addLast(DECODER, new ClientChannelToNodeDecoder(cp));
+                //cp.addLast(STRING_ENCODER, new StringEncoder());
+                //cp.addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0,4,0,4));
+
                 cp.addLast(HEART_BEAT, new HeartBeatHandler(ch, null));
+                cp.addLast(DECODER, new ClientChannelToNodeDecoder(cp));
                 ChannelInboundMonitor in = new ChannelInboundMonitor();
                 cp.addFirst("whateverInbound", in);
                 NullTerminatedInboundFrame ntif = new NullTerminatedInboundFrame();
@@ -584,7 +585,6 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
                 cp.addLast("whateverOutbound", out);
                 NullTerminatedOutboundFrame ntof = new NullTerminatedOutboundFrame();
                 cp.addLast(NULL_FRAME_OUTBOUND, ntof);
-                cp = cp;
             }
         });
 
