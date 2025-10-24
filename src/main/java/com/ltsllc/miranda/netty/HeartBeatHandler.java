@@ -124,6 +124,7 @@ public class HeartBeatHandler extends ByteToMessageCodec<ByteBuf> implements Ala
             sendHeartBeat();
         } else {
             byteBuf2 = byteBuf;
+            channelHandlerContext.writeAndFlush(byteBuf2);
         }
     }
 
@@ -145,7 +146,7 @@ public class HeartBeatHandler extends ByteToMessageCodec<ByteBuf> implements Ala
             if (!isLoopback) {
                 String s = byteBuf.toString(CharsetUtil.UTF_8);
                 timeOfLastActivity = System.currentTimeMillis();
-                if (s.equals(Node.HEART_BEAT)) {
+                if (s.startsWith(Node.HEART_BEAT)) {
                     metTimeout = true;
                     online = true;
                 } else if (s.startsWith(Node.HEART_BEAT_START)) {

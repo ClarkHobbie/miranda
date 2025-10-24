@@ -27,6 +27,6 @@ public class NullTerminatedOutboundFrame extends ChannelOutboundHandlerAdapter {
         stringBuilder.append(s);
         stringBuilder.append('\u0000');
         msg = Unpooled.copiedBuffer(stringBuilder.toString().getBytes());
-        ctx.write(msg, promise);
+        ctx.writeAndFlush(msg, promise);
     }
 }

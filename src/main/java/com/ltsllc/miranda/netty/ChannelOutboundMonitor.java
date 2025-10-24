@@ -3,6 +3,7 @@ package com.ltsllc.miranda.netty;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.buffer.UnpooledByteBufAllocator;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
@@ -17,6 +18,7 @@ import java.nio.charset.Charset;
  */
 public class ChannelOutboundMonitor extends ChannelOutboundHandlerAdapter {
     private Logger logger = LogManager.getLogger(ChannelOutboundMonitor.class);
+    public Channel channel;
 
     public ChannelOutboundMonitor() {
         logger = logger;
@@ -24,6 +26,9 @@ public class ChannelOutboundMonitor extends ChannelOutboundHandlerAdapter {
 
     public void write (ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
         try {
+            if (channel == null) {
+                channel = ctx.channel();
+            }
             String s = null;
             if (msg instanceof ByteBuf) {
                 ByteBuf byteBuf = (ByteBuf) msg;
@@ -31,8 +36,9 @@ public class ChannelOutboundMonitor extends ChannelOutboundHandlerAdapter {
             } else if (msg instanceof String) {
                 s = (String) msg;
             }
-            logger.debug(s);
-            ctx.write(msg);
+            String message = s + channel.toString();
+            logger.debug(message);
+            ctx.writeAndFlush(msg);
         } finally {
             if (msg instanceof ByteBuf) {
                 ByteBuf byteBuf = (ByteBuf) msg;

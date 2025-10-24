@@ -578,11 +578,11 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
                 cp.addLast(HEART_BEAT, new HeartBeatHandler(ch, null));
                 cp.addLast(DECODER, new ClientChannelToNodeDecoder(cp));
                 ChannelInboundMonitor in = new ChannelInboundMonitor();
-                cp.addFirst("whateverInbound", in);
+                //cp.addFirst("whateverInbound", in);
                 NullTerminatedInboundFrame ntif = new NullTerminatedInboundFrame();
-                cp.addFirst(NULL_FRAME_INBOUND, ntif);
+                //cp.addFirst(NULL_FRAME_INBOUND, ntif);
                 ChannelOutboundMonitor out = new ChannelOutboundMonitor();
-                cp.addLast("whateverOutbound", out);
+                //cp.addLast("whateverOutbound", out);
                 NullTerminatedOutboundFrame ntof = new NullTerminatedOutboundFrame();
                 cp.addLast(NULL_FRAME_OUTBOUND, ntof);
             }
