@@ -83,6 +83,8 @@ public class ServerChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
             logger.error ("null node");
         }
 
-        node.messageReceived(s);
+        if (!s.equalsIgnoreCase("")) {
+            node.messageReceived(s);
+        }
     }
 }
