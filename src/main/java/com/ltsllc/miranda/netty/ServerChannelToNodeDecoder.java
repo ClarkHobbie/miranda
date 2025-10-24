@@ -65,6 +65,10 @@ public class ServerChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
      */
     public void channelRead(ChannelHandlerContext ctx, Object message) throws LtsllcException, IOException {
         String s = null;
+        if (node == null) {
+            node = Cluster.getNode(ctx.channel());
+        }
+
         if (message instanceof ByteBuf) {
             s = ((ByteBuf) message).toString(Charset.defaultCharset());
             ((ByteBuf) message).release();
