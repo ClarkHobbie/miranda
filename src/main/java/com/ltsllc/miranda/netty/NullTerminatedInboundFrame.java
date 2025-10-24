@@ -33,5 +33,7 @@ public class NullTerminatedInboundFrame extends ChannelInboundHandlerAdapter {
         if (index == -1 && s.length() > 0) {
             stringBuilder.append(s);
         }
+
+        ctx.fireChannelRead(s);
     }
 }

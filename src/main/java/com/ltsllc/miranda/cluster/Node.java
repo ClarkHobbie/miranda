@@ -1016,6 +1016,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         host = scanner.next();
         port = scanner.nextInt();
         long nodeStart = scanner.nextLong();
+        nodeStart = nodeStart;
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append(START_ACKNOWLEDGED);
         stringBuffer.append(" ");

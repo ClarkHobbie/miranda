@@ -1,6 +1,7 @@
 package com.ltsllc.miranda.netty;
 
 import com.ltsllc.commons.LtsllcException;
+import com.ltsllc.miranda.cluster.Cluster;
 import com.ltsllc.miranda.cluster.Node;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
@@ -11,6 +12,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 
 /**
  * A ChannelInboundHandlerAdapter that translates ByteBufs to Strings
@@ -18,10 +20,8 @@ import java.io.IOException;
 public class ClientChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
     public static Logger logger = LogManager.getLogger(ClientChannelToNodeDecoder.class);
     protected Node node;
-    protected ChannelPipeline  pipeline;
 
     public ClientChannelToNodeDecoder (ChannelPipeline pipeline) {
-        this.pipeline =  pipeline;
         node = node;
     }
 
@@ -33,37 +33,43 @@ public class ClientChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
         this.node = node;
     }
 
+    public void channelActive (ChannelHandlerContext ctx) {
+        setNode(Cluster.getNode(ctx.channel()));
+        ctx.fireChannelActive();
+    }
     /**
      * A new message is available, translate it to a String and call messageReceived
      * @param ctx The context in which it was received
-     * @param message The message
      */
-    public void channelRead (ChannelHandlerContext ctx, ByteBuf message) throws LtsllcException, IOException, CloneNotSupportedException {
+    public void channelRead (ChannelHandlerContext ctx, Object msg) throws LtsllcException, IOException, CloneNotSupportedException {
+
         try {
             logger.debug("entering channelRead");
+            if (node == null) {
+                logger.error("null node");
+                return;
+            }
             if (node.getChannel() == null) {
                 node.setChannel(ctx.channel());
             }
 
             String s = null;
-            /*
-            if (message instanceof ByteBuf) {
-                ByteBuf byteBuf = (ByteBuf) message;
-
-             */
-                s = message.toString();
-            /*
+            if (msg instanceof ByteBuf) {
+                ByteBuf byteBuf = (ByteBuf) msg;
+                s = byteBuf.toString(Charset.defaultCharset());
             } else {
-                s = (String) message;
+                s = (String) msg;
             }
 
 
-             */
+
             node.messageReceived(s);
-            ctx.fireChannelRead(message);
+            ctx.fireChannelRead(msg);
+
+
         } finally {
-            if (message instanceof ByteBuf) {
-                ByteBuf byteBuf = (ByteBuf) message;
+            if (msg instanceof ByteBuf) {
+                ByteBuf byteBuf = (ByteBuf) msg;
                 ReferenceCountUtil.release(byteBuf);
             }
         }

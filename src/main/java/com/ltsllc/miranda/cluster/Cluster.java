@@ -103,6 +103,15 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
     protected Node leader;
     protected int nodeCount = 0;
 
+    public static Node getNode(Channel channel) {
+        for (Node node : getInstance().nodes) {
+            if (node.getChannel() == channel) {
+                return node;
+            }
+        }
+        return null;
+    }
+
     public int getNodeCount() {
         return nodeCount;
     }
@@ -575,14 +584,14 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
                 //cp.addLast(STRING_ENCODER, new StringEncoder());
                 //cp.addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0,4,0,4));
 
+                NullTerminatedInboundFrame ntif = new NullTerminatedInboundFrame();
+                cp.addLast(NULL_FRAME_INBOUND, ntif);
                 cp.addLast(HEART_BEAT, new HeartBeatHandler(ch, null));
                 cp.addLast(DECODER, new ClientChannelToNodeDecoder(cp));
                 ChannelInboundMonitor in = new ChannelInboundMonitor();
-                //cp.addFirst("whateverInbound", in);
-                NullTerminatedInboundFrame ntif = new NullTerminatedInboundFrame();
-                //cp.addFirst(NULL_FRAME_INBOUND, ntif);
+                cp.addLast("whateverInbound", in);
                 ChannelOutboundMonitor out = new ChannelOutboundMonitor();
-                //cp.addLast("whateverOutbound", out);
+                cp.addLast("whateverOutbound", out);
                 NullTerminatedOutboundFrame ntof = new NullTerminatedOutboundFrame();
                 cp.addLast(NULL_FRAME_OUTBOUND, ntof);
             }

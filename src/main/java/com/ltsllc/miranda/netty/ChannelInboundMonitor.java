@@ -22,12 +22,13 @@ public class ChannelInboundMonitor extends ChannelInboundHandlerAdapter {
             if (msg instanceof ByteBuf) {
                 ByteBuf byteBuf = (ByteBuf) msg;
                 s = byteBuf.toString(Charset.defaultCharset());
+                byteBuf.release();
             }
             else if (msg instanceof String){
                 String temp = (String) msg;
                 s = temp;
             } else {
-                logger.error("unknown message: " + msg.hashCode());
+                logger.error("unknown message: " + msg.toString());
                 return;
             }
             logger.debug(s);

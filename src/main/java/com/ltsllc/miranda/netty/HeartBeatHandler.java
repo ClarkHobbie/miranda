@@ -142,22 +142,19 @@ public class HeartBeatHandler extends ByteToMessageCodec<ByteBuf> implements Ala
      */
     @Override
     protected void decode(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf, List<Object> list) {
-        try {
-            if (!isLoopback) {
-                String s = byteBuf.toString(CharsetUtil.UTF_8);
-                timeOfLastActivity = System.currentTimeMillis();
-                if (s.startsWith(Node.HEART_BEAT)) {
-                    metTimeout = true;
-                    online = true;
-                } else if (s.startsWith(Node.HEART_BEAT_START)) {
-                    channelHandlerContext.writeAndFlush(Node.HEART_BEAT);
-                } else {
-                    list.add(byteBuf);
-                }
+        if (!isLoopback) {
+            String s = byteBuf.toString(CharsetUtil.UTF_8);
+            timeOfLastActivity = System.currentTimeMillis();
+            if (s.startsWith(Node.HEART_BEAT)) {
+                metTimeout = true;
+                online = true;
+                byteBuf.release();
+            } else if (s.startsWith(Node.HEART_BEAT_START)) {
+                channelHandlerContext.writeAndFlush(Node.HEART_BEAT);
+                byteBuf.release();
+            } else {
+                list.add(byteBuf);
             }
-        }
-        finally {
-            ReferenceCountUtil.release(byteBuf);
         }
     }
 
