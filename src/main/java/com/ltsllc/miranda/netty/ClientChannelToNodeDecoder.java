@@ -46,8 +46,7 @@ public class ClientChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
         try {
             logger.debug("entering channelRead");
             if (node == null) {
-                logger.error("null node");
-                return;
+                node = Cluster.getNode(ctx.channel());
             }
             if (node.getChannel() == null) {
                 node.setChannel(ctx.channel());
