@@ -10,6 +10,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.nio.charset.Charset;
 
 /**
@@ -86,5 +87,9 @@ public class ServerChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
         if (!s.equalsIgnoreCase("")) {
             node.messageReceived(s);
         }
+    }
+
+    public void exceptionCaught (ChannelHandlerContext ctx, Throwable cause) {
+        cause = cause;
     }
 }

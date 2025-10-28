@@ -95,6 +95,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
 
     public static final String STRING_ENCODER = "STRING";
     public static final String HEART_BEAT = "HEARTBEAT";
+    public static final String HEAT_BEAT_OUTBOUND = "HEARTBEAT_OUTBOUND";
     public static final String DECODER = "DECODER";
     public static final String LENGTH = "LENGTH";
     public static final String NULL_FRAME_INBOUND = "NULL_FRAME_INBOUND";
@@ -105,8 +106,10 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
 
     public static Node getNode(Channel channel) {
         for (Node node : getInstance().nodes) {
-            if (node.getChannel() == channel) {
-                return node;
+            if (node.getChannel() != null) {
+                if (node.getChannel().equals(channel)) {
+                    return node;
+                }
             }
         }
         return null;
@@ -261,21 +264,25 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         boot.channel(NioServerSocketChannel.class);
         boot.option(ChannelOption.SO_BACKLOG, 128);
         boot.option(ChannelOption.SO_REUSEADDR, true);
-        //boot.option(ChannelOption.SO_KEEPALIVE, true);
+        boot.option(ChannelOption.SO_KEEPALIVE, true);
         boot.childHandler(new ChannelInitializer<Channel>() {
             public void initChannel(Channel c) {
                 ChannelPipeline cp = c.pipeline();
-                //cp.addLast(STRING_ENCODER, new StringEncoder());
-                cp.addLast(HEART_BEAT, new HeartBeatHandler(c, null));
-                cp.addLast(DECODER, new ServerChannelToNodeDecoder("#" + nodeCount++));
-                ChannelInboundMonitor in = new ChannelInboundMonitor();
-                cp.addFirst("whateverInbound", in);
-                NullTerminatedInboundFrame ntif = new NullTerminatedInboundFrame();
-                cp.addFirst(NULL_FRAME_INBOUND, ntif);
-                ChannelOutboundMonitor out = new ChannelOutboundMonitor();
-                cp.addLast("whateverOutbound", out);
                 NullTerminatedOutboundFrame ntof = new NullTerminatedOutboundFrame();
+                ChannelInboundMonitor in = new ChannelInboundMonitor();
+                cp.addLast("whateverInbound", in);
+                Long l = new Long(0);
+                Boolean b = new Boolean(false);
+                cp.addLast(HEART_BEAT, new InboundHeartBeatHandler(c, l, b));
+                cp.addLast(HEAT_BEAT_OUTBOUND, new OutboundHeartBeatHandler(c, l, b));
+                ChannelOutboundMonitor out = new ChannelOutboundMonitor("server");
+                cp.addLast("whateverOutbound", out);
+                cp.addLast(DECODER, new ServerChannelToNodeDecoder("#" + nodeCount++));
                 cp.addLast(NULL_FRAME_OUTBOUND, ntof);
+                //cp.addLast(STRING_ENCODER, new StringEncoder());
+                NullTerminatedInboundFrame ntif = new NullTerminatedInboundFrame();
+                cp.addLast(NULL_FRAME_INBOUND, ntif);
+                //cp.addLast (new DoNothingOutboundChannelHandler("server"));
             }
         });
 
@@ -323,7 +330,6 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
                 throw new RuntimeException("no heartbeat handler");
             } else {
                 HeartBeatHandler heartBeatHandler = (HeartBeatHandler) handler;
-                heartBeatHandler.setLoopback(true);
             }
         }
     }
@@ -495,6 +501,8 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
             nodes.add(node);
             if (node.connect()) {
                 allNodesFailed = false;
+            } else {
+                nodes.remove(node);
             }
         }
 
@@ -576,6 +584,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         Bootstrap boot = new Bootstrap();
         boot.group(new NioEventLoopGroup());
         boot.option(ChannelOption.SO_REUSEADDR, true);
+        boot.option(ChannelOption.SO_KEEPALIVE, true);
         boot.channel(NioSocketChannel.class);
         boot.handler(new ChannelInitializer<SocketChannel>() {
             public void initChannel (SocketChannel ch) {
@@ -583,17 +592,23 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
 
                 //cp.addLast(STRING_ENCODER, new StringEncoder());
                 //cp.addLast(LENGTH, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0,4,0,4));
-
-                NullTerminatedInboundFrame ntif = new NullTerminatedInboundFrame();
-                cp.addLast(NULL_FRAME_INBOUND, ntif);
-                cp.addLast(HEART_BEAT, new HeartBeatHandler(ch, null));
-                cp.addLast(DECODER, new ClientChannelToNodeDecoder(cp));
-                ChannelInboundMonitor in = new ChannelInboundMonitor();
-                cp.addLast("whateverInbound", in);
-                ChannelOutboundMonitor out = new ChannelOutboundMonitor();
-                cp.addLast("whateverOutbound", out);
+                //cp.addLast("whatever", new DoNothingOutboundChannelHandler("fist"));
+                //cp.addLast("NOTHING", new DoNothingInboundChannelHandler())
                 NullTerminatedOutboundFrame ntof = new NullTerminatedOutboundFrame();
                 cp.addLast(NULL_FRAME_OUTBOUND, ntof);
+                ChannelOutboundMonitor out = new ChannelOutboundMonitor("client");
+                cp.addLast("whateverOutbound", out);
+                NullTerminatedInboundFrame ntif = new NullTerminatedInboundFrame();
+                cp.addLast(NULL_FRAME_INBOUND, ntif);
+                ChannelInboundMonitor in = new ChannelInboundMonitor();
+                cp.addLast("whateverInbound", in);
+                Long l = new Long(0);
+                Boolean b = new Boolean(false);
+                cp.addLast(HEART_BEAT, new InboundHeartBeatHandler(ch, l, b));
+                cp.addLast(HEAT_BEAT_OUTBOUND, new OutboundHeartBeatHandler(ch, l, b));
+                cp.addLast(DECODER, new ClientChannelToNodeDecoder(cp));
+                //cp.addLast("last", new DoNothingInboundChannelHandler());
+                //cp.addLast("lastOne", new DoNothingOutboundChannelHandler("last"));
             }
         });
 

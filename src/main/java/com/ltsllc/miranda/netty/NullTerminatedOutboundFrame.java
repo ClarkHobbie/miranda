@@ -15,10 +15,10 @@ public class NullTerminatedOutboundFrame extends ChannelOutboundHandlerAdapter {
     public void write (ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
         String s = null;
 
+        ByteBuf byteBuf = null;
         if (msg instanceof ByteBuf) {
-            ByteBuf byteBuf = (ByteBuf) msg;
+            byteBuf = (ByteBuf) msg;
             s = byteBuf.toString(Charset.defaultCharset());
-            byteBuf.release();
         } else if (msg instanceof String) {
             s = (String) msg;
         }
@@ -27,6 +27,13 @@ public class NullTerminatedOutboundFrame extends ChannelOutboundHandlerAdapter {
         stringBuilder.append(s);
         stringBuilder.append('\u0000');
         msg = Unpooled.copiedBuffer(stringBuilder.toString().getBytes());
-        ctx.writeAndFlush(msg, promise);
+        byte[] bytes = ((ByteBuf) msg).array();
+        s = ((ByteBuf) msg).toString(Charset.defaultCharset());
+        ctx.write(msg, promise);
+    }
+
+    public void exceptionCaught (ChannelHandlerContext ctx, Throwable cause) {
+        int i = 0;
+        i++;
     }
 }

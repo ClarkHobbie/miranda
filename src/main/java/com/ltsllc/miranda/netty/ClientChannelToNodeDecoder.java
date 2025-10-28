@@ -45,9 +45,12 @@ public class ClientChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
 
         try {
             logger.debug("entering channelRead");
+
             if (node == null) {
-                node = Cluster.getNode(ctx.channel());
+                node = new Node(null, null, -1, ctx.channel());
+                Cluster.getInstance().addNode(node);
             }
+
             if (node.getChannel() == null) {
                 node.setChannel(ctx.channel());
             }
@@ -60,15 +63,13 @@ public class ClientChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
                 s = (String) msg;
             }
 
-            if (!s.equalsIgnoreCase("")) {
-                node.messageReceived(s);
-                ctx.fireChannelRead(msg);
-            }
+            node.messageReceived(s);
+            ctx.fireChannelRead(msg);
         } finally {
-            if (msg instanceof ByteBuf) {
-                ByteBuf byteBuf = (ByteBuf) msg;
-                ReferenceCountUtil.release(byteBuf);
-            }
+            //if (msg instanceof ByteBuf) {
+                //ByteBuf byteBuf = (ByteBuf) msg;
+                //ReferenceCountUtil.release(byteBuf);
+            //}
         }
     }
 

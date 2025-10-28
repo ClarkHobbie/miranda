@@ -87,7 +87,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                 throw new RuntimeException("couldn't find HeartBeatHandler");
             } else {
                 HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
-                heartBeatHandler.setLoopback(true);
+
             }
         }
     }
@@ -146,7 +146,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                     throw new RuntimeException("couldn't find HeartBeatHandler");
                 } else {
                     HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
-                    heartBeatHandler.setLoopback(true);
+
                 }
             }
         }
@@ -675,12 +675,12 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
             isLoopback = true;
 
             ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
-            if (!(channelHandler instanceof HeartBeatHandler)) {
-                throw new RuntimeException("couldn't find HeartBeatHandler");
-            } else {
-                HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
-                heartBeatHandler.setLoopback(true);
-            }
+            //if (!(channelHandler instanceof HeartBeatHandler)) {
+                //throw new RuntimeException("couldn't find HeartBeatHandler");
+            //} else {
+                //HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
+
+            //}
         }
 
         StringBuffer stringBuffer = new StringBuffer();
@@ -767,7 +767,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                 throw new RuntimeException("couldn't find HeartBeatHandler");
             } else {
                 HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
-                heartBeatHandler.setLoopback(true);
+
             }
         } else {
             AlarmClock.getInstance().scheduleOnce(this, Alarms.START,
@@ -1030,7 +1030,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                 throw new RuntimeException("couldn't find HeartBeatHandler");
             } else {
                 HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
-                heartBeatHandler.setLoopback(true);
+
             }
         }
 
@@ -1106,7 +1106,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                 throw new RuntimeException("couldn't find HeartBeatHandler");
             } else {
                 HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
-                heartBeatHandler.setLoopback(true);
+
             }
         }
     }
@@ -1216,7 +1216,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                 throw new RuntimeException("couldn't find HeartBeatHandler");
             } else {
                 HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
-                heartBeatHandler.setLoopback(true);
+
             }
         }
 
@@ -1467,12 +1467,12 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
             ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
 
-            if (null == channelHandler || !(channelHandler instanceof HeartBeatHandler)) {
-                throw new RuntimeException("could not find HeartBeatHandler");
-            } else {
-                HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
-                heartBeatHandler.setLoopback(true);
-            }
+            //if (null == channelHandler || !(channelHandler instanceof HeartBeatHandler)) {
+                //throw new RuntimeException("could not find HeartBeatHandler");
+            //} else {
+                //HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
+
+            //}
         }
     }
 
@@ -1492,7 +1492,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                 throw new RuntimeException("couldn't find HeartBeatHandler");
             } else {
                 HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
-                heartBeatHandler.setLoopback(true);
+
             }
         }
 
@@ -1508,7 +1508,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public void registerUuid(UUID uuid) {
         ChannelHandler channelHandler = channel.pipeline().get("HEARTBEAT");
         HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
-        heartBeatHandler.setUuid(uuid);
+        //heartBeatHandler.setUuid(uuid);
     }
 
     /**

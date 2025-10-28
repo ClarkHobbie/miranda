@@ -18,6 +18,7 @@ public class NullTerminatedInboundFrame extends ChannelInboundHandlerAdapter {
         if (msg instanceof ByteBuf) {
             ByteBuf byteBuf = (ByteBuf) msg;
             s = byteBuf.toString(Charset.defaultCharset());
+            byteBuf.release();
         } else if (msg instanceof String) {
             s = (String) msg;
         }
@@ -34,6 +35,13 @@ public class NullTerminatedInboundFrame extends ChannelInboundHandlerAdapter {
             stringBuilder.append(s);
         }
 
-        ctx.fireChannelRead(s);
+        if (!s.equalsIgnoreCase("")) {
+            ctx.fireChannelRead(s);
+        }
+    }
+
+    public void exceptionCaught (ChannelHandlerContext ctx, Throwable cause) {
+        int i = 0;
+        i++;
     }
 }
