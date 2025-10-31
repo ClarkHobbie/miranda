@@ -144,7 +144,7 @@
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-bom</artifactId>
-                <version>4.2.6.Final</version> <!-- Specify your desired Netty version -->
+                <version>4.2.7.Final</version> <!-- Specify your desired Netty version -->
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -288,7 +288,7 @@
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-resolver</artifactId>
-            <version>4.2.6.Final</version> <!-- Specify your desired version -->
+            <version>4.2.7.Final</version> <!-- Specify your desired version -->
         </dependency>
     </dependencies>
 </project>

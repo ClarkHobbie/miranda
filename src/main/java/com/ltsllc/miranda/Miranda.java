@@ -542,7 +542,7 @@ public class Miranda implements PropertyListener {
             myHost = properties.getProperty(PROPERTY_THIS_HOST);
         }
 
-        setupClusterPort(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
+        //setupClusterPort(Miranda.getProperties().getIntProperty(Miranda.PROPERTY_CLUSTER_PORT));
 
         if (null == properties.getProperty(PROPERTY_THIS_PORT)) {
             String msg = "Please specify a port for this node by setting the " + PROPERTY_THIS_PORT + " property";
@@ -556,30 +556,12 @@ public class Miranda implements PropertyListener {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID);
     }
 
-    /**
-     * Setup the port for other nodes in the network
-     *
-     * @param port The port number to listen at.
-     */
+    /*
     public void setupClusterPort(int port) {
-        EventLoopGroup bossGroup = new NioEventLoopGroup();
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
-        ServerBootstrap bootstrap = new ServerBootstrap();
-        bootstrap.group(bossGroup, workerGroup);
-        bootstrap.channel(NioServerSocketChannel.class);
-        bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
-        bootstrap.option(ChannelOption.SO_REUSEADDR, true);
-        bootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
-            public void initChannel(SocketChannel ch) throws Exception {
-                ch.pipeline().addLast(Cluster.STRING_ENCODER, new StringEncoder());
-                        //new LengthFieldBasedFrameDecoder(2048, 0, 4, 0, 4),
-                ch.pipeline().addLast(Cluster.DECODER, new ServerChannelToNodeDecoder("spam"));
-                ch.pipeline().addLast(Cluster.HEART_BEAT, new HeartBeatHandler(ch, null));
-                ch.pipeline().addFirst("whatever", new ChannelMonitor());
-            }
-        });
-    }
+        ServerBootstrap boot = Cluster.();
 
+    }
+*/
 
     /**
      * Get the jetty server

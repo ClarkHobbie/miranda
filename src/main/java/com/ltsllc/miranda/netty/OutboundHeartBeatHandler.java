@@ -1,6 +1,5 @@
 package com.ltsllc.miranda.netty;
 
-import com.ltsllc.commons.LtsllcException;
 import com.ltsllc.miranda.Miranda;
 import com.ltsllc.miranda.alarm.AlarmClock;
 import com.ltsllc.miranda.alarm.Alarmable;
@@ -14,20 +13,24 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.List;
 
 public class OutboundHeartBeatHandler extends ChannelOutboundHandlerAdapter implements Alarmable {
     public static Logger logger = LogManager.getLogger(OutboundHeartBeatHandler.class);
 
+    public String direction;
     public Channel channel;
     public volatile Long timeOfLastActivity;
     public volatile Boolean metTimeout = false;
     public int iterations = 0;
+    public volatile Boolean channelIsLocked;
 
-    public OutboundHeartBeatHandler(Channel channel, Long timeOfLastActivity, Boolean metTimeout) {
+    public OutboundHeartBeatHandler(Boolean channelIsLocked, String direction, Channel channel, Long timeOfLastActivity, Boolean metTimeout) {
+        this.channelIsLocked = channelIsLocked;
+        this.direction = direction;
         this.channel = channel;
         this.timeOfLastActivity = timeOfLastActivity;
         this.metTimeout = metTimeout;
+        AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT, Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL));
     }
 
     @Override
@@ -43,12 +46,31 @@ public class OutboundHeartBeatHandler extends ChannelOutboundHandlerAdapter impl
 
         if (s.equalsIgnoreCase(Node.HEART_BEAT_START)) {
             sendHeartBeat();
+            return;
         }
 
-        ctx.write(msg, promise);
+        if (msg instanceof String) {
+            ByteBuf byteBuf = Unpooled.copiedBuffer(s.getBytes());
+            msg = byteBuf;
+        }
+
+        ChannelFuture future = ctx.writeAndFlush(msg, promise);
+        ChannelFutureListener listener = new ChannelFutureListener(){
+            @Override
+            public void operationComplete(ChannelFuture future) {
+                if (future.isSuccess()) {
+                    logger.debug(direction + " message sent successfully!");
+                } else {
+                    logger.error(direction + " Failed to send message: " + future.cause());
+                    // Optionally, close the channel on failure
+                    future.channel().close();
+                }
+            }
+        };
+        future.addListener(listener);
     }
 
-    public synchronized void sendHeartBeat() {
+    public void sendHeartBeat() {
         iterations++;
 
         if (iterations % 100 == 0) {
@@ -67,11 +89,28 @@ public class OutboundHeartBeatHandler extends ChannelOutboundHandlerAdapter impl
                     timeOfLastActivity + Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL)) {
                 String message = Node.HEART_BEAT_START;
                 ByteBuf byteBuf = Unpooled.copiedBuffer(message.getBytes());
+
+                while (channelIsLocked) {
+                    try {
+                        synchronized (this) {
+                            wait(1000);
+                        }
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                channelIsLocked = true;
                 ChannelFuture future = channel.writeAndFlush(byteBuf);
                 long delay = Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_TIMEOUT);
                 AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT_TIMEOUT, delay);
+                metTimeout = false;
                 try {
                     future.await();
+                    channelIsLocked = false;
+                    if (!future.isSuccess()) {
+                        logger.error("heartbeat start failed");
+                        future.cause().printStackTrace();
+                    }
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
@@ -96,6 +135,11 @@ public class OutboundHeartBeatHandler extends ChannelOutboundHandlerAdapter impl
         } else {
             metTimeout = false;
         }
+    }
+
+    public void exceptionCaught (ChannelHandlerContext ctx, Throwable cause) {
+        logger.error ("caught exception: " + cause);
+        logger.error(cause);
     }
 
 }

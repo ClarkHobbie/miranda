@@ -256,7 +256,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
     }
 
 
-    public ServerBootstrap createServerBootstrap() {
+    public static ServerBootstrap createServerBootstrap() {
         ServerBootstrap boot = new ServerBootstrap();
         boot.group(new NioEventLoopGroup(), new NioEventLoopGroup());
         Miranda miranda = Miranda.getInstance();
@@ -268,20 +268,22 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
         boot.childHandler(new ChannelInitializer<Channel>() {
             public void initChannel(Channel c) {
                 ChannelPipeline cp = c.pipeline();
+                //Long l = new Long(0);
+                //Boolean b = new Boolean(false);
+                //Boolean channelIsLocked = new Boolean(false);
+                //cp.addLast(HEART_BEAT, new InboundHeartBeatHandler(channelIsLocked, "server", c, l, b));
+                //cp.addLast(HEAT_BEAT_OUTBOUND, new OutboundHeartBeatHandler(channelIsLocked,"server",c, l, b));
                 NullTerminatedOutboundFrame ntof = new NullTerminatedOutboundFrame();
-                ChannelInboundMonitor in = new ChannelInboundMonitor();
-                cp.addLast("whateverInbound", in);
-                Long l = new Long(0);
-                Boolean b = new Boolean(false);
-                cp.addLast(HEART_BEAT, new InboundHeartBeatHandler(c, l, b));
-                cp.addLast(HEAT_BEAT_OUTBOUND, new OutboundHeartBeatHandler(c, l, b));
-                ChannelOutboundMonitor out = new ChannelOutboundMonitor("server");
-                cp.addLast("whateverOutbound", out);
-                cp.addLast(DECODER, new ServerChannelToNodeDecoder("#" + nodeCount++));
                 cp.addLast(NULL_FRAME_OUTBOUND, ntof);
-                //cp.addLast(STRING_ENCODER, new StringEncoder());
+                ChannelOutboundMonitor out = new ChannelOutboundMonitor(cp.channel(), "server");
+                cp.addLast("whateverOutbound", out);
+
                 NullTerminatedInboundFrame ntif = new NullTerminatedInboundFrame();
                 cp.addLast(NULL_FRAME_INBOUND, ntif);
+                ChannelInboundMonitor in = new ChannelInboundMonitor();
+                cp.addLast("whateverInbound", in);
+                cp.addLast(DECODER, new ServerChannelToNodeDecoder("#"));
+                //cp.addLast(STRING_ENCODER, new StringEncoder());
                 //cp.addLast (new DoNothingOutboundChannelHandler("server"));
             }
         });
@@ -329,6 +331,7 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
             if (handler == null) {
                 throw new RuntimeException("no heartbeat handler");
             } else {
+                logger.debug("check point one");
                 HeartBeatHandler heartBeatHandler = (HeartBeatHandler) handler;
             }
         }
@@ -596,17 +599,19 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
                 //cp.addLast("NOTHING", new DoNothingInboundChannelHandler())
                 NullTerminatedOutboundFrame ntof = new NullTerminatedOutboundFrame();
                 cp.addLast(NULL_FRAME_OUTBOUND, ntof);
-                ChannelOutboundMonitor out = new ChannelOutboundMonitor("client");
+                ChannelOutboundMonitor out = new ChannelOutboundMonitor(cp.channel(), "client");
                 cp.addLast("whateverOutbound", out);
+
                 NullTerminatedInboundFrame ntif = new NullTerminatedInboundFrame();
                 cp.addLast(NULL_FRAME_INBOUND, ntif);
                 ChannelInboundMonitor in = new ChannelInboundMonitor();
                 cp.addLast("whateverInbound", in);
-                Long l = new Long(0);
-                Boolean b = new Boolean(false);
-                cp.addLast(HEART_BEAT, new InboundHeartBeatHandler(ch, l, b));
-                cp.addLast(HEAT_BEAT_OUTBOUND, new OutboundHeartBeatHandler(ch, l, b));
                 cp.addLast(DECODER, new ClientChannelToNodeDecoder(cp));
+                //Long l = new Long(0);
+                //Boolean b = new Boolean(false);
+                //Boolean channelIsLocked = new Boolean(false);
+                //cp.addLast(HEAT_BEAT_OUTBOUND, new OutboundHeartBeatHandler(channelIsLocked,"client", ch, l, b));
+                //cp.addLast(HEART_BEAT, new InboundHeartBeatHandler(channelIsLocked, "client", ch, l, b));
                 //cp.addLast("last", new DoNothingInboundChannelHandler());
                 //cp.addLast("lastOne", new DoNothingOutboundChannelHandler("last"));
             }
@@ -1096,6 +1101,8 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
             ChannelHandler channelHandler = node.getChannel().pipeline().get("HEARTBEAT");
             if (channelHandler == null)
                 return false;
+
+            logger.debug("checkpoint two");
 
             HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
             if (heartBeatHandler.isOnline()) {

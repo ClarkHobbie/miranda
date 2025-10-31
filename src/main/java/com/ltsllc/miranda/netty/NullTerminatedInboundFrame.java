@@ -3,6 +3,8 @@ package com.ltsllc.miranda.netty;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.nio.charset.Charset;
 
@@ -10,6 +12,8 @@ import java.nio.charset.Charset;
  * Break a string into several substrings each of which is terminated with a null
  */
 public class NullTerminatedInboundFrame extends ChannelInboundHandlerAdapter {
+    public static Logger logger = LogManager.getLogger(NullTerminatedInboundFrame.class);
+
     protected StringBuilder stringBuilder = new StringBuilder();
 
     public void channelRead (ChannelHandlerContext ctx, Object msg) {
@@ -18,7 +22,7 @@ public class NullTerminatedInboundFrame extends ChannelInboundHandlerAdapter {
         if (msg instanceof ByteBuf) {
             ByteBuf byteBuf = (ByteBuf) msg;
             s = byteBuf.toString(Charset.defaultCharset());
-            byteBuf.release();
+            //byteBuf.release();
         } else if (msg instanceof String) {
             s = (String) msg;
         }
@@ -41,7 +45,6 @@ public class NullTerminatedInboundFrame extends ChannelInboundHandlerAdapter {
     }
 
     public void exceptionCaught (ChannelHandlerContext ctx, Throwable cause) {
-        int i = 0;
-        i++;
+        logger.error(cause);
     }
 }

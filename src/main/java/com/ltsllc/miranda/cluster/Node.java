@@ -1507,7 +1507,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
 
     public void registerUuid(UUID uuid) {
         ChannelHandler channelHandler = channel.pipeline().get("HEARTBEAT");
-        HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
+        //HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
         //heartBeatHandler.setUuid(uuid);
     }
 

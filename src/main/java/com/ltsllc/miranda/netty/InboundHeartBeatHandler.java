@@ -23,12 +23,16 @@ public class InboundHeartBeatHandler extends ChannelInboundHandlerAdapter implem
 
     public static Logger logger = LogManager.getLogger(InboundHeartBeatHandler.class);
 
+    public String direction;
     public Channel channel = null;
     public volatile Boolean metTimeout = false;
     public volatile Long timeOfLastActivity;
     public int iterations = 0;
+    public volatile Boolean channelIsLocked;
 
-    public InboundHeartBeatHandler (Channel channel, Long timeOfLastActivity, Boolean metTimeout) {
+    public InboundHeartBeatHandler (Boolean channelIsLocked, String direction, Channel channel, Long timeOfLastActivity, Boolean metTimeout) {
+        this.channelIsLocked = channelIsLocked;
+        this.direction = direction;
         this.channel = channel;
         this.timeOfLastActivity = timeOfLastActivity;
         this.metTimeout = metTimeout;
@@ -71,6 +75,7 @@ public class InboundHeartBeatHandler extends ChannelInboundHandlerAdapter implem
 
         if (s.equalsIgnoreCase(Node.HEART_BEAT)) {
             metTimeout = true;
+            logger.debug("met timeout");
         } else if (s.equalsIgnoreCase(Node.HEART_BEAT_START)) {
             sendHeartBeat();
         } else {
@@ -89,26 +94,35 @@ public class InboundHeartBeatHandler extends ChannelInboundHandlerAdapter implem
             logger.error("closed channel");
         }
 
-        AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT,
-                Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL));
-        if (Miranda.getProperties().getBooleanProperty(Miranda.PROPERTY_USE_HEARTBEATS)) {
-            if (System.currentTimeMillis() >
-                    timeOfLastActivity + Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_INTERVAL)) {
-                String message = Node.HEART_BEAT_START;
-                ByteBuf byteBuf = Unpooled.copiedBuffer(message.getBytes());
-                ChannelFuture future = channel.writeAndFlush(byteBuf);
-                long delay = Miranda.getProperties().getLongProperty(Miranda.PROPERTY_HEART_BEAT_TIMEOUT);
-                AlarmClock.getInstance().scheduleOnce(this, Alarms.HEART_BEAT_TIMEOUT, delay);
-                try {
-                    future.await();
-                    if (!future.isSuccess()) {
-                        logger.error("heart beat start was a failure");
-                    }
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Node.HEART_BEAT);
+        if (!channel.isWritable()) {
+            logger.error("channel is not writeable");
+            return;
+        }
+        ByteBuf byteBuf = Unpooled.copiedBuffer(stringBuilder.toString().getBytes());
+        logger.debug("reference count after allocation: " + byteBuf.refCnt());
+        while (channelIsLocked) {
+            try {
+                wait(1000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
+        }
+        channelIsLocked = true;
+
+        ChannelFuture future = channel.writeAndFlush(byteBuf);
+        try {
+            future.await();
+            channelIsLocked = false;
+            byteBuf.retain();
+            logger.debug("reference count after await: " + byteBuf.refCnt());
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        if (!future.isSuccess()) {
+            logger.error(future.exceptionNow());
+            future.cause().printStackTrace();;
         }
     }
 
@@ -116,6 +130,7 @@ public class InboundHeartBeatHandler extends ChannelInboundHandlerAdapter implem
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
             throws Exception {
         logger.error(cause);
+        cause.printStackTrace();
         ctx.fireExceptionCaught(cause);
     }
 }

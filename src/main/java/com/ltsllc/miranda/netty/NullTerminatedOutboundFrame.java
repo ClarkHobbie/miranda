@@ -14,7 +14,6 @@ import java.nio.charset.Charset;
 public class NullTerminatedOutboundFrame extends ChannelOutboundHandlerAdapter {
     public void write (ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
         String s = null;
-
         ByteBuf byteBuf = null;
         if (msg instanceof ByteBuf) {
             byteBuf = (ByteBuf) msg;
