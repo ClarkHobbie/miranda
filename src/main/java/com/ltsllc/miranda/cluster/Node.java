@@ -342,10 +342,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         logger.debug("entering messageReceived with state = " + state + " and message = " + s);
         s = s.toUpperCase();
 
-        if (getIsLoopback()) {
-            return;
-        }
-
         MessageType messageType = determineMessageType(s);
         switch (state) {
             case AWAITING_ASSIGNMENTS: {
