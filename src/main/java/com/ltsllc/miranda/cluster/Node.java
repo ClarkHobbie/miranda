@@ -18,6 +18,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.embedded.EmbeddedChannel;
 import org.apache.logging.log4j.LogManager;
@@ -340,6 +341,7 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
      */
     public void messageReceived(String s) throws IOException, LtsllcException {
         logger.debug("entering messageReceived with state = " + state + " and message = " + s);
+        byte[] bytes = s.getBytes();
         s = s.toUpperCase();
 
         MessageType messageType = determineMessageType(s);
@@ -684,7 +686,20 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         stringBuffer.append(" ");
         addId(stringBuffer);
 
-        channel.writeAndFlush(stringBuffer.toString());
+        ByteBuf buf = Unpooled.copiedBuffer(stringBuffer.toString().getBytes());
+        ChannelFuture channelFuture = channel.writeAndFlush(buf);
+        ChannelFutureListener channelFutureListener = new ChannelFutureListener() {
+            @Override
+            public void operationComplete(ChannelFuture channelFuture) throws Exception {
+                if (channelFuture.isSuccess()) {
+                    logger.debug ("successfully wrote message");
+                } else {
+                    logger.error ("failed to write message. Cause: " + channelFuture.cause());
+                    channelFuture.cause().printStackTrace();
+                }
+            }
+        };
+        channelFuture.addListener(channelFutureListener);
         logger.debug("wrote " + stringBuffer);
 
         //
@@ -723,10 +738,6 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
     public void sendStart(boolean force, boolean isLoopback) {
         logger.debug("entering sendStart with force: " + force + " and isLoopback: " + isLoopback);
 
-        if (isLoopback) {
-            return;
-        }
-
         if (channelToSentStart.get(channel) != null && channelToSentStart.get(channel).booleanValue()
                 && !force) {
             return;
@@ -755,7 +766,20 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         ByteBuf buf = Unpooled.copiedBuffer(stringBuilder.toString().getBytes());
 
         ChannelFuture future = channel.writeAndFlush(buf);
+        ChannelFutureListener listener = new ChannelFutureListener() {
+            @Override
+            public void operationComplete(ChannelFuture channelFuture) {
+                if (channelFuture.isSuccess()) {
+                    logger.debug ("sendStart sent successfully");
+                } else {
+                    logger.debug("sendStart failed");
+                    channelFuture.cause().printStackTrace();
+                }
+            }
+        };
+        future.addListener(listener);
 
+        /*
         if (uuid != null && uuid.equals(Miranda.getInstance().getMyUuid())) {
             isLoopback = true;
             ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
@@ -770,6 +794,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
                     Miranda.getProperties().getLongProperty(Miranda.PROPERTY_START_TIMEOUT));
             timeoutsMet.put(Alarms.START, false);
         }
+
+         */
         logger.debug("leaving sendStart");
     }
 
@@ -1017,17 +1043,22 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         stringBuffer.append(START_ACKNOWLEDGED);
         stringBuffer.append(" ");
         addId(stringBuffer);
-        channel.writeAndFlush(stringBuffer.toString());
+        ByteBuf byteBuf = Unpooled.copiedBuffer(stringBuffer.toString().getBytes());
+        channel.writeAndFlush(byteBuf);
 
         if (uuid.equals(Miranda.getInstance().getMyUuid())) {
             isLoopback = true;
+            /*
             ChannelHandler channelHandler = channel.pipeline().get(Cluster.HEART_BEAT);
+
             if (channelHandler == null || !(channelHandler instanceof HeartBeatHandler)) {
                 throw new RuntimeException("couldn't find HeartBeatHandler");
             } else {
                 HeartBeatHandler heartBeatHandler = (HeartBeatHandler) channelHandler;
 
             }
+
+             */
         }
 
         if ((Miranda.getInstance().getEldest() == -1) || (Miranda.getInstance().getEldest() > nodeStart)) {
@@ -1452,7 +1483,8 @@ public class Node implements Cloneable, Alarmable, PropertyListener {
         uuid = UUID.fromString(scanner.next());
         registerUuid(uuid);
         host = scanner.next();
-        port = scanner.nextInt();
+        java.lang.String temp = scanner.next();
+        port = Integer.parseInt(temp);
 
         setState(GENERAL);
         setOnline(true);

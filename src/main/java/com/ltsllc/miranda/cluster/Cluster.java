@@ -275,13 +275,13 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
                 //cp.addLast(HEAT_BEAT_OUTBOUND, new OutboundHeartBeatHandler(channelIsLocked,"server",c, l, b));
                 NullTerminatedOutboundFrame ntof = new NullTerminatedOutboundFrame();
                 cp.addLast(NULL_FRAME_OUTBOUND, ntof);
-                ChannelOutboundMonitor out = new ChannelOutboundMonitor(cp.channel(), "server");
-                cp.addLast("whateverOutbound", out);
+                //ChannelOutboundMonitor out = new ChannelOutboundMonitor(cp.channel(), "server");
+                //cp.addLast("whateverOutbound", out);
 
+                //ChannelInboundMonitor in = new ChannelInboundMonitor();
+                //cp.addLast("whateverInbound", in);
                 NullTerminatedInboundFrame ntif = new NullTerminatedInboundFrame();
                 cp.addLast(NULL_FRAME_INBOUND, ntif);
-                ChannelInboundMonitor in = new ChannelInboundMonitor();
-                cp.addLast("whateverInbound", in);
                 cp.addLast(DECODER, new ServerChannelToNodeDecoder("#"));
                 //cp.addLast(STRING_ENCODER, new StringEncoder());
                 //cp.addLast (new DoNothingOutboundChannelHandler("server"));
@@ -599,13 +599,13 @@ public class Cluster implements Alarmable, PropertyListener, AutoCloseable {
                 //cp.addLast("NOTHING", new DoNothingInboundChannelHandler())
                 NullTerminatedOutboundFrame ntof = new NullTerminatedOutboundFrame();
                 cp.addLast(NULL_FRAME_OUTBOUND, ntof);
-                ChannelOutboundMonitor out = new ChannelOutboundMonitor(cp.channel(), "client");
-                cp.addLast("whateverOutbound", out);
+                //ChannelOutboundMonitor out = new ChannelOutboundMonitor(cp.channel(), "client");
+                //cp.addLast("whateverOutbound", out);
 
                 NullTerminatedInboundFrame ntif = new NullTerminatedInboundFrame();
                 cp.addLast(NULL_FRAME_INBOUND, ntif);
-                ChannelInboundMonitor in = new ChannelInboundMonitor();
-                cp.addLast("whateverInbound", in);
+                //ChannelInboundMonitor in = new ChannelInboundMonitor();
+                //cp.addLast("whateverInbound", in);
                 cp.addLast(DECODER, new ClientChannelToNodeDecoder(cp));
                 //Long l = new Long(0);
                 //Boolean b = new Boolean(false);

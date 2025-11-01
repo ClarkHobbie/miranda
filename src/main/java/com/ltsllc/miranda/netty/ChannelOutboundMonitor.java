@@ -36,9 +36,7 @@ public class ChannelOutboundMonitor extends ChannelOutboundHandlerAdapter {
         String message = s + channel.toString();
 
         logger.debug(message);
-        byte[] bytes = byteBuf.array();
         byteBuf = Unpooled.copiedBuffer(s.getBytes());
-        bytes = byteBuf.array();
         ChannelFuture future = ctx.write(byteBuf, promise);
         ChannelFutureListener listener = new ChannelFutureListener() {
             @Override
@@ -47,6 +45,7 @@ public class ChannelOutboundMonitor extends ChannelOutboundHandlerAdapter {
                     logger.debug("successfully sent");
                 } else {
                     logger.error ("send failed. Cause " + channelFuture.cause());
+                    channelFuture.cause().printStackTrace();
                 }
             }
         };

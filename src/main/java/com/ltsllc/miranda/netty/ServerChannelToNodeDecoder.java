@@ -72,7 +72,7 @@ public class ServerChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
 
         if (message instanceof ByteBuf) {
             s = ((ByteBuf) message).toString(Charset.defaultCharset());
-            ((ByteBuf) message).release();
+            //((ByteBuf) message).release();
         } else if (message instanceof String) {
             s = ((String) message);
         } else {
@@ -90,6 +90,7 @@ public class ServerChannelToNodeDecoder extends ChannelInboundHandlerAdapter {
     }
 
     public void exceptionCaught (ChannelHandlerContext ctx, Throwable cause) {
-        cause = cause;
+        logger.error(cause);
+        cause.printStackTrace();
     }
 }
