@@ -22,11 +22,12 @@ public class NullTerminatedInboundFrame extends ChannelInboundHandlerAdapter {
         if (msg instanceof ByteBuf) {
             ByteBuf byteBuf = (ByteBuf) msg;
             s = byteBuf.toString(Charset.defaultCharset());
-            //byteBuf.release();
+            byteBuf.release();
         } else if (msg instanceof String) {
             s = (String) msg;
         }
 
+        logger.debug ("received " + s);
         int index = s.indexOf('\u0000');
         while (index != -1) {
             String frame = s.substring(0, index);

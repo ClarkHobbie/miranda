@@ -31,22 +31,12 @@ public class NullTerminatedOutboundFrame extends ChannelOutboundHandlerAdapter {
         byte[] bytes = ((ByteBuf) msg).array();
         s = ((ByteBuf) msg).toString(Charset.defaultCharset());
         ChannelFuture channelFuture = ctx.writeAndFlush(msg, promise);
-        ChannelFutureListener channelFutureListener = new ChannelFutureListener() {
-            @Override
-            public void operationComplete(ChannelFuture channelFuture) throws Exception {
-                if (channelFuture.isSuccess()) {
-                    logger.debug ("sent successfully");
-                } else {
-                    logger.error("send failed");
-                    channelFuture.cause().printStackTrace();
-                }
-            }
-        };
-        channelFuture.addListener(channelFutureListener);
+        MessageChanelFutureListener listener = new MessageChanelFutureListener(s);
+        channelFuture.addListener(listener);
     }
 
     public void exceptionCaught (ChannelHandlerContext ctx, Throwable cause) {
-        int i = 0;
-        i++;
+        logger.error ("caught " + cause);
+        cause.printStackTrace();
     }
 }
