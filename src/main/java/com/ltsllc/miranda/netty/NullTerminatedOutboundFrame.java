@@ -37,6 +37,7 @@ public class NullTerminatedOutboundFrame extends ChannelOutboundHandlerAdapter {
 
     public void exceptionCaught (ChannelHandlerContext ctx, Throwable cause) {
         logger.error ("caught " + cause);
+        logger.error("on channel " + ctx.channel());
         cause.printStackTrace();
     }
 }
